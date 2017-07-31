@@ -56,11 +56,11 @@ object Laufend {
     val font    = MyFont(64)
     val fm      = tmpG.getFontMetrics(font)
     val frc     = fm.getFontRenderContext
-    val gv      = font.createGlyphVector(frc, text)
+    val gv      = font.createGlyphVector(frc, text.take(32))
     val shape   = gv.getOutline
     val rectIn  = shape.getBounds
 
-    val extentIn = math.max(rectIn.width, rectIn.height) * 0.2515
+    val extentIn = math.max(rectIn.width, rectIn.height) * 0.33 // 0.2515
 
     val p = new MyPolar(inWidth = extentIn /* rectIn.width */, inHeight = extentIn /* rectIn.height */,
       innerRadius = 0.0, angleStart = 0.0, angleSpan = math.Pi * 0.5,
@@ -151,7 +151,7 @@ object Laufend {
     }
 
     val Pi2     = math.Pi * 2
-    val angStep = -0.1 * math.Pi / 180 + Pi2
+    val angStep = -0.2 * math.Pi / 180 + Pi2
     val tk      = comp.peer.getToolkit
 
     val t = new Timer(30, Swing.ActionListener { _ =>
