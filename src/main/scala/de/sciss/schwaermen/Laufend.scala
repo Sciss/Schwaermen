@@ -13,9 +13,12 @@
 
 package de.sciss.schwaermen
 
-import java.awt.RenderingHints
+import java.awt.{Color, RenderingHints}
+import java.awt.geom.{AffineTransform, Path2D, PathIterator}
 import java.awt.image.BufferedImage
+import javax.swing.Timer
 
+import scala.annotation.switch
 import scala.swing.{Component, Graphics2D, MainFrame, Swing}
 
 object Laufend {
@@ -53,29 +56,110 @@ object Laufend {
     val font    = MyFont(64)
     val fm      = tmpG.getFontMetrics(font)
     val frc     = fm.getFontRenderContext
-    val gv      = font.createGlyphVector(frc, text.take(27))
+    val gv      = font.createGlyphVector(frc, text)
     val shape   = gv.getOutline
-    val rect    = shape.getBounds
+    val rectIn  = shape.getBounds
+
+    val extentIn = math.max(rectIn.width, rectIn.height) * 0.2515
+
+    val p = new MyPolar(inWidth = extentIn /* rectIn.width */, inHeight = extentIn /* rectIn.height */,
+      innerRadius = 0.0, angleStart = 0.0, angleSpan = math.Pi * 0.5,
+      cx = extentIn * 0.5 /* rectIn.width */ * 0.5 /* rectIn.getCenterX */,
+      cy = extentIn * 0.5 /* rectIn.height */ * 0.5 /* rectIn.getCenterY */, flipX = true, flipY = true)
+
+    val arr   = new Array[Double](6)
+    val path  = new Path2D.Double()
+    var angle = 0.0
+
+    def updatePath(): Unit = {
+      path.reset()
+      p.angleStart = angle
+      val it    = shape.getPathIterator(AffineTransform.getTranslateInstance(-rectIn.x, -rectIn.y))
+      while (!it.isDone) {
+        val tpe = it.currentSegment(arr)
+        (tpe: @switch) match {
+          case PathIterator.SEG_MOVETO  =>
+            p(arr, 0)
+            path.moveTo(arr(0), arr(1))
+
+          case PathIterator.SEG_LINETO  =>
+            p(arr, 0)
+            path.lineTo(arr(0), arr(1))
+
+          case PathIterator.SEG_QUADTO  =>
+            p(arr, 0)
+            p(arr, 2)
+            path.quadTo(arr(0), arr(1), arr(2), arr(3))
+
+          case PathIterator.SEG_CUBICTO =>
+            p(arr, 0)
+            p(arr, 2)
+            p(arr, 4)
+            path.curveTo(arr(0), arr(1), arr(2), arr(3), arr(4), arr(5))
+
+          case PathIterator.SEG_CLOSE   =>
+            path.closePath()
+        }
+        it.next()
+      }
+    }
+
+    updatePath()
+    val rectOut = path.getBounds
+//    println(rectOut)
+
+    val comp = new Component {
+      background = Color.black
+      foreground = Color.white
+      opaque     = true
+
+      preferredSize = {
+        val d = rectOut.getSize
+        d.width  += 8
+        d.height += 8
+        d.width   = math.min(1290, d.width)
+        d.height  = math.min(1080, d.height)
+        d
+      }
+
+      override protected def paintComponent(g: Graphics2D): Unit = {
+        super.paintComponent(g)
+        val w = peer.getWidth
+        val h = peer.getHeight
+        g.setColor(background)
+        g.fillRect(0, 0, w, h)
+        g.setColor(foreground)
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING  , RenderingHints.VALUE_ANTIALIAS_ON )
+        g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE  )
+
+//          val sx = w.toDouble / rectOut.width
+//          val sy = h.toDouble / rectOut.height
+        val sx = (w - 8).toDouble / rectOut.getMaxX
+        val sy = (h - 8).toDouble / rectOut.getMaxY
+        val scale = math.min(sx, sy)
+        g.translate(4, 4)
+        g.scale(scale, scale)
+//          g.translate(4 - rectOut.x , 4 - rectOut.y)
+        g.fill(path)
+      }
+    }
 
     new MainFrame {
-      contents = new Component {
-        preferredSize = {
-          val d = rect.getSize
-          d.width  += 8
-          d.height += 8
-          d
-        }
-
-        override protected def paintComponent(g: Graphics2D): Unit = {
-          super.paintComponent(g)
-          g.setRenderingHint(RenderingHints.KEY_ANTIALIASING  , RenderingHints.VALUE_ANTIALIAS_ON )
-          g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE  )
-          g.translate(4 - rect.x , 4 - rect.y)
-          g.fill(shape)
-        }
-      }
+      contents = comp
       pack().centerOnScreen()
       open()
     }
+
+    val Pi2     = math.Pi * 2
+    val angStep = -0.1 * math.Pi / 180 + Pi2
+    val tk      = comp.peer.getToolkit
+
+    val t = new Timer(30, Swing.ActionListener { _ =>
+      angle = (angle + angStep) % Pi2
+      updatePath()
+      comp.repaint()
+      tk.sync()
+    })
+    t.start()
   }
 }
