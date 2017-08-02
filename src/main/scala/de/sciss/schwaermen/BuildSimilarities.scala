@@ -1429,7 +1429,76 @@ object BuildSimilarities {
     */
   def quote (s: String): String = "\"" + escape(s) + "\""
 
+
   def mkGraph(fileA: File, fileB: File, name: String): (Graph, Future[Double]) = {
+    val p = Promise[Double]()
+    val g = Graph {
+      import de.sciss.numbers.Implicits._
+      import de.sciss.fscape._
+      import graph._
+
+      val specA   = AudioFile.readSpec(fileA)
+      val specB   = AudioFile.readSpec(fileB)
+      val lenA    = specA.numFrames
+      val lenB    = specB.numFrames
+
+      val chunkA = AudioFileIn(fileA, numChannels = 1)
+      val chunkB = AudioFileIn(fileB, numChannels = 1)
+
+      def normalize(in: GE, len: GE): GE = {
+        val inB = in.elastic(len/ControlBlockSize())
+        val mx  = RunningSum(in.squared).last
+        inB / (mx / len).sqrt
+      }
+
+      val fsz       = 1024
+      val winStep   = fsz/2
+      val melBands  = 42
+      val numMFCC   = 32
+
+      def mfcc(in: GE): GE = {
+        val lap  = Sliding(in, fsz, winStep) * GenWindow(fsz, GenWindow.Hann)
+        val fft  = Real1FFT(lap, fsz, mode = 1)
+        val mag  = fft.complex.mag.max(-80)
+        val mel  = MelFilter(mag, winStep, bands = melBands)
+        DCT_II(mel.log, melBands, numMFCC, zero = 0)
+      }
+
+      def ceilL(a: Long, b: Int): Long = {
+        val c = a + b - 1
+        c - (c % b)
+      }
+
+      val mfccA   = mfcc(chunkA)
+      val chunkBR = ReverseWindow(chunkB, size = lenB)
+      val mfccB   = mfcc(chunkBR)
+      val numWinA = ceilL(lenA, winStep)
+      val numWinB = ceilL(lenB, winStep)
+      val lenA2   = numWinA * numMFCC
+      val lenB2   = numWinB * numMFCC
+
+      val convLen0= numWinA + numWinB - 1
+      val convLen = convLen0.toInt.nextPowerOfTwo
+
+      val mfccAN  = normalize(mfccA, lenA2)
+      val mfccBN  = normalize(mfccB, lenB2)
+      // val lenMin  = lenA2.min(lenB2)
+
+      val chunkAP = ResizeWindow(mfccAN, size = lenA2, stop = (convLen - numWinA) * numMFCC)
+      val chunkBP = ResizeWindow(mfccBN, size = lenB2, stop = (convLen - numWinB) * numMFCC)
+      val fftMode = 0
+      val fftA    = Real2FFT(in = chunkAP, rows = numMFCC, columns = convLen, mode = fftMode)
+      val fftB    = Real2FFT(in = chunkBP, rows = numMFCC, columns = convLen, mode = fftMode)
+      val prod    = fftA.complex * fftB
+      val corr    = Real2IFFT(in = prod  , rows = numMFCC, columns = convLen, mode = fftMode)
+      val max     = RunningMax(corr).last //  / /* (2 * lenMin) */ (lenA2 + lenB2) * convLen
+      //      max.poll(0, s"similarity ($name)")
+      Fulfill(max, p)
+    }
+    (g, p.future)
+  }
+
+  def mkGraphOLD2(fileA: File, fileB: File, name: String): (Graph, Future[Double]) = {
     val p = Promise[Double]()
     val g = Graph {
       import de.sciss.numbers.Implicits._
