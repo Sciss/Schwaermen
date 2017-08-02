@@ -15,7 +15,9 @@ lazy val commonSettings = Seq(
     "de.sciss"               %% "numbers"           % "0.1.3",
     "com.github.scopt"       %% "scopt"             % "3.6.0",
     "de.sciss"               %  "shapeinterpolator" % "0.1.0",
-    "de.sciss"               %% "swingplus"         % "0.2.4"
+    "de.sciss"               %% "swingplus"         % "0.2.4",
+    "de.sciss"               %% "span"              % "1.3.2",
+    "de.sciss"               %% "fscape"            % "2.8.0"
   )
 )
 
