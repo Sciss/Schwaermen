@@ -3,6 +3,7 @@ package de.sciss.schwaermen
 import de.sciss.file._
 import de.sciss.fscape.Graph
 import de.sciss.fscape.stream.Control
+import de.sciss.numbers
 import de.sciss.span.Span
 import de.sciss.synth.io.{AudioFile, AudioFileSpec}
 
@@ -18,7 +19,8 @@ object BuildSimilarities {
   case class Vertex(words: List[Word]) {
     def span: Span = Span(words.head.span.start, words.last.span.stop)
 
-    def index: Int = words.head.index
+    def index     : Int = words.head.index
+    def lastIndex : Int = words.last.index
   }
 
   val vertices: List[Vertex] = List(Vertex(
@@ -1330,18 +1332,23 @@ object BuildSimilarities {
 
               val fileA = getTemp(v1)
               // println(fileA)
-              val edge = tail.map { v2 =>
-                val fileB = getTemp(v2)
-                // println(fileB)
-                val name = s"${v1.words.head.index}-${v2.words.head.index}"
-                val (g, fut) = mkGraph(fileA = fileA, fileB = fileB, name = name)
-                val c = Control()
-                // println(s"Running $name")
-                c.run(g)
-//                Await.result(c.status, Duration.Inf)
-                val sim = Await.result(fut, Duration.Inf)
-                println(f"${mkWordsString(v1)} -- ${mkWordsString(v2)} : $sim%g")
-                Edge(v1, v2, sim): SimEdge
+              val v1li = v1.lastIndex
+              val edge = tail.flatMap {
+                case v2 if v2.lastIndex != v1li =>
+                  val fileB = getTemp(v2)
+                  // println(fileB)
+                  val name = s"${v1.words.head.index}-${v2.words.head.index}"
+                  val (g, fut) = mkGraph(fileA = fileA, fileB = fileB, name = name)
+                  val c = Control()
+                  // println(s"Running $name")
+                  c.run(g)
+  //                Await.result(c.status, Duration.Inf)
+                  val sim = Await.result(fut, Duration.Inf)
+                  println(f"${mkWordsString(v1)} -- ${mkWordsString(v2)} : $sim%g")
+                  val e = Edge(v1, v2, sim): SimEdge
+                  Some(e)
+
+                case _ => None
               }
               loop(tail, edge ::: res, map)
 
@@ -1367,7 +1374,13 @@ object BuildSimilarities {
     def release(): Unit = busy.synchronized(busy.notify())
 
     t.onComplete {
-      case Success(edges) =>
+      case Success(edgesI) =>
+        val minSim  = edgesI.iterator.map(_.weight).min
+        val maxSim  = edgesI.iterator.map(_.weight).max
+        println(f"minSim = $minSim%g, maxSim = $maxSim%g")
+        import numbers.Implicits._
+        val edges   = edgesI.map(e => e.copy(weight = e.weight.linlin(minSim, maxSim, 1.0, 0.0)))
+
         implicit val ord: Ordering[Vertex] = Ordering.by(_.words.head.index)
         val mst = MSTKruskal[Vertex, SimEdge](edges)
 
