@@ -1,5 +1,7 @@
 package de.sciss.schwaermen
 
+import java.io.{DataOutputStream, FileOutputStream}
+
 import de.sciss.file._
 import de.sciss.fscape.Graph
 import de.sciss.fscape.stream.Control
@@ -7,8 +9,8 @@ import de.sciss.numbers
 import de.sciss.span.Span
 import de.sciss.synth.io.{AudioFile, AudioFileSpec}
 
-import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future, Promise}
 import scala.util.{Failure, Success}
 
 object BuildSimilarities {
@@ -21,6 +23,11 @@ object BuildSimilarities {
 
     def index     : Int = words.head.index
     def lastIndex : Int = words.last.index
+
+    def wordsString: String = words.map(_.text).mkString(" ")
+
+    def quote: String =
+      BuildSimilarities.quote(words.map(_.text).mkString(s"$index: ", " ", ""))
   }
 
   val vertices: List[Vertex] = List(Vertex(
@@ -1275,22 +1282,20 @@ object BuildSimilarities {
     run()
   }
 
-  def mkWordsString(v: Vertex): String =
-    quote(v.words.map(_.text).mkString(s"${v.index}: ", " ", ""))
+  type SimEdge = Edge[Vertex]
+
+  val audioFileIn: File = file("/data/projects/Schwaermen/audio_work/Gertrude_DaDrehtSichDerBaum_slow_170605.aif")
 
   def run(): Unit = {
-    val selection: List[Vertex] = vertices.take(128)
+    val selection: List[Vertex] = vertices // .take(128)
     val numComb   = selection.combinations(2).size
     println(s"Number of combinations: $numComb")
-
-    val fileIn = file("/data/projects/Schwaermen/audio_work/Gertrude_DaDrehtSichDerBaum_slow_170605.aif")
-
-    type SimEdge = Edge[Vertex]
 
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val t: Future[List[SimEdge]] = Future {
-      val af = AudioFile.openRead(fileIn)
+      val af = AudioFile.openRead(audioFileIn)
+      val dos = new DataOutputStream(new FileOutputStream(file("/data/temp/edges.bin")))
 
       def copy(span: Span, target: File): Unit = {
         val len = span.length.toInt
@@ -1324,27 +1329,32 @@ object BuildSimilarities {
 
               def getTemp(v: Vertex): File =
                 map.getOrElse(v, {
-                  val f = File.createTemp()
-                  map += v -> f
-                  copy(v.span, f)
-                  f
+                  val f1 = File.createTemp()
+                  val f2 = File.createTemp()
+                  copy(v.span, f1)
+                  val g = mkAnalysisGraph(inFile = f1, outFile = f2, name = s"ana $v")
+                  val c = Control()
+                  c.run(g)
+                  Await.result(c.status, Duration.Inf)
+                  f1.delete()
+                  map += v -> f2
+                  f2
                 })
 
               val fileA = getTemp(v1)
-              // println(fileA)
               val v1li = v1.lastIndex
               val edge = tail.flatMap {
                 case v2 if v2.lastIndex != v1li =>
                   val fileB = getTemp(v2)
-                  // println(fileB)
                   val name = s"${v1.words.head.index}-${v2.words.head.index}"
-                  val (g, fut) = mkGraph(fileA = fileA, fileB = fileB, name = name)
+                  val (g, fut) = mkCorrelationGraph(fileA = fileA, fileB = fileB, name = name)
                   val c = Control()
-                  // println(s"Running $name")
                   c.run(g)
-  //                Await.result(c.status, Duration.Inf)
                   val sim = Await.result(fut, Duration.Inf)
-                  println(f"${mkWordsString(v1)} -- ${mkWordsString(v2)} : $sim%g")
+                  dos.writeShort(v1.index)
+                  dos.writeShort(v2.index)
+                  dos.writeFloat(sim.toFloat)
+                  println(f"${v1.quote} -- ${v2.quote} : $sim%g")
                   val e = Edge(v1, v2, sim): SimEdge
                   Some(e)
 
@@ -1361,6 +1371,7 @@ object BuildSimilarities {
 
       } finally {
         af.cleanUp()
+        dos.close()
       }
 
       run()
@@ -1387,11 +1398,11 @@ object BuildSimilarities {
         def vName(v: Vertex): String = s"v${v.index}"
 
         val nodesSx = selection.map { v =>
-          val label = mkWordsString(v)
+          val label = v.quote
           s"""${vName(v)} [label=$label]"""
         }
         val edgesSx = mst.map { e =>
-          s"""${vName(e.start)} -- ${vName(e.end)}"""
+          f"""${vName(e.start)} -- ${vName(e.end)} [label="${e.weight}%g"]"""
         }
         val nodesS = nodesSx.mkString("  ", "\n  ", "")
         val edgesS = edgesSx.mkString("  ", "\n  ", "")
@@ -1429,6 +1440,90 @@ object BuildSimilarities {
     */
   def quote (s: String): String = "\"" + escape(s) + "\""
 
+  def mkAnalysisGraph(inFile: File, outFile: File, name: String, fftSize: Int = 1024, winStep: Int = 256,
+                      melBands: Int = 64): Graph = {
+    val g = Graph {
+      import de.sciss.fscape._
+      import graph._
+
+//      val spec   = AudioFile.readSpec(inFile)
+
+      val in1  = AudioFileIn(inFile, numChannels = 1)
+      val in2  = AudioFileIn(inFile, numChannels = 1)
+
+      def mkEnergy(in: GE): GE = {
+        val mx  = RunningSum(in.squared).last
+        mx
+      }
+
+      def mkMFCC(in: GE): GE = {
+        val lap  = Sliding(in, size = fftSize, step = winStep) * GenWindow(fftSize, GenWindow.Hann)
+        val fft  = Real1FFT(lap, size = fftSize, mode = 1)
+        val mag  = fft.complex.mag // .max(-80)
+        val mel  = MelFilter(mag, winStep, bands = melBands, minFreq = 86, maxFreq = 16512)
+        mel // DCT_II(mel.log.max(-80), size = melBands, numCoeffs = numMFCC, zero = 0)
+        //        val mag  = fft.complex.mag.log.max(-80)
+        //        val mel  = MelFilter(mag, winStep, bands = melBands, minFreq = 50, maxFreq = 4000)
+        //        DCT_II(mel, melBands, numMFCC, zero = 0)
+      }
+
+      val mfcc  = mkMFCC(in1)
+      val e     = mkEnergy(in2)
+      val sig   = e ++ mfcc
+      AudioFileOut(outFile, AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
+    }
+    g
+  }
+
+  def mkCorrelationGraph(fileA: File, fileB: File, name: String, melBands: Int = 64): (Graph, Future[Double]) = {
+    val p = Promise[Double]()
+    val g = Graph {
+      import de.sciss.fscape._
+      import de.sciss.numbers.Implicits._
+      import graph._
+
+      val specA   = AudioFile.readSpec(fileA)
+      val specB   = AudioFile.readSpec(fileB)
+
+      val chunkA  = AudioFileIn(fileA, numChannels = 1)
+      val chunkB  = AudioFileIn(fileB, numChannels = 1)
+      val energyA = chunkA.head
+      val energyB = chunkB.head
+      val mfccA   = chunkA.tail
+      val mfccB   = chunkB.tail
+
+      val numMFCC   = melBands // 64 // 128 // 42 // 32
+
+      val numWinA   = ((specA.numFrames - 1) / numMFCC).toInt
+      val numWinB   = ((specB.numFrames - 1) / numMFCC).toInt
+
+      val lenA2     = numWinA * numMFCC
+      val lenB2     = numWinB * numMFCC
+
+      val convLen: Int = numWinA + numWinB - 1
+
+      val fftSize   = (convLen * numMFCC).nextPowerOfTwo
+      val chunkAP   = mfccA ++ DC(0).take(fftSize - lenA2)
+      val chunkBP   = mfccB ++ DC(0).take(fftSize - lenB2)
+
+      val fftMode   = 1
+      val fftA      = Real1FFT(in = chunkAP, size = fftSize, mode = fftMode)
+      val fftB0     = Real1FFT(in = chunkBP, size = fftSize, mode = fftMode)
+      val fftB      = fftB0.complex.conj
+
+      val prod      = fftA.complex * fftB
+      val corr0     = Real1IFFT(in = prod, size = fftSize, mode = fftMode)
+
+      val energyT = (energyA + energyB)/2
+
+      val corr      = corr0
+
+      val max       = RunningMax(corr).last / energyT * (fftSize/2)
+
+      Fulfill(max, p)
+    }
+    (g, p.future)
+  }
 
   def mkGraph(fileA: File, fileB: File, name: String): (Graph, Future[Double]) = {
     val p = Promise[Double]()
@@ -1460,8 +1555,8 @@ object BuildSimilarities {
 
       val fsz       = 1024
       val winStep   = fsz / 4 // fsz/2
-      val melBands  = 128 // 42
-      val numMFCC   = 128 // 42 // 32
+      val melBands  = 64 // 128 // 42
+      val numMFCC   = 64 // 128 // 42 // 32
 
       def mfcc(in: GE): GE = {
         val lap  = Sliding(in, size = fsz, step = winStep) * GenWindow(fsz, GenWindow.Hann)
@@ -1496,10 +1591,6 @@ object BuildSimilarities {
 
       val convLen: Int = numWinA + numWinB - 1
 //      println(s"lenA = $lenA, numWinA = $numWinA, lenB =  $lenB, numWinB = $numWinB, winStep = $winStep, convLen = $convLen")
-
-      val mfccAN    = mfccA // normalize(mfccA, lenA2, "A")
-      //      val mfccBN    = normalize(mfccBR, lenB2)
-      val mfccBN    = mfccB // normalize(mfccB, lenB2, "B")
 
       //      Plot1D(mfccAN, size = lenA2)
       //      Plot1D(mfccBN, size = lenB2)
@@ -1581,8 +1672,8 @@ object BuildSimilarities {
   def mkGraphOLD3(fileA: File, fileB: File, name: String): (Graph, Future[Double]) = {
     val p = Promise[Double]()
     val g = Graph {
-      import de.sciss.numbers.Implicits._
       import de.sciss.fscape._
+      import de.sciss.numbers.Implicits._
       import graph._
 
       val specA   = AudioFile.readSpec(fileA)
@@ -1649,8 +1740,8 @@ object BuildSimilarities {
   def mkGraphOLD2(fileA: File, fileB: File, name: String): (Graph, Future[Double]) = {
     val p = Promise[Double]()
     val g = Graph {
-      import de.sciss.numbers.Implicits._
       import de.sciss.fscape._
+      import de.sciss.numbers.Implicits._
       import graph._
 
       val specA   = AudioFile.readSpec(fileA)
@@ -1696,8 +1787,8 @@ object BuildSimilarities {
   def mkGraphOLD(fileA: File, fileB: File, name: String): (Graph, Future[Double]) = {
     val p = Promise[Double]()
     val g = Graph {
-      import de.sciss.numbers.Implicits._
       import de.sciss.fscape._
+      import de.sciss.numbers.Implicits._
       import graph._
 
       val specA   = AudioFile.readSpec(fileA)

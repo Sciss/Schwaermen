@@ -11,13 +11,17 @@ lazy val commonSettings = Seq(
   licenses            := Seq(gpl2),
   scalacOptions      ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint"),
   libraryDependencies ++= Seq(
-    "de.sciss"               %% "fileutil"          % "1.1.2",
-    "de.sciss"               %% "numbers"           % "0.1.3",
-    "com.github.scopt"       %% "scopt"             % "3.6.0",
-    "de.sciss"               %  "shapeinterpolator" % "0.1.0",
-    "de.sciss"               %% "swingplus"         % "0.2.4",
-    "de.sciss"               %% "span"              % "1.3.2",
-    "de.sciss"               %% "fscape"            % "2.8.0"
+    "de.sciss"          %% "fileutil"           % "1.1.2",
+    "de.sciss"          %% "numbers"            % "0.1.3",
+    "de.sciss"          %% "kollflitz"          % "0.2.1",
+    "com.github.scopt"  %% "scopt"              % "3.6.0",
+    "de.sciss"          %  "shapeinterpolator"  % "0.1.0",
+    "de.sciss"          %% "swingplus"          % "0.2.4",
+    "de.sciss"          %% "span"               % "1.3.2",
+    "de.sciss"          %% "fscape"             % "2.8.0",
+    "de.sciss"          %  "prefuse-core"       % "1.0.1",
+    "de.sciss"          %% "desktop"            % "0.7.5",
+    "de.sciss"          %% "soundprocesses"     % "3.13.0"
   )
 )
 

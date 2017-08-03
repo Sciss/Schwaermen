@@ -87,10 +87,6 @@ object TestCross {
       val convLen: Int = numWinA + numWinB - 1
       println(s"lenA = $lenA, numWinA = $numWinA, lenB =  $lenB, numWinB = $numWinB, winStep = $winStep, convLen = $convLen")
 
-      val mfccAN    = mfccA // normalize(mfccA, lenA2, "A")
-//      val mfccBN    = normalize(mfccBR, lenB2)
-      val mfccBN    = mfccB // normalize(mfccB, lenB2, "B")
-
 //      Plot1D(mfccAN, size = lenA2)
 //      Plot1D(mfccBN, size = lenB2)
 
