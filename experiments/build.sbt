@@ -1,12 +1,13 @@
-lazy val baseName         = "Schwaermen"
+lazy val webName          = "Schwaermen"
+lazy val baseName         = s"$webName-Experiments"
 lazy val baseNameL        = baseName.toLowerCase
 lazy val projectVersion   = "0.1.0-SNAPSHOT"
 
 lazy val commonSettings = Seq(
   version             := projectVersion,
   organization        := "de.sciss",
-  description         := "An art project",
-  homepage            := Some(url(s"https://github.com/Sciss/$baseName")),
+  description         := "An art project - experiments",
+  homepage            := Some(url(s"https://github.com/Sciss/$webName")),
   scalaVersion        := "2.12.3",
   licenses            := Seq(gpl2),
   scalacOptions      ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint"),
