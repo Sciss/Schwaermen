@@ -13,4 +13,6 @@
 
 package de.sciss.schwaermen.control
 
-final case class Config()
+final case class Config(
+                         dumpOSC: Boolean = false
+                       )

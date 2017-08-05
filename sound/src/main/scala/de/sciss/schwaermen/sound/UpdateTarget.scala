@@ -21,7 +21,7 @@ import java.nio.ByteBuffer
 import de.sciss.file._
 import de.sciss.osc
 
-final class UpdateTarget(config: Config, c: OSCClient, val sender: SocketAddress, size: Long) {
+final class UpdateTarget(val uid: Int, config: Config, c: OSCClient, val sender: SocketAddress, size: Long) {
   private[this] var offset = 0L
   private[this] val f     = File.createTemp(suffix = ".deb")
   private[this] val raf   = new RandomAccessFile(f, "rw")
@@ -36,11 +36,11 @@ final class UpdateTarget(config: Config, c: OSCClient, val sender: SocketAddress
   }
 
   private def queryNext(): Unit =
-    reply(Network.oscUpdateGet(offset))
+    reply(Network.oscUpdateGet(uid = uid, offset = offset))
 
   def write(off: Long, bytes: ByteBuffer): Unit = {
     if (off != offset) {
-      reply(Network.oscUpdateError(s"expected offset $offset but got $off"))
+      reply(Network.oscUpdateError(uid, s"expected offset $offset but got $off"))
       queryNext()
     } else {
       val plus = bytes.remaining()
@@ -64,21 +64,25 @@ final class UpdateTarget(config: Config, c: OSCClient, val sender: SocketAddress
     import sys.process._
     val resInfo = Seq("dpkg", "--info", f.path).!
     if (resInfo == 0) {
-      val resRemove = sudo("apt", "remove", Main.packageName)
-      if (resRemove != 0) {
-        Console.err.println(s"Warning. apt remove was not successful")
-      }
+      // N.B. 'apt remove' requires interactive confirmation.
+      // but we can use dpkg to update an existing installation,
+      // so simply skip the 'apt remove'.
+
+//      val resRemove = sudo("apt", "remove", Util.soundPackageName)
+//      if (resRemove != 0) {
+//        Console.err.println(s"Warning. apt remove was not successful")
+//      }
       val resInstall = sudo("dpkg", "--install", f.path)
       dispose()
       val m = if (resInstall == 0) {
-        Network.oscUpdateSuccess
+        Network.oscUpdateSuccess(uid)
       } else {
-        Network.oscUpdateError(s"dpkg --install returned $resInstall")
+        Network.oscUpdateError(uid, s"dpkg --install returned $resInstall")
       }
       reply(m)
 
     } else {
-      reply(Network.oscUpdateError(s"dpkg --info returned $resInfo"))
+      reply(Network.oscUpdateError(uid, s"dpkg --info returned $resInfo"))
     }
   }
 

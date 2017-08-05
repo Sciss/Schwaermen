@@ -19,10 +19,12 @@ import de.sciss.file.File
 object Main extends HasBuildInfo {
   protected val buildInfoPackage = "de.sciss.schwaermen.sound"
 
+  final val name = "Schwärmen Sound"
+
   def main(args: Array[String]): Unit = {
-    println(s"-- Schwärmen Sound $fullVersion --")
+    println(s"-- $name $fullVersion --")
     val default = Config()
-    val p = new scopt.OptionParser[Config]("Imperfect-RaspiPlayer") {
+    val p = new scopt.OptionParser[Config](name) {
       opt[File]("base-dir")
         .text (s"Base directory (default: ${default.baseDir})")
         // .required()
@@ -53,6 +55,4 @@ object Main extends HasBuildInfo {
     val c = OSCClient(config, host)
     new Heartbeat(c)
   }
-
-  val packageName = "schwaermen-rpi-sound"
 }

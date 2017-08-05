@@ -16,9 +16,12 @@ package control
 
 import java.net.{InetSocketAddress, SocketAddress}
 
+import de.sciss.file.File
 import de.sciss.model.impl.ModelImpl
 import de.sciss.osc
 import de.sciss.osc.UDP
+
+import scala.collection.immutable.{Seq => ISeq}
 
 object OSCClient {
   final val Port = 57110
@@ -55,46 +58,89 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
     }
 
   def dumpOSC(): Unit = {
-    tx.dump()
-    rx.dump()
+    tx.dump(filter = Network.oscDumpFilter)
+    rx.dump(filter = Network.oscDumpFilter)
   }
 
-  private[this] var updater = Option.empty[UpdateSource]
+  def beginUpdates(debFile: File, instances: ISeq[Status]): Unit = mapUIDToUpdaterSync.synchronized {
+    val map0 = mapUIDToUpdater
+    val map2 = instances.foldLeft(map0) { (mapT, status) =>
+      val uid = Util.nextUniqueID()
+      val u   = new UpdateSource(uid, config, this, status, debFile)
+      u.begin()
+      mapT + (uid -> u)
+    }
+    mapUIDToUpdater = map2
+  }
+
+  private[this] val mapUIDToUpdaterSync = new AnyRef
+  private[this] var mapUIDToUpdater     = Map.empty[Int, UpdateSource]
 
   def getDot(sender: SocketAddress): Int = sender match {
-    case inet: InetSocketAddress =>
-      val arr = inet.getAddress.getAddress
+    case in: InetSocketAddress =>
+      val arr = in.getAddress.getAddress
       if (arr.length == 4) arr(3) else -1
     case _ => -1
   }
 
   def oscReceived(p: osc.Packet, sender: SocketAddress): Unit = p match {
-    case Network.oscUpdateGet(off) =>
-      updater.foreach { u =>
-        ???
-//        if (u.sender != sender) {
-//          tx.send(osc.Message("/error", "update", "changed sender"), sender)
-//        } else {
-//          u.write(off, bytes)
-//        }
+    case Network.oscUpdateGet(uid, off) =>
+      mapUIDToUpdaterSync.synchronized {
+        mapUIDToUpdater.get(uid).fold[Unit] {
+          println(s"Warning: update request for unknown uid $uid")
+        } { u =>
+          u.sendNext(off)
+          val statusOld = u.instance
+          val dot       = statusOld.dot
+          val idx       = _instances.indexWhere(_.dot == dot)
+          if (idx >= 0) {
+            val progress  = off.toDouble / u.size
+            val statusNew = statusOld.copyWithUpdate(progress)
+            _instances    = _instances.updated(idx, statusNew)
+            dispatch(OSCClient.Changed(statusNew))
+          }
+        }
       }
 
-//    case osc.Message("/query", "version") =>
-//      tx.send(osc.Message("/info", "version", Main.fullVersion), sender)
+    case Network.oscUpdateError(uid, text) =>
+      val base = s"Update error $uid - $text"
+      val msg = mapUIDToUpdaterSync.synchronized {
+        mapUIDToUpdater.get(uid).fold(s"$base - no updater found") { u =>
+          mapUIDToUpdater -= uid
+          u.dispose()
+          s"$base - instance ${u.instance.dot} - file ${u.debFile}"
+        }
+      }
+      println(msg)
 
-    case Network.oscReplyVersion(s) =>
+    case Network.oscUpdateSuccess(uid) =>
+      mapUIDToUpdaterSync.synchronized {
+        mapUIDToUpdater.get(uid).foreach { u =>
+          mapUIDToUpdater -= uid
+          u.dispose()
+          val statusOld = u.instance
+          val dot       = statusOld.dot
+          val idx       = _instances.indexWhere(_.dot == dot)
+          if (idx >= 0) {
+            val statusNew = statusOld.copyWithUpdate(1.0)
+            _instances    = _instances.updated(idx, statusNew)
+            dispatch(OSCClient.Changed(statusNew))
+          }
+        }
+      }
+
+    case Network.oscReplyVersion(v) =>
       val dot = getDot(sender)
       if (dot >= 0) {
         val idx = _instances.indexWhere(_.dot == dot)
         if (idx < 0) {
-          val pos     = Network.dotSeq.indexOf(dot)
-          val status  = Status(pos = pos, dot = dot, version = s, update = 0.0)
+          val status = Status(dot)(version = v)()
           _instances :+= status
           dispatch(OSCClient.Added(status))
         } else {
           val statusOld = _instances(idx)
-          if (statusOld.version != s) {
-            val statusNew = statusOld.copy(version = s)
+          if (statusOld.version != v) {
+            val statusNew = statusOld.copyWithVersion(v)
             _instances = _instances.updated(idx, statusNew)
             dispatch(OSCClient.Changed(statusNew))
           }
@@ -107,7 +153,7 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
   }
 
   rx.action = oscReceived
-  dumpOSC()
+  if (config.dumpOSC) dumpOSC()
   tx.connect()
   rx.connect()
 }

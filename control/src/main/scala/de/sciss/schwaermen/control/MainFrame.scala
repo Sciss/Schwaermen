@@ -58,7 +58,7 @@ class MainFrame(c: OSCClient) {
       var xi = x + 1
       val y0 = y + 2
       val y1 = y + 14
-      val xn = (x + amount).toInt // 2
+      val xn = (x + amount * 70).toInt // 2
       while (xi < xn) {
         g.drawLine(xi, y0, xi, y1)
         xi += 2
@@ -70,7 +70,7 @@ class MainFrame(c: OSCClient) {
     Column( 0, "Pos"    , 64,  64,  64, _.pos     , Some(RightAlignedRenderer), Some(Ordering.Int)),
     Column( 1, "Id"     , 64,  64,  64, _.dot     , Some(RightAlignedRenderer), Some(Ordering.Int)),
     Column( 2, "Version", 64, 320, 320, _.version , None, None),
-    Column( 3, "Update" , 60,  60,  60, _.update  , Some(AmountRenderer)      , Some(Ordering.Double))
+    Column( 3, "Update" , 72,  72,  72, _.update  , Some(AmountRenderer)      , Some(Ordering.Double))
   )
 
   private object model extends AbstractTableModel {
@@ -181,24 +181,40 @@ class MainFrame(c: OSCClient) {
       val dlg         = FileDialog.open(init = init, title = "Select .deb file")
       dlg.show(None).foreach { debFile =>
         lastUpdate = Some(debFile)
-
+        c.beginUpdates(debFile, instances)
       }
     }
   }
 
-  private def selectedChanged(): Unit = {
-    val hasSelection  = selection.nonEmpty
-    ggUpdate.enabled  = hasSelection
+  private[this] val ggReboot = Button("Reboot") {
+    selection.foreach { instance =>
+      c.tx.send(Network.oscReboot, instance.socketAddress)
+    }
   }
 
-  private[this] val pButtons = new FlowPanel(ggRefresh, ggUpdate)
+  private[this] val ggShutdown = Button("Shutdown") {
+    selection.foreach { instance =>
+      c.tx.send(Network.oscShutdown, instance.socketAddress)
+    }
+  }
+
+  private def selectedChanged(): Unit = {
+    val hasSelection    = selection.nonEmpty
+    ggUpdate  .enabled  = hasSelection
+    ggReboot  .enabled  = hasSelection
+    ggShutdown.enabled  = hasSelection
+  }
+
+  selectedChanged()
+
+  private[this] val pButtons = new FlowPanel(ggRefresh, ggUpdate, ggReboot, ggShutdown)
 
   private[this] val component: Component = {
     val scroll = new ScrollPane(table)
     scroll.peer.putClientProperty("styleId", "undecorated")
     scroll.preferredSize = {
       val d = scroll.preferredSize
-      d.width = math.min(512, table.preferredSize.width)
+      d.width = math.min(540, table.preferredSize.width)
       d
     }
     new BorderPanel {

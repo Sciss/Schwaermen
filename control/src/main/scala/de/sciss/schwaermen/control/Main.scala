@@ -16,10 +16,15 @@ package de.sciss.schwaermen.control
 import de.sciss.schwaermen.Network
 
 object Main {
+  final val name = "Schwärmen Control"
+
   def main(args: Array[String]): Unit = {
-    println("-- Schwärmen Control --")
+    println(s"-- $name --")
     val default = Config()
-    val p = new scopt.OptionParser[Config]("Imperfect-RaspiPlayer") {
+    val p = new scopt.OptionParser[Config](name) {
+      opt[Unit] ('d', "dump-osc")
+        .text (s"Enable OSC dump (default ${default.dumpOSC})")
+        .action { (_, c) => c.copy(dumpOSC = true) }
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
       val host = Network.thisIP()
@@ -31,6 +36,4 @@ object Main {
     val c = OSCClient(config, host)
     new MainFrame(c)
   }
-
-  val packageName = "schwaermen-rpi-sound"
 }

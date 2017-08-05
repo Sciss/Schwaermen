@@ -20,43 +20,37 @@ import java.nio.ByteBuffer
 import de.sciss.file._
 import de.sciss.osc
 
-import scala.concurrent.{Future, Promise}
+final class UpdateSource(val uid: Int, config: Config, c: OSCClient, val instance: Status, val debFile: File) {
+  private[this] val raf         = new RandomAccessFile(debFile, "r")
+  val               size: Long  = raf.length()
+  private[this] val ch          = raf.getChannel
+//  private[this] val promise     = Promise[Unit]
+  private[this] val target      = Network.dotToSocketMap(instance.dot)
+  private[this] val buf         = ByteBuffer.allocate(6 * 1024)
 
-final class UpdateSource(config: Config, c: OSCClient, instance: Status, debFile: File) {
-  private[this] var offset  = 0L
-  private[this] val raf     = new RandomAccessFile(debFile, "r")
-  private[this] val size    = raf.length()
-  private[this] val ch      = raf.getChannel
-  private[this] val promise = Promise[Unit]
-  private[this] val target  = Network.dotToSocketMap(instance.dot)
-
-  def status: Future[Unit] = promise.future
+//  def result: Future[Unit] = promise.future
 
   private def reply(p: osc.Packet): Unit =
     c.tx.send(p, target)
 
   def begin(): Unit = {
-    require(offset == 0L)
-    queryNext()
+    reply(Network.oscUpdateInit(uid = uid, size = size))
   }
 
-  private def queryNext(): Unit =
-    reply(osc.Message("/update-get", offset))
-
-  def write(off: Long, bytes: ByteBuffer): Unit = {
-    if (off != offset) {
-      reply(osc.Message("/error", s"expected offset $offset but got $off"))
-      queryNext()
-    } else {
-      val plus = bytes.remaining()
-      ch.write(bytes)
-      offset += plus
-      if (offset < size) queryNext()
-      else ??? // transferCompleted()
+  def sendNext(offset: Long): Unit = {
+    val bytes: ByteBuffer = ch.synchronized {
+      if (ch.position != offset) ch.position(offset)
+      buf.clear()
+      val chunk = math.min(buf.capacity(), size - offset).toInt
+      buf.limit(chunk)
+      ch.read(buf)
+      buf.flip()
+      buf
     }
+    reply(Network.oscUpdateSet(uid = uid, offset = offset, bytes = bytes))
   }
 
   def dispose(): Unit = {
-    ch.close()
+    ch.synchronized(ch.close())
   }
 }

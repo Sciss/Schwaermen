@@ -35,7 +35,7 @@ object Network {
     "b8:27:eb:36:2e:72" -> "192.168.0.19",
     "b8:27:eb:36:50:58" -> "192.168.0.22",
     "b8:27:eb:85:e5:30" -> "192.168.0.24",
-    "???"               -> "192.168.0.25"
+    "b8:27:eb:61:90:b9" -> "192.168.0.25"
   )
 
   /** 'bottom up', i.e. left arm (outside-to-inside), middle arm, right arm */
@@ -133,44 +133,56 @@ object Network {
   }
 
   object oscUpdateInit {
-    def apply(size: Long): osc.Message = osc.Message("/update-init", size)
+    def apply(uid: Int, size: Long): osc.Message = osc.Message("/update-init", uid, size)
 
-    def unapply(p: osc.Packet): Option[Long] = p match {
-      case osc.Message("/update-init", size: Long) => Some(size)
+    def unapply(p: osc.Packet): Option[(Int, Long)] = p match {
+      case osc.Message("/update-init", uid: Int, size: Long) => Some((uid, size))
       case _ => None
     }
   }
 
   object oscUpdateGet {
-    def apply(offset: Long): osc.Message = osc.Message("/update-get", offset)
+    def apply(uid: Int, offset: Long): osc.Message = osc.Message("/update-get", uid, offset)
 
-    def unapply(p: osc.Packet): Option[Long] = p match {
-      case osc.Message("/update-get", offset: Long) => Some(offset)
+    def unapply(p: osc.Packet): Option[(Int, Long)] = p match {
+      case osc.Message("/update-get", uid: Int, offset: Long) => Some((uid, offset))
       case _ => None
     }
   }
 
   object oscUpdateSet {
-    def apply(offset: Long, bytes: ByteBuffer): osc.Message = osc.Message("/update-set", offset, bytes)
+    def apply(uid: Int, offset: Long, bytes: ByteBuffer): osc.Message =
+      osc.Message("/update-set", uid,offset, bytes)
 
-    def unapply(p: osc.Packet): Option[(Long, ByteBuffer)] = p match {
-      case osc.Message("/update-set", offset: Long, bytes: ByteBuffer) => Some((offset, bytes))
+    def unapply(p: osc.Packet): Option[(Int, Long, ByteBuffer)] = p match {
+      case osc.Message("/update-set", uid: Int, offset: Long, bytes: ByteBuffer) => Some((uid, offset, bytes))
       case _ => None
     }
   }
 
   object oscUpdateError {
-    def apply(s: String): osc.Message = osc.Message("/error", "update", s)
+    def apply(uid: Int, s: String): osc.Message = osc.Message("/error", "update", uid, s)
 
-    def unapply(p: osc.Packet): Option[String] = p match {
-      case osc.Message("/error", "update", s: String) => Some(s)
+    def unapply(p: osc.Packet): Option[(Int, String)] = p match {
+      case osc.Message("/error", "update", uid: Int, s: String) => Some((uid, s))
       case _ => None
     }
   }
 
-  final val oscUpdateSuccess: osc.Message =
-    osc.Message("/info", "update successful")
+  object oscUpdateSuccess {
+    def apply(uid: Int): osc.Message =
+      osc.Message("/update-done", uid)
+
+    def unapply(p: osc.Packet): Option[Int] = p match {
+      case osc.Message("/update-done", uid: Int) => Some(uid)
+      case _ => None
+    }
+  }
 
   final val oscShutdown : osc.Message = osc.Message("/shutdown" )
   final val oscReboot   : osc.Message = osc.Message("/reboot"   )
+
+  final val oscDumpFilter: osc.Dump.Filter = { p =>
+    p.encodedSize(oscCodec) < 1024
+  }
 }
