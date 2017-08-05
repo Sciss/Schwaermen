@@ -13,6 +13,8 @@
 
 package de.sciss.schwaermen.control
 
+import de.sciss.schwaermen.Network
+
 object Main {
   def main(args: Array[String]): Unit = {
     println("-- Schwärmen Control --")
@@ -20,7 +22,7 @@ object Main {
     val p = new scopt.OptionParser[Config]("Imperfect-RaspiPlayer") {
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
-      val host = Config.thisIP()
+      val host = Network.thisIP()
       run(host, config)
     }
   }

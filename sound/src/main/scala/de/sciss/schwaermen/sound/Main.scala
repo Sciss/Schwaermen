@@ -11,24 +11,13 @@
  *  contact@sciss.de
  */
 
-package de.sciss.schwaermen.sound
+package de.sciss.schwaermen
+package sound
 
 import de.sciss.file.File
 
-import scala.util.control.NonFatal
-
-object Main {
-  private def buildInfString(key: String): String = try {
-    val clazz = Class.forName("de.sciss.schwaermen.sound.BuildInfo")
-    val m     = clazz.getMethod(key)
-    m.invoke(null).toString
-  } catch {
-    case NonFatal(_) => "?"
-  }
-
-  def version     : String = buildInfString("version")
-  def builtAt     : String = buildInfString("builtAtString")
-  def fullVersion : String = s"v$version, built $builtAt"
+object Main extends HasBuildInfo {
+  protected val buildInfoPackage = "de.sciss.schwaermen.sound"
 
   def main(args: Array[String]): Unit = {
     println(s"-- Schwärmen Sound $fullVersion --")
@@ -52,7 +41,7 @@ object Main {
 //        .action   { (_, c) => c.copy(disableEnergySaving = false) }
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
-      val host = Config.thisIP()
+      val host = Network.thisIP()
       if (!config.isLaptop) {
         Config.compareIP(host)
       }
@@ -63,16 +52,6 @@ object Main {
   def run(host: String, config: Config): Unit = {
     val c = OSCClient(config, host)
     new Heartbeat(c)
-  }
-
-  def shutdown(): Unit = {
-    import sys.process._
-    Seq("sudo", "shutdown", "now").run()
-  }
-
-  def reboot(): Unit = {
-    import sys.process._
-    Seq("sudo", "reboot", "now").run()
   }
 
   val packageName = "schwaermen-rpi-sound"

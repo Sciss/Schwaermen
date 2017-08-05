@@ -11,7 +11,8 @@
  *  contact@sciss.de
  */
 
-package de.sciss.schwaermen.control
+package de.sciss.schwaermen
+package control
 
 import java.util.Comparator
 import javax.swing.table.{AbstractTableModel, DefaultTableCellRenderer, TableCellRenderer, TableRowSorter}
@@ -19,8 +20,8 @@ import javax.swing.{Icon, JTable, SwingConstants}
 
 import de.sciss.swingplus.Table
 
-import scala.swing.{Component, Frame, ScrollPane, Swing}
 import scala.swing.Table.AutoResizeMode
+import scala.swing.{BorderPanel, Button, Component, FlowPanel, Frame, ScrollPane, Swing}
 
 class MainFrame(c: OSCClient) {
   private case class Column(idx: Int, name: String, minWidth: Int, prefWidth: Int, maxWidth: Int,
@@ -64,7 +65,7 @@ class MainFrame(c: OSCClient) {
   private val columns: Array[Column] = Array(
     Column( 0, "Pos"    , 64,  64,  64, _.pos     , Some(RightAlignedRenderer), Some(Ordering.Int)),
     Column( 1, "Id"     , 64,  64,  64, _.dot     , Some(RightAlignedRenderer), Some(Ordering.Int)),
-    Column( 2, "Version", 64, 144, 256, _.version , None, None),
+    Column( 2, "Version", 64, 320, 320, _.version , None, None),
     Column( 3, "Update" , 60,  60,  60, _.update  , Some(AmountRenderer)      , Some(Ordering.Double))
   )
 
@@ -89,9 +90,9 @@ class MainFrame(c: OSCClient) {
       fireTableRowsDeleted(row, row)
     }
 
-    def update(pos: Int, status: Status): Unit = {
-      val row = instances.indexWhere(_.pos == pos)
-      if (row < 0) throw new IllegalArgumentException(s"Pos $pos was not occupied")
+    def update(status: Status): Unit = {
+      val row = instances.indexWhere(_.dot == status.dot)
+      if (row < 0) throw new IllegalArgumentException(s"Dot ${status.dot} was not occupied")
       instances = instances.updated(row, status)
       fireTableRowsUpdated(row, row)
     }
@@ -106,7 +107,7 @@ class MainFrame(c: OSCClient) {
   c.addListener {
     case OSCClient.Added  (status) => Swing.onEDT(model += status)
     case OSCClient.Removed(status) => Swing.onEDT(model -= status)
-    case OSCClient.Changed(status) => Swing.onEDT(model.update(status.pos, status))
+    case OSCClient.Changed(status) => Swing.onEDT(model.update(status))
   }
 
   c.instances.foreach(model += _)
@@ -145,19 +146,31 @@ class MainFrame(c: OSCClient) {
     res
   }
 
+  private[this] val ggRefresh = Button("Refresh") {
+    c ! Network.oscQueryVersion
+  }
+
+  private[this] val pButtons = new FlowPanel(ggRefresh)
+
   private[this] val component: Component = {
-    val res = new ScrollPane(table)
-    res.peer.putClientProperty("styleId", "undecorated")
-//    res.preferredSize = {
-//      val d = res.preferredSize
-//      d.width = math.min(1024, table.preferredSize.width)
-//      d
-//    }
-    res
+    val scroll = new ScrollPane(table)
+    scroll.peer.putClientProperty("styleId", "undecorated")
+    scroll.preferredSize = {
+      val d = scroll.preferredSize
+      d.width = math.min(512, table.preferredSize.width)
+      d
+    }
+    new BorderPanel {
+      add(scroll  , BorderPanel.Position.Center )
+      add(pButtons, BorderPanel.Position.South  )
+    }
   }
 
 
-  private[this] val frame = new Frame {
+  /* private[this] val frame = */ new Frame {
+    override def closeOperation(): Unit =
+      sys.exit(0)
+
     title = "Schwärmen Control"
     contents = component
     pack().centerOnScreen()

@@ -11,7 +11,8 @@
  *  contact@sciss.de
  */
 
-package de.sciss.schwaermen.sound
+package de.sciss.schwaermen
+package sound
 
 import java.net.{InetSocketAddress, SocketAddress}
 import java.nio.ByteBuffer
@@ -21,11 +22,13 @@ import de.sciss.osc.UDP
 
 object OSCClient {
   def apply(config: Config, host: String): OSCClient = {
-    val c     = UDP.Config()
-    c.codec   = osc.PacketCodec().doublePrecision().packetsAsBlobs()
-    c.localSocketAddress = new InetSocketAddress(host, Config.ClientPort)
-    val tx    = UDP.Transmitter(c)
-    val rx    = UDP.Receiver(tx.channel, c)
+    val c                 = UDP.Config()
+    c.codec               = Network.oscCodec
+    val localSocket       = new InetSocketAddress(host, Network.ClientPort)
+    c.localSocketAddress  = localSocket
+    println(s"OSCClient local socket $localSocket")
+    val tx                = UDP.Transmitter(c)
+    val rx                = UDP.Receiver(tx.channel, c)
     new OSCClient(config, tx, rx)
   }
 
@@ -34,7 +37,7 @@ object OSCClient {
 final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx: UDP.Receiver.Undirected) {
   /** Sends to all possible targets. */
   def ! (p: osc.Packet): Unit =
-    Config.socketSeq.foreach { target =>
+    Network.socketSeq.foreach { target =>
       tx.send(p, target)
     }
 
@@ -67,16 +70,16 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
       if (config.isLaptop)
         println("(laptop) ignoring /shutdown")
       else
-        Main.shutdown()
+        Util.shutdown()
 
     case osc.Message("/reboot"  ) =>
       if (config.isLaptop)
         println("(laptop) ignoring /reboot")
       else
-        Main.reboot  ()
+        Util.reboot  ()
 
-    case osc.Message("/query", "version") =>
-      tx.send(osc.Message("/info", "version", Main.fullVersion), sender)
+    case Network.oscQueryVersion =>
+      tx.send(Network.oscReplyVersion(Main.fullVersion), sender)
 
     case _ =>
       Console.err.println(s"Ignoring unknown OSC packet $p")

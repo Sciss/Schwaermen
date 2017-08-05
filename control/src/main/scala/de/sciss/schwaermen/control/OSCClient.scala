@@ -11,7 +11,8 @@
  *  contact@sciss.de
  */
 
-package de.sciss.schwaermen.control
+package de.sciss.schwaermen
+package control
 
 import java.net.{InetSocketAddress, SocketAddress}
 import java.nio.ByteBuffer
@@ -21,12 +22,16 @@ import de.sciss.osc
 import de.sciss.osc.UDP
 
 object OSCClient {
+  final val Port = 57110
+
   def apply(config: Config, host: String): OSCClient = {
-    val c     = UDP.Config()
-    c.codec   = osc.PacketCodec().doublePrecision().packetsAsBlobs()
-    c.localSocketAddress = new InetSocketAddress(host, Config.ClientPort)
-    val tx    = UDP.Transmitter(c)
-    val rx    = UDP.Receiver(tx.channel, c)
+    val c                 = UDP.Config()
+    c.codec               = Network.oscCodec
+    val localSocket       = new InetSocketAddress(host, Port)
+    c.localSocketAddress  = localSocket
+    println(s"OSCClient local socket $localSocket")
+    val tx                = UDP.Transmitter(c)
+    val rx                = UDP.Receiver(tx.channel, c)
     new OSCClient(config, tx, rx)
   }
 
@@ -44,9 +49,9 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
 
   def instances: Vector[Status] = sync.synchronized(_instances)
 
-  /** Sends to all possible targets. */
+  /** Sends to all possible targets, including laptop itself. */
   def ! (p: osc.Packet): Unit =
-    Config.socketSeq.foreach { target =>
+    Network.socketSeqCtl.foreach { target =>
       tx.send(p, target)
     }
 
@@ -56,6 +61,13 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
   }
 
   private[this] var updater = Option.empty[Updater]
+
+  def getDot(sender: SocketAddress): Int = sender match {
+    case inet: InetSocketAddress =>
+      val arr = inet.getAddress.getAddress
+      if (arr.length == 4) arr(3) else -1
+    case _ => -1
+  }
 
   def oscReceived(p: osc.Packet, sender: SocketAddress): Unit = p match {
     case osc.Message("/update-set", off: Long, bytes: ByteBuffer) =>
@@ -77,6 +89,25 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
 
 //    case osc.Message("/query", "version") =>
 //      tx.send(osc.Message("/info", "version", Main.fullVersion), sender)
+
+    case Network.oscReplyVersion(s) =>
+      val dot = getDot(sender)
+      if (dot >= 0) {
+        val idx = _instances.indexWhere(_.dot == dot)
+        if (idx < 0) {
+          val pos     = Network.dotSeq.indexOf(dot)
+          val status  = Status(pos = pos, dot = dot, version = s, update = 0.0)
+          _instances :+= status
+          dispatch(OSCClient.Added(status))
+        } else {
+          val statusOld = _instances(idx)
+          if (statusOld.version != s) {
+            val statusNew = statusOld.copy(version = s)
+            _instances = _instances.updated(idx, statusNew)
+            dispatch(OSCClient.Changed(statusNew))
+          }
+        }
+      }
 
     case _ =>
       Console.err.println(s"Ignoring unknown OSC packet $p")
