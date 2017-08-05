@@ -11,11 +11,12 @@
  *  contact@sciss.de
  */
 
-package de.sciss.schwaermen.sound
+package de.sciss.schwaermen.control
 
 import java.net.{InetSocketAddress, SocketAddress}
 import java.nio.ByteBuffer
 
+import de.sciss.model.impl.ModelImpl
 import de.sciss.osc
 import de.sciss.osc.UDP
 
@@ -29,9 +30,20 @@ object OSCClient {
     new OSCClient(config, tx, rx)
   }
 
+  sealed trait Update
+  final case class Added  (status: Status) extends Update
+  final case class Removed(status: Status) extends Update
+  final case class Changed(status: Status) extends Update
 }
 /** Undirected pair of transmitter and receiver, sharing the same datagram channel. */
-final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx: UDP.Receiver.Undirected) {
+final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx: UDP.Receiver.Undirected)
+  extends ModelImpl[OSCClient.Update] {
+
+  private[this] val sync = new AnyRef
+  private[this] var _instances = Vector.empty[Status]
+
+  def instances: Vector[Status] = sync.synchronized(_instances)
+
   /** Sends to all possible targets. */
   def ! (p: osc.Packet): Unit =
     Config.socketSeq.foreach { target =>
@@ -63,20 +75,8 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
       updater = Some(u)
       u.begin()
 
-    case osc.Message("/shutdown") =>
-      if (config.isLaptop)
-        println("(laptop) ignoring /shutdown")
-      else
-        Main.shutdown()
-
-    case osc.Message("/reboot"  ) =>
-      if (config.isLaptop)
-        println("(laptop) ignoring /reboot")
-      else
-        Main.reboot  ()
-
-    case osc.Message("/query", "version") =>
-      tx.send(osc.Message("/info", "version", Main.fullVersion), sender)
+//    case osc.Message("/query", "version") =>
+//      tx.send(osc.Message("/info", "version", Main.fullVersion), sender)
 
     case _ =>
       Console.err.println(s"Ignoring unknown OSC packet $p")
@@ -84,7 +84,7 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
   }
 
   rx.action = oscReceived
-  if (config.dumpOSC) dumpOSC()
+  dumpOSC()
   tx.connect()
   rx.connect()
 }

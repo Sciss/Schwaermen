@@ -13,10 +13,7 @@
 
 package de.sciss.schwaermen.sound
 
-import java.net.InetSocketAddress
-
 import de.sciss.file.File
-import de.sciss.osc.UDP
 
 import scala.util.control.NonFatal
 
@@ -29,8 +26,12 @@ object Main {
     case NonFatal(_) => "?"
   }
 
+  def version     : String = buildInfString("version")
+  def builtAt     : String = buildInfString("builtAtString")
+  def fullVersion : String = s"v$version, built $builtAt"
+
   def main(args: Array[String]): Unit = {
-    println(s"-- Schwärmen Sound v${buildInfString("version")}, built ${buildInfString("builtAtString")} --")
+    println(s"-- Schwärmen Sound $fullVersion --")
     val default = Config()
     val p = new scopt.OptionParser[Config]("Imperfect-RaspiPlayer") {
       opt[File]("base-dir")
@@ -60,18 +61,19 @@ object Main {
   }
 
   def run(host: String, config: Config): Unit = {
-    val c = mkClient(host)
+    val c = OSCClient(config, host)
     new Heartbeat(c)
   }
 
-  def mkClient(host: String): OSCClient = {
-    val c = UDP.Config()
-    // c.codec
-    c.localSocketAddress = new InetSocketAddress(host, Config.ClientPort)
-    val tx  = UDP.Transmitter(c)
-    val rx  = UDP.Receiver(tx.channel, c)
-    tx.connect()
-    rx.connect()
-    OSCClient(tx, rx)
+  def shutdown(): Unit = {
+    import sys.process._
+    Seq("sudo", "shutdown", "now").run()
   }
+
+  def reboot(): Unit = {
+    import sys.process._
+    Seq("sudo", "reboot", "now").run()
+  }
+
+  val packageName = "schwaermen-rpi-sound"
 }
