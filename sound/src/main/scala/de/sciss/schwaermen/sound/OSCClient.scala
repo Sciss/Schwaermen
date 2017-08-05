@@ -15,7 +15,6 @@ package de.sciss.schwaermen
 package sound
 
 import java.net.{InetSocketAddress, SocketAddress}
-import java.nio.ByteBuffer
 
 import de.sciss.osc
 import de.sciss.osc.UDP
@@ -46,33 +45,33 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
     rx.dump()
   }
 
-  private[this] var updater = Option.empty[Updater]
+  private[this] var updater = Option.empty[UpdateTarget]
 
   def oscReceived(p: osc.Packet, sender: SocketAddress): Unit = p match {
-    case osc.Message("/update-set", off: Long, bytes: ByteBuffer) =>
+    case Network.oscUpdateSet(off, bytes) =>
       updater.fold[Unit] {
-        tx.send(osc.Message("/error", "update", "missing /update-init"), sender)
+        tx.send(Network.oscUpdateError("missing /update-init"), sender)
       } { u =>
         if (u.sender != sender) {
-          tx.send(osc.Message("/error", "update", "changed sender"), sender)
+          tx.send(Network.oscUpdateError("changed sender"), sender)
         } else {
           u.write(off, bytes)
         }
       }
 
-    case osc.Message("/update-init", size: Long) =>
-      val u = new Updater(config, this, sender, size)
+    case Network.oscUpdateInit(size) =>
+      val u = new UpdateTarget(config, this, sender, size)
       updater.foreach(_.dispose())
       updater = Some(u)
       u.begin()
 
-    case osc.Message("/shutdown") =>
+    case Network.oscShutdown =>
       if (config.isLaptop)
         println("(laptop) ignoring /shutdown")
       else
         Util.shutdown()
 
-    case osc.Message("/reboot"  ) =>
+    case Network.oscReboot =>
       if (config.isLaptop)
         println("(laptop) ignoring /reboot")
       else

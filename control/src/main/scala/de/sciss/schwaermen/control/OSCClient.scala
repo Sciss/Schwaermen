@@ -15,7 +15,6 @@ package de.sciss.schwaermen
 package control
 
 import java.net.{InetSocketAddress, SocketAddress}
-import java.nio.ByteBuffer
 
 import de.sciss.model.impl.ModelImpl
 import de.sciss.osc
@@ -60,7 +59,7 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
     rx.dump()
   }
 
-  private[this] var updater = Option.empty[Updater]
+  private[this] var updater = Option.empty[UpdateSource]
 
   def getDot(sender: SocketAddress): Int = sender match {
     case inet: InetSocketAddress =>
@@ -70,22 +69,15 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
   }
 
   def oscReceived(p: osc.Packet, sender: SocketAddress): Unit = p match {
-    case osc.Message("/update-set", off: Long, bytes: ByteBuffer) =>
-      updater.fold[Unit] {
-        tx.send(osc.Message("/error", "update", "missing /update-init"), sender)
-      } { u =>
-        if (u.sender != sender) {
-          tx.send(osc.Message("/error", "update", "changed sender"), sender)
-        } else {
-          u.write(off, bytes)
-        }
+    case Network.oscUpdateGet(off) =>
+      updater.foreach { u =>
+        ???
+//        if (u.sender != sender) {
+//          tx.send(osc.Message("/error", "update", "changed sender"), sender)
+//        } else {
+//          u.write(off, bytes)
+//        }
       }
-
-    case osc.Message("/update-init", size: Long) =>
-      val u = new Updater(config, this, sender, size)
-      updater.foreach(_.dispose())
-      updater = Some(u)
-      u.begin()
 
 //    case osc.Message("/query", "version") =>
 //      tx.send(osc.Message("/info", "version", Main.fullVersion), sender)

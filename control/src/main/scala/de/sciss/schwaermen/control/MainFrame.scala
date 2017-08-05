@@ -18,9 +18,13 @@ import java.util.Comparator
 import javax.swing.table.{AbstractTableModel, DefaultTableCellRenderer, TableCellRenderer, TableRowSorter}
 import javax.swing.{Icon, JTable, SwingConstants}
 
+import de.sciss.desktop.FileDialog
+import de.sciss.file._
 import de.sciss.swingplus.Table
 
+import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Table.AutoResizeMode
+import scala.swing.event.TableRowsSelected
 import scala.swing.{BorderPanel, Button, Component, FlowPanel, Frame, ScrollPane, Swing}
 
 class MainFrame(c: OSCClient) {
@@ -70,35 +74,37 @@ class MainFrame(c: OSCClient) {
   )
 
   private object model extends AbstractTableModel {
-    private[this] var instances = Vector.empty[Status]
+    private[this] var _instances = Vector.empty[Status]
 
-    def getRowCount   : Int = instances.size
+    def getRowCount   : Int = _instances.size
     def getColumnCount: Int = columns.length
+
+    def instances: Vec[Status] = _instances
 
     override def getColumnName(colIdx: Int): String = columns(colIdx).name
 
     def += (status: Status): Unit = {
-      val row = instances.size
-      instances :+= status
+      val row = _instances.size
+      _instances :+= status
       fireTableRowsInserted(row, row)
     }
 
     def -= (status: Status): Unit = {
-      val row = instances.indexOf(status)
+      val row = _instances.indexOf(status)
       if (row < 0) throw new IllegalArgumentException(s"Status $status was not in table")
-      instances = instances.patch(row, Nil, 1)
+      _instances = _instances.patch(row, Nil, 1)
       fireTableRowsDeleted(row, row)
     }
 
     def update(status: Status): Unit = {
-      val row = instances.indexWhere(_.dot == status.dot)
+      val row = _instances.indexWhere(_.dot == status.dot)
       if (row < 0) throw new IllegalArgumentException(s"Dot ${status.dot} was not occupied")
-      instances = instances.updated(row, status)
+      _instances = _instances.updated(row, status)
       fireTableRowsUpdated(row, row)
     }
 
     def getValueAt(rowIdx: Int, colIdx: Int): AnyRef = {
-      val status  = instances(rowIdx)
+      val status  = _instances(rowIdx)
       val col     = columns(colIdx)
       col.extract(status).asInstanceOf[AnyRef]
     }
@@ -137,20 +143,55 @@ class MainFrame(c: OSCClient) {
     // resJ.setPreferredScrollableViewportSize(resJ.getPreferredSize)
 
     res.listenTo(res.selection)
-    res.selection.elementMode
-//    res.reactions += {
-//      case TableRowsSelected(_, _, false) =>
-//        dispatch(SoundTableView.Selection(selection))
-//    }
+//    res.selection.elementMode = ...
+    res.reactions += {
+      case TableRowsSelected(_, _, false) => selectedChanged()
+    }
 
     res
   }
 
-  private[this] val ggRefresh = Button("Refresh") {
+  private def selection: Vec[Status] = {
+    val xs      = model.instances
+    val rows    = table.selection.rows
+    val res     = rows.iterator.map { vi =>
+      val mi = table.viewToModelRow(vi)
+      xs(mi)
+    } .toIndexedSeq
+    res
+  }
+
+  private[this] val ggRefresh = Button("Refresh List") {
+    // XXX TODO --- restart time-out timer that removes instances which do not respond
     c ! Network.oscQueryVersion
   }
 
-  private[this] val pButtons = new FlowPanel(ggRefresh)
+  private[this] var lastUpdate = Option.empty[File]
+
+  private[this] val ggUpdate = Button("Update Software...") {
+    val instances = selection
+    if (instances.nonEmpty) {
+      val dir = lastUpdate.flatMap(_.parentOption).getOrElse {
+        userHome / "Documents" / "devel" / "Schwaermen" / "sound" / "target"
+      }
+      val candidates  = dir.children(_.ext == "deb")
+      // this also works for `-SNAPSHOT_all.deb` vs. `_all.deb`
+      val sorted      = candidates.sorted(File.NameOrdering)
+      val init        = sorted.lastOption.orElse(if (dir.isDirectory) Some(dir) else None)
+      val dlg         = FileDialog.open(init = init, title = "Select .deb file")
+      dlg.show(None).foreach { debFile =>
+        lastUpdate = Some(debFile)
+
+      }
+    }
+  }
+
+  private def selectedChanged(): Unit = {
+    val hasSelection  = selection.nonEmpty
+    ggUpdate.enabled  = hasSelection
+  }
+
+  private[this] val pButtons = new FlowPanel(ggRefresh, ggUpdate)
 
   private[this] val component: Component = {
     val scroll = new ScrollPane(table)

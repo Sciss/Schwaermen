@@ -15,6 +15,7 @@ package de.sciss.schwaermen
 
 import java.io.FileOutputStream
 import java.net.{InetAddress, InetSocketAddress, SocketAddress}
+import java.nio.ByteBuffer
 
 import de.sciss.file.file
 import de.sciss.osc
@@ -41,6 +42,8 @@ object Network {
   final val dotSeq: Vector[Int] =
     Vector(23, 25, 13, 17, 18, 12, 22, 24, 11)
 
+  final val dotSeqCtl: Vector[Int] = dotSeq :+ 77
+
   final val ClientPort = 57120
 
   private def mkSocket(dot: Int): InetSocketAddress = {
@@ -48,8 +51,10 @@ object Network {
     new InetSocketAddress(addr, ClientPort)
   }
 
-  final val socketSeq   : Vector[SocketAddress] = dotSeq  .map(mkSocket)
-  final val socketSeqCtl: Vector[SocketAddress] = socketSeq :+ mkSocket(77)
+  final val socketSeq   : Vector[SocketAddress] = dotSeq    .map(mkSocket)
+  final val socketSeqCtl: Vector[SocketAddress] = dotSeqCtl .map(mkSocket)
+
+  final val dotToSocketMap: Map[Int, SocketAddress] = (dotSeqCtl zip socketSeqCtl).toMap
 
   final val dotToSeqMap: Map[Int, Int] = dotSeq.zipWithIndex.toMap
 
@@ -126,4 +131,46 @@ object Network {
       case _ => None
     }
   }
+
+  object oscUpdateInit {
+    def apply(size: Long): osc.Message = osc.Message("/update-init", size)
+
+    def unapply(p: osc.Packet): Option[Long] = p match {
+      case osc.Message("/update-init", size: Long) => Some(size)
+      case _ => None
+    }
+  }
+
+  object oscUpdateGet {
+    def apply(offset: Long): osc.Message = osc.Message("/update-get", offset)
+
+    def unapply(p: osc.Packet): Option[Long] = p match {
+      case osc.Message("/update-get", offset: Long) => Some(offset)
+      case _ => None
+    }
+  }
+
+  object oscUpdateSet {
+    def apply(offset: Long, bytes: ByteBuffer): osc.Message = osc.Message("/update-set", offset, bytes)
+
+    def unapply(p: osc.Packet): Option[(Long, ByteBuffer)] = p match {
+      case osc.Message("/update-set", offset: Long, bytes: ByteBuffer) => Some((offset, bytes))
+      case _ => None
+    }
+  }
+
+  object oscUpdateError {
+    def apply(s: String): osc.Message = osc.Message("/error", "update", s)
+
+    def unapply(p: osc.Packet): Option[String] = p match {
+      case osc.Message("/error", "update", s: String) => Some(s)
+      case _ => None
+    }
+  }
+
+  final val oscUpdateSuccess: osc.Message =
+    osc.Message("/info", "update successful")
+
+  final val oscShutdown : osc.Message = osc.Message("/shutdown" )
+  final val oscReboot   : osc.Message = osc.Message("/reboot"   )
 }

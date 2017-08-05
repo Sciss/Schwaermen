@@ -24,7 +24,7 @@ lazy val common = Project(id = s"$baseName-common", base = file("common"))
   .settings(
     description := s"$baseDescr - common structure",
     libraryDependencies ++= Seq(
-      "de.sciss"          %% "fileutil"   % "1.1.2",
+      "de.sciss"          %% "fileutil"   % "1.1.3",
       "de.sciss"          %% "scalaosc"   % "1.1.5",
       "com.github.scopt"  %% "scopt"      % "3.6.0"
     )
@@ -61,6 +61,7 @@ lazy val control = Project(id = s"$baseNameL-control", base = file("control"))
     description := s"$baseDescr - laptop control",
     libraryDependencies ++= Seq(
       "de.sciss" %% "swingplus"  % "0.2.4",
+      "de.sciss" %% "desktop"    % "0.8.0",
       "de.sciss" %% "model"      % "0.3.4"
     )
   )

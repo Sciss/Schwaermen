@@ -1,5 +1,5 @@
 /*
- *  Updater.scala
+ *  UpdateSource.scala
  *  (Schwaermen)
  *
  *  Copyright (c) 2017 Hanns Holger Rutz. All rights reserved.
@@ -11,23 +11,29 @@
  *  contact@sciss.de
  */
 
-package de.sciss.schwaermen.control
+package de.sciss.schwaermen
+package control
 
 import java.io.RandomAccessFile
-import java.net.SocketAddress
 import java.nio.ByteBuffer
 
 import de.sciss.file._
 import de.sciss.osc
 
-final class Updater(config: Config, c: OSCClient, val sender: SocketAddress, size: Long) {
-  private[this] var offset = 0L
-  private[this] val f     = File.createTemp(suffix = ".deb")
-  private[this] val raf   = new RandomAccessFile(f, "rw")
-  private[this] val ch    = raf.getChannel
+import scala.concurrent.{Future, Promise}
+
+final class UpdateSource(config: Config, c: OSCClient, instance: Status, debFile: File) {
+  private[this] var offset  = 0L
+  private[this] val raf     = new RandomAccessFile(debFile, "r")
+  private[this] val size    = raf.length()
+  private[this] val ch      = raf.getChannel
+  private[this] val promise = Promise[Unit]
+  private[this] val target  = Network.dotToSocketMap(instance.dot)
+
+  def status: Future[Unit] = promise.future
 
   private def reply(p: osc.Packet): Unit =
-    c.tx.send(p, sender)
+    c.tx.send(p, target)
 
   def begin(): Unit = {
     require(offset == 0L)
@@ -52,6 +58,5 @@ final class Updater(config: Config, c: OSCClient, val sender: SocketAddress, siz
 
   def dispose(): Unit = {
     ch.close()
-    f.delete()
   }
 }
