@@ -70,7 +70,7 @@ class MainFrame(c: OSCClient) {
     Column( 0, "Pos"    , 64,  64,  64, _.pos     , Some(RightAlignedRenderer), Some(Ordering.Int)),
     Column( 1, "Id"     , 64,  64,  64, _.dot     , Some(RightAlignedRenderer), Some(Ordering.Int)),
     Column( 2, "Version", 64, 320, 320, _.version , None, None),
-    Column( 3, "Update" , 72,  72,  72, _.update  , Some(AmountRenderer)      , Some(Ordering.Double))
+    Column( 3, "Update" , 74,  74,  74, _.update  , Some(AmountRenderer)      , Some(Ordering.Double))
   )
 
   private object model extends AbstractTableModel {

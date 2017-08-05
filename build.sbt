@@ -2,7 +2,7 @@ import com.typesafe.sbt.packager.linux.LinuxPackageMapping
 
 lazy val baseName         = "Schwaermen"
 lazy val baseNameL        = baseName.toLowerCase
-lazy val projectVersion   = "0.1.2-SNAPSHOT"
+lazy val projectVersion   = "0.1.3-SNAPSHOT"
 
 lazy val baseDescr        = "An art project"
 
@@ -97,9 +97,9 @@ lazy val commonDebianSettings = Seq(
     val f2    = ((dir / "doc") * "*").get
     //
     def readOnly(in: LinuxPackageMapping) =
-    in.withUser ("root")
-      .withGroup("root")
-      .withPerms("0644")  // http://help.unc.edu/help/how-to-use-unix-and-linux-file-permissions/
+      in.withUser ("root")
+        .withGroup("root")
+        .withPerms("0644")  // http://help.unc.edu/help/how-to-use-unix-and-linux-file-permissions/
     //
     val aux   = f1.map { fIn => packageMapping(fIn -> s"/usr/share/$n/${fIn.name}") }
     val doc   = f2.map { fIn => packageMapping(fIn -> s"/usr/share/doc/$n/${fIn.name}") }
