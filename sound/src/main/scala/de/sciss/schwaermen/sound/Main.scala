@@ -48,7 +48,7 @@ object Main extends HasBuildInfo {
     p.parse(args, default).fold(sys.exit(1)) { config =>
       val host = Network.thisIP()
       if (!config.isLaptop) {
-        Config.compareIP(host)
+        Network.compareIP(host)
         // cf. https://github.com/Pi4J/pi4j/issues/238
         try {
           GpioUtil.enableNonPrivilegedAccess()

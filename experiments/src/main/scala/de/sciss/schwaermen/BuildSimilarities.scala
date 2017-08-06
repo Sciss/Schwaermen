@@ -85,7 +85,7 @@ object BuildSimilarities {
   ), Vertex(
     List(Word(26, Span(2036415,2092202), "erde"))
   ), Vertex(
-    List(Word(27, Span(2186839,2210124), "den"), Word(28, Span(2210124,2254180), "tisch"))
+    List(Word(27, Span(2186839,2210124), "dem"), Word(28, Span(2210124,2254180), "tisch"))
   ), Vertex(
     List(Word(28, Span(2210124,2254180), "tisch"))
   ), Vertex(
@@ -933,7 +933,7 @@ object BuildSimilarities {
   ), Vertex(
     List(Word(588, Span(31728180,31779821), "wirkliche"))
   ), Vertex(
-    List(Word(589, Span(31805390,31842346), "begreifst"), Word(590, Span(31842346,31869026), "du"))
+    List(Word(589, Span(31805390,31842346), "ergreifst"), Word(590, Span(31842346,31869026), "du"))
   ), Vertex(
     List(Word(590, Span(31842346,31869026), "du"))
   ), Vertex(

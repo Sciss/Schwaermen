@@ -15,6 +15,13 @@ lazy val commonSettings = Seq(
   scalacOptions      ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint:-stars-align,_")
 )
 
+lazy val fileUtilVersion       = "1.1.3"
+lazy val pi4jVersion           = "1.1"
+lazy val scalaOSCVersion       = "1.1.5"
+lazy val scoptVersion          = "3.6.0"
+lazy val soundProcessesVersion = "3.13.0"
+lazy val swingPlusVersion      = "0.2.4"
+
 lazy val root = Project(id = baseNameL, base = file("."))
   .aggregate(common, sound, control)
   .settings(commonSettings)
@@ -24,9 +31,9 @@ lazy val common = Project(id = s"$baseName-common", base = file("common"))
   .settings(
     description := s"$baseDescr - common structure",
     libraryDependencies ++= Seq(
-      "de.sciss"          %% "fileutil"   % "1.1.3",
-      "de.sciss"          %% "scalaosc"   % "1.1.5",
-      "com.github.scopt"  %% "scopt"      % "3.6.0"
+      "de.sciss"         %% "fileutil" % fileUtilVersion,
+      "de.sciss"         %% "scalaosc" % scalaOSCVersion,
+      "com.github.scopt" %% "scopt"    % scoptVersion
     )
   )
 
@@ -41,8 +48,8 @@ lazy val sound = Project(id = soundNameL, base = file("sound"))
   .settings(
     description := s"$baseDescr - rpi sound",
     libraryDependencies ++= Seq(
-      "de.sciss"          %% "soundprocesses"     % "3.13.0",
-      "com.pi4j"          %  "pi4j-core"          % "1.1"
+      "de.sciss" %% "soundprocesses" % soundProcessesVersion,
+      "com.pi4j" %  "pi4j-core"      % pi4jVersion
     ),
     // ---- build info ----
     buildInfoPackage := "de.sciss.schwaermen.sound",
@@ -54,13 +61,36 @@ lazy val sound = Project(id = soundNameL, base = file("sound"))
   )
   .settings(soundDebianSettings)
 
+lazy val videoName  = s"$baseName-Video"
+lazy val videoNameL = videoName.toLowerCase
+
+lazy val video = Project(id = videoNameL, base = file("video"))
+  .dependsOn(common)
+  .enablePlugins(BuildInfoPlugin)
+  .enablePlugins(JavaAppPackaging, DebianPlugin)
+  .settings(commonSettings)
+  .settings(
+    description := s"$baseDescr - rpi video",
+    libraryDependencies ++= Seq(
+      "de.sciss" %% "swingplus" % swingPlusVersion
+    ),
+    // ---- build info ----
+    buildInfoPackage := "de.sciss.schwaermen.video",
+    buildInfoKeys := Seq(name, organization, version, scalaVersion, description,
+      BuildInfoKey.map(homepage) { case (k, opt)           => k -> opt.get },
+      BuildInfoKey.map(licenses) { case (_, Seq((lic, _))) => "license" -> lic }
+    ),
+    buildInfoOptions += BuildInfoOption.BuildTime
+  )
+  .settings(videoDebianSettings)
+
 lazy val control = Project(id = s"$baseNameL-control", base = file("control"))
   .dependsOn(common)
   .settings(commonSettings)
   .settings(
     description := s"$baseDescr - laptop control",
     libraryDependencies ++= Seq(
-      "de.sciss" %% "swingplus"  % "0.2.4",
+      "de.sciss" %% "swingplus"  % swingPlusVersion,
       "de.sciss" %% "desktop"    % "0.8.0",
       "de.sciss" %% "model"      % "0.3.4"
     )
@@ -85,6 +115,22 @@ lazy val soundDebianSettings = useNativeZip ++ Seq[Def.Setting[_]](
   packageSummary in Debian := description.value,
   packageDescription in Debian :=
     """Software for a sound installation - Schwaermen+Vernetzen.
+      |""".stripMargin
+) ++ commonDebianSettings
+
+lazy val videoDebianSettings = useNativeZip ++ Seq[Def.Setting[_]](
+  executableScriptName /* in Universal */ := videoNameL,
+  scriptClasspath /* in Universal */ := Seq("*"),
+  name        in Debian := videoName,
+  packageName in Debian := videoNameL,
+  name        in Linux  := videoName,
+  packageName in Linux  := videoNameL,
+  mainClass   in Debian := Some("de.sciss.schwaermen.video.Main"),
+  maintainer  in Debian := maintainerHH,
+  debianPackageDependencies in Debian += "java8-runtime",
+  packageSummary in Debian := description.value,
+  packageDescription in Debian :=
+    """Software for a video installation - Schwaermen+Vernetzen.
       |""".stripMargin
 ) ++ commonDebianSettings
 
