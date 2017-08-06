@@ -20,12 +20,13 @@ import javax.swing.{Icon, JTable, SwingConstants}
 
 import de.sciss.desktop.FileDialog
 import de.sciss.file._
+import de.sciss.osc
 import de.sciss.swingplus.Table
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Table.AutoResizeMode
 import scala.swing.event.TableRowsSelected
-import scala.swing.{BorderPanel, Button, Component, FlowPanel, Frame, ScrollPane, Swing}
+import scala.swing.{BorderPanel, BoxPanel, Button, Component, FlowPanel, Frame, Orientation, ScrollPane, Swing}
 
 class MainFrame(c: OSCClient) {
   private case class Column(idx: Int, name: String, minWidth: Int, prefWidth: Int, maxWidth: Int,
@@ -198,6 +199,12 @@ class MainFrame(c: OSCClient) {
     }
   }
 
+  private[this] val ggTestPins = Button("Test Pins") {
+    selection.foreach { instance =>
+      c.tx.send(osc.Message("/test-pin-mode"), instance.socketAddress)
+    }
+  }
+
   private def selectedChanged(): Unit = {
     val hasSelection    = selection.nonEmpty
     ggUpdate  .enabled  = hasSelection
@@ -207,7 +214,19 @@ class MainFrame(c: OSCClient) {
 
   selectedChanged()
 
-  private[this] val pButtons = new FlowPanel(ggRefresh, ggUpdate, ggReboot, ggShutdown)
+  private[this] val pButtons  = new FlowPanel(ggRefresh, ggUpdate, ggReboot, ggShutdown, ggTestPins)
+  private[this] val pChannels = new FlowPanel(Seq.tabulate(12) { ch =>
+    Button((ch + 1).toString) {
+      selection.foreach { instance =>
+        c.tx.send(osc.Message("/test-channel", ch), instance.socketAddress)
+      }
+    }
+  }: _*)
+
+  private[this] val pBottom = new BoxPanel(Orientation.Vertical) {
+    contents += pButtons
+    contents += pChannels
+  }
 
   private[this] val component: Component = {
     val scroll = new ScrollPane(table)
@@ -218,8 +237,8 @@ class MainFrame(c: OSCClient) {
       d
     }
     new BorderPanel {
-      add(scroll  , BorderPanel.Position.Center )
-      add(pButtons, BorderPanel.Position.South  )
+      add(scroll , BorderPanel.Position.Center )
+      add(pBottom, BorderPanel.Position.South  )
     }
   }
 

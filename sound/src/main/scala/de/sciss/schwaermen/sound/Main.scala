@@ -14,12 +14,15 @@
 package de.sciss.schwaermen
 package sound
 
+import com.pi4j.wiringpi.GpioUtil
 import de.sciss.file.File
+
+import scala.util.control.NonFatal
 
 object Main extends HasBuildInfo {
   protected val buildInfoPackage = "de.sciss.schwaermen.sound"
 
-  final val name = "Schwärmen Sound"
+  final val name = "Schwaermen Sound"
 
   def main(args: Array[String]): Unit = {
     println(s"-- $name $fullVersion --")
@@ -38,14 +41,22 @@ object Main extends HasBuildInfo {
         .text (s"Instance is laptop (default ${default.isLaptop})")
         .action { (_, c) => c.copy(isLaptop = true) }
 
-//      opt[Unit] ("keep-energy")
-//        .text ("Do not turn off energy saving")
-//        .action   { (_, c) => c.copy(disableEnergySaving = false) }
+//      opt[Unit] ("test-pins")
+//        .action { (_, c) => TEST_PINS = true; c }
+//
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
       val host = Network.thisIP()
       if (!config.isLaptop) {
         Config.compareIP(host)
+        // cf. https://github.com/Pi4J/pi4j/issues/238
+        try {
+          GpioUtil.enableNonPrivilegedAccess()
+        } catch {
+          case NonFatal(ex) =>
+            Console.err.println("Could not enable GPIO access")
+            ex.printStackTrace()
+        }
       }
       run(host, config)
     }
@@ -54,5 +65,14 @@ object Main extends HasBuildInfo {
   def run(host: String, config: Config): Unit = {
     val c = OSCClient(config, host)
     new Heartbeat(c)
+    if (!config.isLaptop) {
+      try {
+        c.relay.bothPins  // lazy, now initialises them
+      } catch {
+        case NonFatal(ex) =>
+          Console.err.println("Could not enable GPIO access")
+          ex.printStackTrace()
+      }
+    }
   }
 }

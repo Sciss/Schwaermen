@@ -16,7 +16,7 @@ package de.sciss.schwaermen.control
 import de.sciss.schwaermen.Network
 
 object Main {
-  final val name = "Schwärmen Control"
+  final val name = "Schwaermen Control"
 
   def main(args: Array[String]): Unit = {
     println(s"-- $name --")

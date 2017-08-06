@@ -15,11 +15,11 @@ package de.sciss.schwaermen.sound
 
 import java.util.{Timer, TimerTask}
 
-import de.sciss.osc
+import de.sciss.schwaermen.Network
 
 final class Heartbeat(c: OSCClient, period: Long = 30000L) extends TimerTask {
   private[this] val timer = new Timer("heartbeat", true)
   timer.schedule(this, period, period)
 
-  def run(): Unit = c ! osc.Message("/heart")
+  def run(): Unit = c ! Network.oscHeart
 }

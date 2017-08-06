@@ -55,6 +55,7 @@ object Network {
   final val socketSeqCtl: Vector[SocketAddress] = dotSeqCtl .map(mkSocket)
 
   final val dotToSocketMap: Map[Int, SocketAddress] = (dotSeqCtl zip socketSeqCtl).toMap
+  final val socketToDotMap: Map[SocketAddress, Int] = dotToSocketMap.map(_.swap)
 
   final val dotToSeqMap: Map[Int, Int] = dotSeq.zipWithIndex.toMap
 
@@ -181,6 +182,7 @@ object Network {
 
   final val oscShutdown : osc.Message = osc.Message("/shutdown" )
   final val oscReboot   : osc.Message = osc.Message("/reboot"   )
+  final val oscHeart    : osc.Message = osc.Message("/heart"    )
 
   final val oscDumpFilter: osc.Dump.Filter = { p =>
     p.encodedSize(oscCodec) < 1024

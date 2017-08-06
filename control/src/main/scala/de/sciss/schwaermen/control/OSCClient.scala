@@ -147,9 +147,12 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
         }
       }
 
+    case Network.oscHeart =>
+
     case _ =>
       Console.err.println(s"Ignoring unknown OSC packet $p")
-      tx.send(osc.Message("/error", "unknown packet", p), sender)
+      // N.B.: Do _not_ reply, because we may create an infinite growing loop
+      // tx.send(osc.Message("/error", "unknown packet", p), sender)
   }
 
   rx.action = oscReceived
