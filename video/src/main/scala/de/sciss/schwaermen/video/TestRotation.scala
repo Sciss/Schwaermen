@@ -1,31 +1,28 @@
+/*
+ *  TestRotation.scala
+ *  (Schwaermen)
+ *
+ *  Copyright (c) 2017 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.schwaermen
 package video
 
-import java.awt.{Color, Font, RenderingHints}
 import java.awt.geom.{AffineTransform, Path2D, PathIterator}
 import java.awt.image.BufferedImage
+import java.awt.{Color, RenderingHints}
 import javax.swing.Timer
 
 import scala.annotation.switch
 import scala.swing.{Component, Graphics2D, MainFrame, Swing}
 
 object TestRotation {
-  private[this] lazy val _initFont: Font = {
-    val url = getClass.getResource("/OpenSans-CondLight.ttf")
-    require(url != null)
-    val is = url.openStream()
-    val res = Font.createFont(Font.TRUETYPE_FONT, is)
-    is.close()
-    res
-  }
-
-  private[this] var _condensedFont: Font = _
-
-  def mkFont(size: Float): Font = {
-    if (_condensedFont == null) _condensedFont = _initFont
-    _condensedFont.deriveFont(size)
-  }
-
   def loadText(): String = {
 //    val url = getClass.getClassLoader.getResource("/de/sciss/schwaermen/text1.txt")
 //    val is  = getClass.getClassLoader.getResourceAsStream("/de/sciss/schwaermen/text1.txt")
@@ -42,7 +39,7 @@ object TestRotation {
 
     val tmpImg  = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB)
     val tmpG    = tmpImg.createGraphics()
-    val font    = mkFont(64f)
+    val font    = Glyphosat.mkFont(64f)
     val fm      = tmpG.getFontMetrics(font)
     val frc     = fm.getFontRenderContext
     val gv      = font.createGlyphVector(frc, text.take(32))

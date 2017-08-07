@@ -18,6 +18,7 @@ lazy val commonSettings = Seq(
 lazy val fileUtilVersion        = "1.1.3"
 lazy val pi4jVersion            = "1.1"
 lazy val numbersVersion         = "0.1.3"
+lazy val kollFlitzVersion       = "0.2.1"
 lazy val scalaOSCVersion        = "1.1.5"
 lazy val scoptVersion           = "3.6.0"
 lazy val soundProcessesVersion  = "3.13.0"
@@ -32,10 +33,11 @@ lazy val common = Project(id = s"$baseName-common", base = file("common"))
   .settings(
     description := s"$baseDescr - common structure",
     libraryDependencies ++= Seq(
-      "de.sciss"         %% "fileutil" % fileUtilVersion,
-      "de.sciss"         %% "numbers"  % numbersVersion,
-      "de.sciss"         %% "scalaosc" % scalaOSCVersion,
-      "com.github.scopt" %% "scopt"    % scoptVersion
+      "de.sciss"          %% "fileutil"   % fileUtilVersion,
+      "de.sciss"          %% "numbers"    % numbersVersion,
+      "de.sciss"          %% "scalaosc"   % scalaOSCVersion,
+      "de.sciss"          %% "kollflitz"  % kollFlitzVersion,
+      "com.github.scopt"  %% "scopt"      % scoptVersion
     )
   )
 

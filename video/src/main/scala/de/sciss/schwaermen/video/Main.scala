@@ -1,6 +1,18 @@
+/*
+ *  Main.scala
+ *  (Schwaermen)
+ *
+ *  Copyright (c) 2017 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.schwaermen
 package video
-
 
 import de.sciss.file.File
 
@@ -50,7 +62,7 @@ object Main extends HasBuildInfo {
   }
 
   def run(host: String, config: Config): Unit = {
-    val c = OSCClient(config, host)
+    /* val c = */ OSCClient(config, host)
     // new Heartbeat(c)
     Swing.onEDT {
       TestRotation.run()

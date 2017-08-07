@@ -24,8 +24,8 @@ object Util {
     Seq("sudo", "reboot", "now").run()
   }
 
-  private[this] val uniqueSync = new AnyRef
-  private[this] var uniqueID = 0
+  private[this] val uniqueSync  = new AnyRef
+  private[this] var uniqueID    = 0
 
   def nextUniqueID(): Int = uniqueSync.synchronized {
     val res = uniqueID
@@ -33,12 +33,10 @@ object Util {
     res
   }
 
-//  final val soundPackageName = "schwaermen-sound"
-
   def readTextResource(name: String): String = {
-//    val url = getClass.getResource(name)
-//    println(s"URL = $url")
-    val is  = getClass.getResourceAsStream(name)
+    val url = getClass.getResource(name)
+    require(url != null)
+    val is  = url.openStream()
     val sz  = is.available()
     val arr = new Array[Byte](sz)
     is.read(arr)
