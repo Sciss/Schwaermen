@@ -11,17 +11,16 @@
  *  contact@sciss.de
  */
 
-package de.sciss.schwaermen.control
+package de.sciss.schwaermen
+package control
 
-import de.sciss.schwaermen.Network
-
-object Main {
-  final val name = "Schwaermen Control"
+object Main extends MainLike {
+  protected val pkgLast = "control"
 
   def main(args: Array[String]): Unit = {
-    println(s"-- $name --")
+    println(s"-- $name $fullVersion --")
     val default = Config()
-    val p = new scopt.OptionParser[Config](name) {
+    val p = new scopt.OptionParser[Config](namePkg) {
       opt[Unit] ('d', "dump-osc")
         .text (s"Enable OSC dump (default ${default.dumpOSC})")
         .action { (_, c) => c.copy(dumpOSC = true) }

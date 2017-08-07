@@ -2,7 +2,7 @@ import com.typesafe.sbt.packager.linux.LinuxPackageMapping
 
 lazy val baseName         = "Schwaermen"
 lazy val baseNameL        = baseName.toLowerCase
-lazy val projectVersion   = "0.1.4-SNAPSHOT"
+lazy val projectVersion   = "0.1.5-SNAPSHOT"
 
 lazy val baseDescr        = "An art project"
 
@@ -55,7 +55,6 @@ lazy val sound = Project(id = soundNameL, base = file("sound"))
       "de.sciss" %% "soundprocesses" % soundProcessesVersion,
       "com.pi4j" %  "pi4j-core"      % pi4jVersion
     ),
-    // ---- build info ----
     buildInfoPackage := "de.sciss.schwaermen.sound",
     buildInfoKeys := Seq(name, organization, version, scalaVersion, description,
       BuildInfoKey.map(homepage) { case (k, opt)           => k -> opt.get },
@@ -78,7 +77,6 @@ lazy val video = Project(id = videoNameL, base = file("video"))
     libraryDependencies ++= Seq(
       "de.sciss" %% "swingplus" % swingPlusVersion
     ),
-    // ---- build info ----
     buildInfoPackage := "de.sciss.schwaermen.video",
     buildInfoKeys := Seq(name, organization, version, scalaVersion, description,
       BuildInfoKey.map(homepage) { case (k, opt)           => k -> opt.get },
@@ -90,6 +88,7 @@ lazy val video = Project(id = videoNameL, base = file("video"))
 
 lazy val control = Project(id = s"$baseNameL-control", base = file("control"))
   .dependsOn(common)
+  .enablePlugins(BuildInfoPlugin)
   .settings(commonSettings)
   .settings(
     description := s"$baseDescr - laptop control",
@@ -97,7 +96,13 @@ lazy val control = Project(id = s"$baseNameL-control", base = file("control"))
       "de.sciss" %% "swingplus"  % swingPlusVersion,
       "de.sciss" %% "desktop"    % "0.8.0",
       "de.sciss" %% "model"      % "0.3.4"
-    )
+    ),
+    buildInfoPackage := "de.sciss.schwaermen.control",
+    buildInfoKeys := Seq(name, organization, version, scalaVersion, description,
+      BuildInfoKey.map(homepage) { case (k, opt)           => k -> opt.get },
+      BuildInfoKey.map(licenses) { case (_, Seq((lic, _))) => "license" -> lic }
+    ),
+    buildInfoOptions += BuildInfoOption.BuildTime
   )
 
 lazy val gpl2 = "GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt")

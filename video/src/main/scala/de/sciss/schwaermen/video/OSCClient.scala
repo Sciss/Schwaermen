@@ -37,31 +37,12 @@ object OSCClient {
 final class OSCClient(override val config: Config, val dot: Int, val tx: UDP.Transmitter.Undirected,
                       val rx: UDP.Receiver.Undirected) extends OSCClientLike {
 
+  override def main: Main.type = Main
+
   def oscReceived(p: osc.Packet, sender: SocketAddress): Unit = p match {
-    case Network.oscShutdown =>
-      if (config.isLaptop)
-        println("(laptop) ignoring /shutdown")
-      else
-        Util.shutdown()
-
-    case Network.oscReboot =>
-      if (config.isLaptop)
-        println("(laptop) ignoring /reboot")
-      else
-        Util.reboot()
-
-    case Network.oscQueryVersion =>
-      tx.send(Network.oscReplyVersion(Main.fullVersion), sender)
-
     case Network.oscHeart =>
 
-    case _ =>
-      Console.err.println(s"Ignoring unknown OSC packet $p")
-      val args = p match {
-        case m: osc.Message => m.name +: m.args
-        case _: osc.Bundle  => "osc.Bundle" :: Nil
-      }
-      tx.send(osc.Message("/error", "unknown packet" +: args: _*), sender)
+    case _ => oscFallback(p, sender)
   }
 
   init()

@@ -246,7 +246,7 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
           head    = curr // drop previous head
           predIdx = curr.wordIndex
         }
-        val currOut = curr.x + curr.info.right <= 0 && curr.y + curr.info.bottom <= 0
+        val currOut = curr.x + curr.info.right <= 0 || curr.y + curr.info.bottom <= 0
         allOut &= currOut
       }
       pred    = curr

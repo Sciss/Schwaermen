@@ -18,15 +18,13 @@ import de.sciss.file.File
 
 import scala.swing.Swing
 
-object Main extends HasBuildInfo {
-  protected val buildInfoPackage = "de.sciss.schwaermen.video"
-
-  final val name = "Schwaermen Video"
+object Main extends MainLike {
+  protected val pkgLast = "video"
 
   def main(args: Array[String]): Unit = {
     println(s"-- $name $fullVersion --")
     val default = Config()
-    val p = new scopt.OptionParser[Config](name) {
+    val p = new scopt.OptionParser[Config](namePkg) {
       opt[File]("base-dir")
         .text (s"Base directory (default: ${default.baseDir})")
         // .required()
@@ -40,9 +38,9 @@ object Main extends HasBuildInfo {
         .text (s"Instance is laptop (default ${default.isLaptop})")
         .action { (_, c) => c.copy(isLaptop = true) }
 
-      //      opt[Unit] ("test-pins")
-      //        .action { (_, c) => TEST_PINS = true; c }
-      //
+      opt[Unit] ("keep-energy")
+        .text ("Do not turn off energy saving")
+        .action   { (_, c) => c.copy(disableEnergySaving = false) }
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
       val host = Network.thisIP()
@@ -57,6 +55,7 @@ object Main extends HasBuildInfo {
 //            ex.printStackTrace()
 //        }
       }
+      checkConfig(config)
       run(host, config)
     }
   }
