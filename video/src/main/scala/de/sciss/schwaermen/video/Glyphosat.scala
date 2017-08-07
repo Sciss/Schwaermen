@@ -90,7 +90,12 @@ object Glyphosat {
     res
   }
 
-  private final case class CharInfo(c: Char, shape: Shape, bounds: Rectangle2D)
+  private final case class CharInfo(c: Char, shape: Shape, bounds: Rectangle2D) {
+    val left  : Float = bounds.getMinX.toFloat
+    val right : Float = bounds.getMaxX.toFloat
+    val top   : Float = bounds.getMinX.toFloat
+    val bottom: Float = bounds.getMaxY.toFloat
+  }
 
   private final class Word(val index: Int) {
     var characters: Array[CharVertex] = _
@@ -108,32 +113,46 @@ object Glyphosat {
     var  y: Float = 0f  // position y
     var vx: Float = 0f  // velocity x
     var vy: Float = 0f  // velocity y
-    var ax: Float = 0f  // acceleration x
-    var ay: Float = 0f  // acceleration y
+//    var ax: Float = 0f  // acceleration x
+//    var ay: Float = 0f  // acceleration y
 
     var succ: CharVertex = _
   }
 }
 final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
                               charPairSpacing : Map[(Char, Char), Double  ],
-                              wordsFirstChar: Array[Int], characters: Array[CharVertex]) {
+                              words: Array[Array[Int]], characters: Array[CharInfo]) {
   private[this] var head: CharVertex = _
 
-  private def popWord(i: Int, pred0: CharVertex): Unit = {
-    val ci    = wordsFirstChar(i)
+  private[this] val spaceChar = charShapes(' ')
+
+  private[this] val NominalY    = 16f
+  private[this] val NominalYK   = 0.1f
+  private[this] val NominalVX   = -0.1f
+  private[this] val NominalVXK  = 0.1f
+  private[this] val PairXK      = 0.1f
+//  private[this] val PairXL      = 0.0f // spaceChar.bounds.getWidth.toFloat
+  private[this] val PairYK      = 0.1f
+//  private[this] val PairYL      = 0.0f
+  private[this] val ScreenWidth = 400f
+
+  private def popWord(wordIndex: Int, pred0: CharVertex): Unit = {
+    val word  = words(wordIndex)
+    val ci    = word(0)
     var ch    = characters(ci)
+    val v     = new CharVertex(ch, wordIndex = wordIndex) // XXX TODO --- could avoid allocation
     var pred  = pred0
     if (pred == null) {
-      head = ch
+      head = v
     } else {
-      pred.succ = ch
+      pred.succ = v
     }
-    var j = i + 1
+    var j = wordIndex + 1
     val n = characters.length
-    while (j < n && ch.info.c != ' ') {
-      pred      = ch
+    while (j < n && v.info.c != ' ') {
+      pred      = ??? // ch
       ch        = characters(j)
-      pred.succ = ch
+      pred.succ = ??? // ch
       j        += 1
     }
   }
@@ -158,8 +177,47 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
       curr = head
     }
 
+    // ---- updates velocities ----
+
+    curr.vx += (NominalVX - curr.vx) * NominalVXK
+    curr.vy += (NominalY  - curr. y) * NominalYK
+    var pred = curr
+    curr = curr.succ
+
     while (curr != null) {
+      val x1 = pred.x + pred.info.right
+      val x2 = curr.x + pred.info.left
+      val y1 = pred.y
+      val y2 = curr.y
+      curr.vx += (x1 - x2) * PairXK
+      curr.vy += (y1 - y2) * PairYK
+      pred = curr
       curr = curr.succ
+    }
+
+    // ---- update positions ----
+
+    curr = head
+    pred = curr
+    var allOut  = true
+    var predIdx = -1
+    while (curr != null) {
+      curr.x += curr.vx
+      curr.y += curr.vy
+      if (allOut) {
+        if (curr.wordIndex != predIdx) {
+          head    = curr // drop previous head
+          predIdx = curr.wordIndex
+        }
+        val currOut = curr.x + curr.info.right <= 0 && curr.y + curr.info.bottom <= 0
+        allOut &= currOut
+      }
+      pred    = curr
+      curr    = curr.succ
+    }
+
+    if (pred.x + pred.info.right < ScreenWidth) {
+      popWord((pred.wordIndex + 1) % words.length, pred)
     }
   }
 }
