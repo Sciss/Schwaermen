@@ -21,7 +21,7 @@ import java.net.SocketAddress
   * @param update   update progress, or 0.0 if not updating
   */
 final case class Status(dot: Int)(val version: String)(val update: Double = 0.0) {
-  lazy val pos: Int = Network.dotSeq.indexOf(dot)
+  lazy val pos: Int = Network.soundDotSeq.indexOf(dot)
 
   def socketAddress: SocketAddress = Network.dotToSocketMap(dot)
 
