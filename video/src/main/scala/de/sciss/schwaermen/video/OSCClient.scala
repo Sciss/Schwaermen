@@ -12,14 +12,12 @@
  */
 
 package de.sciss.schwaermen
-package sound
+package video
 
 import java.net.{InetSocketAddress, SocketAddress}
 
 import de.sciss.osc
 import de.sciss.osc.UDP
-
-import scala.util.control.NonFatal
 
 object OSCClient {
   def apply(config: Config, host: String): OSCClient = {
@@ -34,35 +32,12 @@ object OSCClient {
     val rx                = UDP.Receiver(tx.channel, c)
     new OSCClient(config, dot, tx, rx)
   }
-
 }
 /** Undirected pair of transmitter and receiver, sharing the same datagram channel. */
 final class OSCClient(override val config: Config, val dot: Int, val tx: UDP.Transmitter.Undirected,
                       val rx: UDP.Receiver.Undirected) extends OSCClientLike {
-  val relay: RelayPins  = RelayPins.map(dot)
 
   def oscReceived(p: osc.Packet, sender: SocketAddress): Unit = p match {
-    case Network.oscUpdateSet (uid, off, bytes) => oscUpdateSet (sender, uid = uid, off = off, bytes = bytes)
-    case Network.oscUpdateInit(uid, size)       => oscUpdateInit(sender, uid = uid, size = size)
-
-    case osc.Message("/test-pin-mode") =>
-      try {
-        relay.bothPins
-        tx.send(osc.Message("/done", "test-pin-mode"), sender)
-      } catch {
-        case NonFatal(ex) =>
-          tx.send(osc.Message("/fail", "test-pin-mode", ex.toString), sender)
-      }
-
-    case osc.Message("/test-channel", ch: Int) =>
-      try {
-        relay.selectChannel(ch)
-        tx.send(osc.Message("/done", "test-channel", ch), sender)
-      } catch {
-        case NonFatal(ex) =>
-          tx.send(osc.Message("/fail", "test-channel", ch, ex.toString), sender)
-      }
-
     case Network.oscShutdown =>
       if (config.isLaptop)
         println("(laptop) ignoring /shutdown")
@@ -89,8 +64,5 @@ final class OSCClient(override val config: Config, val dot: Int, val tx: UDP.Tra
       tx.send(osc.Message("/error", "unknown packet" +: args: _*), sender)
   }
 
-  rx.action = oscReceived
-  if (config.dumpOSC) dumpOSC()
-  tx.connect()
-  rx.connect()
+  init()
 }

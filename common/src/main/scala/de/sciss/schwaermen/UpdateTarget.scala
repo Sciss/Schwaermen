@@ -12,7 +12,6 @@
  */
 
 package de.sciss.schwaermen
-package sound
 
 import java.io.RandomAccessFile
 import java.net.SocketAddress
@@ -21,7 +20,7 @@ import java.nio.ByteBuffer
 import de.sciss.file._
 import de.sciss.osc
 
-final class UpdateTarget(val uid: Int, config: Config, c: OSCClient, val sender: SocketAddress, size: Long) {
+final class UpdateTarget(val uid: Int, c: OSCClientLike, val sender: SocketAddress, size: Long) {
   private[this] var offset = 0L
   private[this] val f     = File.createTemp(suffix = ".deb")
   private[this] val raf   = new RandomAccessFile(f, "rw")
@@ -53,7 +52,7 @@ final class UpdateTarget(val uid: Int, config: Config, c: OSCClient, val sender:
 
   private def sudo(cmd: String*): Int = {
     import sys.process._
-    if (config.isLaptop) {
+    if (c.config.isLaptop) {
       Process("sudo" +:"-A" +: cmd, None, "SUDO_ASKPASS" -> "/usr/bin/ssh-askpass").!
     } else {
       Process("sudo" +: cmd).!
@@ -64,14 +63,6 @@ final class UpdateTarget(val uid: Int, config: Config, c: OSCClient, val sender:
     import sys.process._
     val resInfo = Seq("dpkg", "--info", f.path).!
     if (resInfo == 0) {
-      // N.B. 'apt remove' requires interactive confirmation.
-      // but we can use dpkg to update an existing installation,
-      // so simply skip the 'apt remove'.
-
-//      val resRemove = sudo("apt", "remove", Util.soundPackageName)
-//      if (resRemove != 0) {
-//        Console.err.println(s"Warning. apt remove was not successful")
-//      }
       val resInstall = sudo("dpkg", "--install", f.path)
       dispose()
       val m = if (resInstall == 0) {

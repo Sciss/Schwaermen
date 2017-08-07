@@ -21,3 +21,4 @@ final case class Config(
                         dumpOSC : Boolean = false,
                         isLaptop: Boolean = false
                        )
+  extends ConfigLike

@@ -49,6 +49,6 @@ object Main extends HasBuildInfo {
 
   def run(host: String, config: Config): Unit = {
     val c = OSCClient(config, host)
-    new Heartbeat(c)
+    ??? // new Heartbeat(c)
   }
 }
