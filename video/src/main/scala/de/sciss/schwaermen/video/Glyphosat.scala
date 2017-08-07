@@ -20,7 +20,7 @@ import java.awt.{Font, Shape}
 
 import de.sciss.kollflitz
 import de.sciss.kollflitz.Vec
-import de.sciss.schwaermen.video.Glyphosat.{Word, CharInfo, CharVertex}
+import de.sciss.schwaermen.video.Glyphosat.{CharInfo, CharVertex}
 
 import scala.collection.{Map, Set, breakOut}
 import scala.swing.Graphics2D
@@ -72,7 +72,18 @@ object Glyphosat {
 
     val textA = testDropWritten(text)
 
-    ??? // new Glyphosat(charShapes = charShapes, charPairSpacing = charPairSpacing)
+    val characters: Array[CharInfo]   = charShapes.values.toArray.sortBy(_.c)
+    val charIdxMap: Map[Char, Int]    = characters.iterator.map(_.c).zipWithIndex.toMap
+    val words: Array[Array[Int]]      = textA.split(" ").map { s =>
+      s.map(charIdxMap)(breakOut): Array[Int]
+    }
+
+    new Glyphosat(
+      charShapes      = charShapes,
+      charPairSpacing = charPairSpacing,
+      words           = words,
+      characters      = characters
+    )
   }
 
   // resolves the parentheses and drops the right hand side of (lhs|rhs) bits
@@ -97,9 +108,9 @@ object Glyphosat {
     val bottom: Float = bounds.getMaxY.toFloat
   }
 
-  private final class Word(val index: Int) {
-    var characters: Array[CharVertex] = _
-  }
+//  private final class Word(val index: Int) {
+//    var characters: Array[CharVertex] = _
+//  }
 
   /*
 
@@ -126,34 +137,43 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
 
   private[this] val spaceChar = charShapes(' ')
 
-  private[this] val NominalY    = 16f
+  private[this] val NominalY    = 64f // 16f
   private[this] val NominalYK   = 0.1f
-  private[this] val NominalVX   = -0.1f
+  private[this] val NominalVX   = -1f
   private[this] val NominalVXK  = 0.1f
-  private[this] val PairXK      = 0.1f
+  private[this] val PairLXK     = 0.15f
+  private[this] val PairRXK     = 0.05f
 //  private[this] val PairXL      = 0.0f // spaceChar.bounds.getWidth.toFloat
-  private[this] val PairYK      = 0.1f
+  private[this] val PairLYK     = 0.15f
+  private[this] val PairRYK     = 0.05f
+  private[this] val DragM       = 1.0f - 0.1f
 //  private[this] val PairYL      = 0.0f
   private[this] val ScreenWidth = 400f
 
   private def popWord(wordIndex: Int, pred0: CharVertex): Unit = {
     val word  = words(wordIndex)
-    val ci    = word(0)
-    var ch    = characters(ci)
-    val v     = new CharVertex(ch, wordIndex = wordIndex) // XXX TODO --- could avoid allocation
+    val ch0   = characters(word(0))
+    val v0    = new CharVertex(ch0, wordIndex = wordIndex) // XXX TODO --- could avoid allocation
     var pred  = pred0
     if (pred == null) {
-      head = v
+      head      = v0
+      v0.x       = ScreenWidth
+      v0.y       = NominalY
     } else {
-      pred.succ = v
+      pred.succ = v0
+      v0.x       = math.max(ScreenWidth, pred.x + pred.info.right)
+      v0.y       = pred.y
     }
-    var j = wordIndex + 1
-    val n = characters.length
-    while (j < n && v.info.c != ' ') {
-      pred      = ??? // ch
-      ch        = characters(j)
-      pred.succ = ??? // ch
-      j        += 1
+    var wi = 1
+    pred = v0
+    while (wi <= word.length) {
+      val ch    = if (wi < word.length) characters(word(wi)) else spaceChar
+      val v     = new CharVertex(ch, wordIndex = wordIndex)
+      pred.succ = v
+      v.x       = pred.x + pred.info.right
+      v.y       = pred.y
+      pred      = v
+      wi       += 1
     }
   }
 
@@ -167,6 +187,7 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
       px = curr.x
       py = curr.y
       curr = curr.succ
+      if (curr == head) sys.error("CYCLIC")
     }
   }
 
@@ -181,16 +202,32 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
 
     curr.vx += (NominalVX - curr.vx) * NominalVXK
     curr.vy += (NominalY  - curr. y) * NominalYK
+    curr.vx *= DragM
+    curr.vy *= DragM
     var pred = curr
     curr = curr.succ
+
+    var FOO = false
 
     while (curr != null) {
       val x1 = pred.x + pred.info.right
       val x2 = curr.x + pred.info.left
       val y1 = pred.y
       val y2 = curr.y
-      curr.vx += (x1 - x2) * PairXK
-      curr.vy += (y1 - y2) * PairYK
+      val dx = x1 - x2
+      val dy = y1 - y2
+      val dvx = dx * PairLXK
+      val dvy = dy * PairLYK
+      curr.vx *= DragM
+      curr.vy *= DragM
+      curr.vx += dvx
+      curr.vy += dvy
+      if (FOO) {
+        pred.vx -= dx * PairRXK
+        pred.vy -= dy * PairRYK
+      } else {
+        FOO = true
+      }
       pred = curr
       curr = curr.succ
     }

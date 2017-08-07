@@ -20,7 +20,9 @@ import java.awt.{Color, RenderingHints}
 import javax.swing.Timer
 
 import scala.annotation.switch
-import scala.swing.{Component, Graphics2D, MainFrame, Swing}
+import scala.swing.{BorderPanel, Button, Component, FlowPanel, Graphics2D, MainFrame, Swing, ToggleButton}
+import Swing._
+import scala.swing.event.ButtonClicked
 
 object TestRotation {
   def loadText(): String = {
@@ -35,6 +37,72 @@ object TestRotation {
   }
 
   def run(): Unit = {
+    val text    = loadText()
+    val font    = Glyphosat.mkFont(64f)
+    val gl      = Glyphosat(text, font)
+
+    val comp = new Component {
+      background = Color.black
+      foreground = Color.white
+      opaque     = true
+
+      preferredSize = (800, 400)
+
+      override protected def paintComponent(g: Graphics2D): Unit = {
+        super.paintComponent(g)
+        val w = peer.getWidth
+        val h = peer.getHeight
+        g.setColor(background)
+        g.fillRect(0, 0, w, h)
+        g.setColor(foreground)
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING  , RenderingHints.VALUE_ANTIALIAS_ON )
+        g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE  )
+
+//        val sx = (w - 8).toDouble / 800
+//        val sy = (h - 8).toDouble / 400
+//        val scale = math.min(sx, sy)
+//        g.translate(4, 4)
+//        g.scale(scale, scale)
+        val atOrig = g.getTransform
+        g.drawLine(200, 0, 200, h)
+        g.drawLine(600, 0, 600, h)
+        g.translate(200, 0)
+        gl.render(g)
+        g.setTransform(atOrig)
+      }
+    }
+
+    def tick(): Unit = {
+      gl.step()
+      comp.repaint()
+      // tk.sync()
+    }
+
+    val t = new Timer(30, Swing.ActionListener { _ => tick() })
+//    t.start()
+
+    val ggAnim = new ToggleButton("Anim") {
+      listenTo(this)
+      reactions += {
+        case ButtonClicked(_) =>
+          if (selected) t.restart() else t.stop()
+      }
+    }
+    val ggTick = Button("Tick")(tick())
+
+    val pBottom = new FlowPanel(ggAnim, ggTick)
+
+    new MainFrame {
+      contents = new BorderPanel {
+        add(comp    , BorderPanel.Position.Center)
+        add(pBottom , BorderPanel.Position.South )
+      }
+      pack().centerOnScreen()
+      open()
+    }
+  }
+
+  def runOLD(): Unit = {
     val text    = loadText()
 
     val tmpImg  = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB)
