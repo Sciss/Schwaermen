@@ -4,6 +4,8 @@ package video
 
 import de.sciss.file.File
 
+import scala.swing.Swing
+
 object Main extends HasBuildInfo {
   protected val buildInfoPackage = "de.sciss.schwaermen.video"
 
@@ -49,6 +51,9 @@ object Main extends HasBuildInfo {
 
   def run(host: String, config: Config): Unit = {
     val c = OSCClient(config, host)
-    ??? // new Heartbeat(c)
+    // new Heartbeat(c)
+    Swing.onEDT {
+      TestRotation.run()
+    }
   }
 }

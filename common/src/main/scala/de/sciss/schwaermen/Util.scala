@@ -33,5 +33,16 @@ object Util {
     res
   }
 
-  final val soundPackageName = "schwaermen-sound"
+//  final val soundPackageName = "schwaermen-sound"
+
+  def readTextResource(name: String): String = {
+//    val url = getClass.getResource(name)
+//    println(s"URL = $url")
+    val is  = getClass.getResourceAsStream(name)
+    val sz  = is.available()
+    val arr = new Array[Byte](sz)
+    is.read(arr)
+    is.close()
+    new String(arr, "UTF-8")
+  }
 }

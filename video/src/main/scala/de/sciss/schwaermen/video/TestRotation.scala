@@ -1,19 +1,7 @@
-/*
- *  Laufend.scala
- *  (Schwaermen)
- *
- *  Copyright (c) 2017 Hanns Holger Rutz. All rights reserved.
- *
- *  This software is published under the GNU General Public License v2+
- *
- *
- *  For further information, please contact Hanns Holger Rutz at
- *  contact@sciss.de
- */
-
 package de.sciss.schwaermen
+package video
 
-import java.awt.{Color, RenderingHints}
+import java.awt.{Color, Font, RenderingHints}
 import java.awt.geom.{AffineTransform, Path2D, PathIterator}
 import java.awt.image.BufferedImage
 import javax.swing.Timer
@@ -21,39 +9,40 @@ import javax.swing.Timer
 import scala.annotation.switch
 import scala.swing.{Component, Graphics2D, MainFrame, Swing}
 
-object Laufend {
-  final case class Config()
-
-  def main(args: Array[String]): Unit = {
-    val default = Config()
-
-    val p = new scopt.OptionParser[Config]("Schwaermen-Laufend") {
-//      opt[File]("base-dir")
-//        .text (s"Base directory (default: ${default.baseDir})")
-//        .action { (f, c) => c.copy(baseDir = f) }
-
-//      opt[Unit] ('d', "dump-osc")
-//        .text (s"Enable OSC dump (default ${default.dumpOSC})")
-//        .action   { (_, c) => c.copy(dumpOSC = true) }
-
-//      opt[Int] ("key-shutdown")
-//        .text (s"Keypad key to trigger shutdown (1 to 9; default ${default.keyShutdown})")
-//        .validate(i => if (i >= 1 && i <= 9) Right(()) else Left("Must be 1 to 9") )
-//        .action { (v, c) => c.copy(keyShutdown = (v + '0').toChar) }
-
-    }
-    p.parse(args, default).fold(sys.exit(1)) { config =>
-      Swing.onEDT(run(config))
-    }
+object TestRotation {
+  private[this] lazy val _initFont: Font = {
+    val url = getClass.getResource("/OpenSans-CondLight.ttf")
+    require(url != null)
+    val is = url.openStream()
+    val res = Font.createFont(Font.TRUETYPE_FONT, is)
+    is.close()
+    res
   }
 
-  private[this] val text =
-    """es geht und geht das gehen geht und vergeht sich im schritt aus dem schritt der abdruck verschwimmt wird weich am ende"""
+  private[this] var _condensedFont: Font = _
 
-  def run(config: Config): Unit = {
+  def mkFont(size: Float): Font = {
+    if (_condensedFont == null) _condensedFont = _initFont
+    _condensedFont.deriveFont(size)
+  }
+
+  def loadText(): String = {
+//    val url = getClass.getClassLoader.getResource("/de/sciss/schwaermen/text1.txt")
+//    val is  = getClass.getClassLoader.getResourceAsStream("/de/sciss/schwaermen/text1.txt")
+//    val sz  = is.available()
+//    val arr = new Array[Byte](sz)
+//    is.read(arr)
+//    is.close()
+//    new String(arr, "UTF-8")
+    Util.readTextResource("text1.txt")
+  }
+
+  def run(): Unit = {
+    val text    = loadText()
+
     val tmpImg  = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB)
     val tmpG    = tmpImg.createGraphics()
-    val font    = MyFont(64)
+    val font    = mkFont(64f)
     val fm      = tmpG.getFontMetrics(font)
     val frc     = fm.getFontRenderContext
     val gv      = font.createGlyphVector(frc, text.take(32))
@@ -62,7 +51,7 @@ object Laufend {
 
     val extentIn = math.max(rectIn.width, rectIn.height) * 0.33 // 0.2515
 
-    val p = new MyPolar(inWidth = extentIn /* rectIn.width */, inHeight = extentIn /* rectIn.height */,
+    val p = new PolarTransform(inWidth = extentIn /* rectIn.width */, inHeight = extentIn /* rectIn.height */,
       innerRadius = 0.0, angleStart = 0.0, angleSpan = math.Pi * 0.5,
       cx = extentIn * 0.5 /* rectIn.width */ * 0.5 /* rectIn.getCenterX */,
       cy = extentIn * 0.5 /* rectIn.height */ * 0.5 /* rectIn.getCenterY */, flipX = true, flipY = true)
@@ -107,7 +96,7 @@ object Laufend {
 
     updatePath()
     val rectOut = path.getBounds
-//    println(rectOut)
+    //    println(rectOut)
 
     val comp = new Component {
       background = Color.black
@@ -133,14 +122,14 @@ object Laufend {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING  , RenderingHints.VALUE_ANTIALIAS_ON )
         g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE  )
 
-//          val sx = w.toDouble / rectOut.width
-//          val sy = h.toDouble / rectOut.height
+        //          val sx = w.toDouble / rectOut.width
+        //          val sy = h.toDouble / rectOut.height
         val sx = (w - 8).toDouble / rectOut.getMaxX
         val sy = (h - 8).toDouble / rectOut.getMaxY
         val scale = math.min(sx, sy)
         g.translate(4, 4)
         g.scale(scale, scale)
-//          g.translate(4 - rectOut.x , 4 - rectOut.y)
+        //          g.translate(4 - rectOut.x , 4 - rectOut.y)
         g.fill(path)
       }
     }
@@ -153,7 +142,7 @@ object Laufend {
 
     val Pi2     = math.Pi * 2
     val angStep = -0.2 * math.Pi / 180 + Pi2
-//    val tk      = comp.peer.getToolkit
+    //    val tk      = comp.peer.getToolkit
 
     val t = new Timer(30, Swing.ActionListener { _ =>
       angle = (angle + angStep) % Pi2

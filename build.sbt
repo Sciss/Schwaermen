@@ -15,12 +15,13 @@ lazy val commonSettings = Seq(
   scalacOptions      ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint:-stars-align,_")
 )
 
-lazy val fileUtilVersion       = "1.1.3"
-lazy val pi4jVersion           = "1.1"
-lazy val scalaOSCVersion       = "1.1.5"
-lazy val scoptVersion          = "3.6.0"
-lazy val soundProcessesVersion = "3.13.0"
-lazy val swingPlusVersion      = "0.2.4"
+lazy val fileUtilVersion        = "1.1.3"
+lazy val pi4jVersion            = "1.1"
+lazy val numbersVersion         = "0.1.3"
+lazy val scalaOSCVersion        = "1.1.5"
+lazy val scoptVersion           = "3.6.0"
+lazy val soundProcessesVersion  = "3.13.0"
+lazy val swingPlusVersion       = "0.2.4"
 
 lazy val root = Project(id = baseNameL, base = file("."))
   .aggregate(common, sound, control)
@@ -32,6 +33,7 @@ lazy val common = Project(id = s"$baseName-common", base = file("common"))
     description := s"$baseDescr - common structure",
     libraryDependencies ++= Seq(
       "de.sciss"         %% "fileutil" % fileUtilVersion,
+      "de.sciss"         %% "numbers"  % numbersVersion,
       "de.sciss"         %% "scalaosc" % scalaOSCVersion,
       "com.github.scopt" %% "scopt"    % scoptVersion
     )

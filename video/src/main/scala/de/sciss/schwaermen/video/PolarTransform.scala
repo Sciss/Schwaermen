@@ -1,27 +1,14 @@
-/*
- *  MyPolar.scala
- *  (Schwaermen)
- *
- *  Copyright (c) 2017 Hanns Holger Rutz. All rights reserved.
- *
- *  This software is published under the GNU General Public License v2+
- *
- *
- *  For further information, please contact Hanns Holger Rutz at
- *  contact@sciss.de
- */
-
 package de.sciss.schwaermen
+package video
 
 import de.sciss.numbers.{DoubleFunctions => rd}
 
 /** @param angleStart   in radians
   * @param angleSpan    in radians
   */
-final class MyPolar(inWidth: Double, inHeight: Double, innerRadius: Double,
+final class PolarTransform(inWidth: Double, inHeight: Double, innerRadius: Double,
                     var angleStart: Double, angleSpan: Double,
                     cx: Double, cy: Double, flipX: Boolean, flipY: Boolean) {
-
 
   private[this] val Pi   = math.Pi
   private[this] val PiH  = Pi / 2
@@ -48,7 +35,6 @@ final class MyPolar(inWidth: Double, inHeight: Double, innerRadius: Double,
 
   def apply(x: Double, y: Double, out: Array[Double], outOff: Int): Unit = {
     val t     = x.toDouble / inWidth
-//    val theta0 = (t.linlin(0, 1, angleStart, angleStart + angleSpan) + Pi2) % Pi2
     val theta0 = t * angleSpan + angleStart
 
     val theta = if (flipX) -theta0 else theta0
