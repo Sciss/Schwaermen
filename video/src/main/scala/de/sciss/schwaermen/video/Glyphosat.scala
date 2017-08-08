@@ -123,14 +123,24 @@ object Glyphosat {
    */
 
   final class CharVertex(val info: CharInfo, val wordIndex: Int) {
+    @volatile
     var  x: Float = 0f  // position x
+
+    @volatile
     var  y: Float = 0f  // position y
+
+    @volatile
     var vx: Float = 0f  // velocity x
+
+    @volatile
     var vy: Float = 0f  // velocity y
 //    var ax: Float = 0f  // acceleration x
 //    var ay: Float = 0f  // acceleration y
 
+    @volatile
     var succ: CharVertex = _
+
+    @volatile
     var eject: Boolean = false
   }
 }
@@ -140,8 +150,13 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
                               NominalVX: Float, EjectVY: Float) {
 //  private[this] val vertexPool =   ...
 
+  @volatile
   private[this] var _head: CharVertex = _
+
+  @volatile
   private[this] var _last: CharVertex = _
+
+  @volatile
   private[this] var _lastWord: CharVertex = _
 
   private[this] val spaceChar = charShapes(' ')
@@ -154,10 +169,10 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
   private[this] val EjectVYK    = 0.2f
   private[this] val PairRXK     = 0.05f
 //  private[this] val PairXL      = 0.0f // spaceChar.bounds.getWidth.toFloat
-  private[this] val PairLYK     = 0.019f
-  private[this] val PairRYK     = 0.015f
-  private[this] val DragMX      = 1.0f - 0.1f
-  private[this] val DragMY      = 1.0f - 0.1f
+  private[this] val PairLYK     = 0.038f // 0.019f
+  private[this] val PairRYK     = 0.030f // 0.015f
+  private[this] val DragMX      = 1.0f - 0.2f // 0.1f
+  private[this] val DragMY      = 1.0f - 0.2f // 0.1f
 //  private[this] val PairYL      = 0.0f
   private[this] val ScreenWidth = 1024f // 400f
 

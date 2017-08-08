@@ -18,7 +18,7 @@ import java.awt.event.{KeyAdapter, KeyEvent, MouseAdapter, MouseEvent}
 import java.awt.geom.{AffineTransform, Path2D, PathIterator}
 import java.awt.image.BufferedImage
 import java.awt.{Color, Frame, Graphics, GraphicsEnvironment, Point, RenderingHints}
-import javax.swing.Timer
+import java.util.TimerTask
 
 import scala.annotation.switch
 import scala.swing.Swing._
@@ -139,39 +139,44 @@ object View {
       // val strategy = mainWindow.getBufferStrategy
 
       // paintOffScreen()
-      val width  = mainWindow.getWidth
-      val height = mainWindow.getHeight
-      paintFun(OffScreenG, width, height)
+      Swing.onEDT {
+        val width  = mainWindow.getWidth
+        val height = mainWindow.getHeight
+        paintFun(OffScreenG, width, height)
 
-      do {
         do {
-          val g = strategy.getDrawGraphics
-//          if (width == NominalWidth && height == NominalHeight) {
+          do {
+            val g = strategy.getDrawGraphics
+            //          if (width == NominalWidth && height == NominalHeight) {
             g.drawImage(OffScreenImg, 0, 0, NominalWidth, NominalHeight, 0, 0, NominalWidth, NominalHeight, null)
-//          } else {
-//            if (!haveWarnedWinSize) {
-//              warn(s"Full screen window has dimensions $width x $height instead of $NominalWidth x $NominalHeight")
-//              haveWarnedWinSize = true
-//            }
-//            g.drawImage(OffScreenImg, 0, 0, width, height, 0, 0, NominalWidth, NominalHeight, null)
-//            g.dispose()
-//          }
-        } while (strategy.contentsRestored())
-        strategy.show()
-      } while (strategy.contentsLost())
+            //          } else {
+            //            if (!haveWarnedWinSize) {
+            //              warn(s"Full screen window has dimensions $width x $height instead of $NominalWidth x $NominalHeight")
+            //              haveWarnedWinSize = true
+            //            }
+            //            g.drawImage(OffScreenImg, 0, 0, width, height, 0, 0, NominalWidth, NominalHeight, null)
+            //            g.dispose()
+            //          }
+          } while (strategy.contentsRestored())
+          strategy.show()
+        } while (strategy.contentsLost())
 
-      // mainWindow.repaint()
-     tk.sync()
+        // mainWindow.repaint()
+        tk.sync()
+      }
     }
 
     val fpsT    = new Array[Long](11)
     var fpsIdx  = 0
 
-    val t = new Timer(1000 / config.fps, Swing.ActionListener { _ =>
-      tick()
-      fpsT(fpsIdx)  = System.currentTimeMillis()
-      fpsIdx        = (fpsIdx + 1) % 11
-    })
+    var t = Option.empty[java.util.Timer]
+    val tt = new TimerTask {
+      def run(): Unit = {
+        tick()
+        fpsT(fpsIdx)  = System.currentTimeMillis()
+        fpsIdx        = (fpsIdx + 1) % 11
+      }
+    }
     //    t.start()
 
     def ToggleButton(title: String)(fun: Boolean => Unit): ToggleButton =
@@ -182,8 +187,17 @@ object View {
         }
       }
 
+    def startAnim(): Unit = {
+      val dly = 1000 / config.fps
+      val tim = new java.util.Timer("animation")
+      tim.schedule(tt, 0L, dly)
+      t = Some(tim)
+    }
+
     val ggAnim = ToggleButton("Anim") { selected =>
-      if (selected) t.restart() else t.stop()
+      t.foreach(_.cancel())
+      t = None
+      if (selected) startAnim()
     }
     ggAnim.selected = true
 
@@ -252,7 +266,7 @@ object View {
     mainWindow.setCursor(cursor)
 
     mainWindow.requestFocus()
-    t.restart()
+    startAnim()
   }
 
   def quit(): Unit = sys.exit()
@@ -364,7 +378,7 @@ object View {
     val angStep = -0.2 * math.Pi / 180 + Pi2
     //    val tk      = comp.peer.getToolkit
 
-    val t = new Timer(30, Swing.ActionListener { _ =>
+    val t = new javax.swing.Timer(30, Swing.ActionListener { _ =>
       angle = (angle + angStep) % Pi2
       updatePath()
       comp.repaint()
