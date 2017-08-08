@@ -43,24 +43,34 @@ object Main extends MainLike {
         .action { (_, c) => c.copy(disableEnergySaving = false) }
 
       opt[Int] ("fps")
-        .text (s"Nominal fps for text rendering (default ${default.fps}")
-        .validate { v => if (v > 1 && v <= 60) success else failure(s"Must be 1 < fps <= 60") }
+        .text (s"Nominal fps for text rendering (default ${default.fps})")
+        .validate { v => if (v > 1 && v <= 60) success else failure(s"Must be 1 < x <= 60") }
         .action { (v, c) => c.copy(fps = v) }
 
       opt[Double] ("font-size")
-        .text (s"Font size for text rendering (default ${default.fontSize}")
-        .validate { v => if (v > 1 && v < 320) success else failure(s"Must be 1 < fps < 320") }
+        .text (s"Font size for text rendering (default ${default.fontSize})")
+        .validate { v => if (v > 1 && v < 320) success else failure(s"Must be 1 < x < 320") }
         .action { (v, c) => c.copy(fontSize = v.toFloat) }
 
       opt[Double] ("text-vx")
-        .text (s"Text horizontal velocity (default ${default.textVX}")
-        .validate { v => if (v > 0.01 && v < 40.0) success else failure(s"Must be 0.01 < fps < 40.0") }
+        .text (s"Text horizontal velocity (default ${default.textVX})")
+        .validate { v => if (v > 0.01 && v < 40.0) success else failure(s"Must be 0.01 < x < 40.0") }
         .action { (v, c) => c.copy(textVX = v.toFloat) }
 
       opt[Double] ("text-eject-vy")
-        .text (s"ext vertical ejection velocity (default ${default.textEjectVY}")
-        .validate { v => if (v > 0.01 && v < 40.0) success else failure(s"Must be 0.01 < fps < 40.0") }
+        .text (s"Text vertical ejection velocity (default ${default.textEjectVY})")
+        .validate { v => if (v > 0.01 && v < 40.0) success else failure(s"Must be 0.01 < x < 40.0") }
         .action { (v, c) => c.copy(textEjectVY = v.toFloat) }
+
+      opt[Double] ("text-pair-lyk")
+        .text (s"Text left pairwise spring constant (default ${default.textPairLYK})")
+        .validate { v => if (v > 0.001 && v < 1.0) success else failure(s"Must be 0.001 < x < 1.0") }
+        .action { (v, c) => c.copy(textPairLYK = v.toFloat) }
+
+      opt[Double] ("text-pair-ryk")
+        .text (s"Text right pairwise spring constant (default ${default.textPairRYK})")
+        .validate { v => if (v > 0.001 && v < 1.0) success else failure(s"Must be 0.001 < x < 1.0") }
+        .action { (v, c) => c.copy(textPairRYK = v.toFloat) }
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
       val host = Network.thisIP()

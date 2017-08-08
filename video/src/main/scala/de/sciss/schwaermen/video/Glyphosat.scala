@@ -85,7 +85,9 @@ object Glyphosat {
       words           = words,
       characters      = characters,
       NominalVX       = -config.textVX,
-      EjectVY         = -config.textEjectVY
+      EjectVY         = -config.textEjectVY,
+      PairLYK         = config.textPairLYK,
+      PairRYK         = config.textPairRYK
     )
   }
 
@@ -147,7 +149,7 @@ object Glyphosat {
 final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
                               charPairSpacing : Map[(Char, Char), Double  ],
                               words: Array[Array[Int]], characters: Array[CharInfo],
-                              NominalVX: Float, EjectVY: Float) {
+                              NominalVX: Float, EjectVY: Float, PairLYK: Float, PairRYK: Float) {
 //  private[this] val vertexPool =   ...
 
   @volatile
@@ -169,8 +171,6 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
   private[this] val EjectVYK    = 0.2f
   private[this] val PairRXK     = 0.05f
 //  private[this] val PairXL      = 0.0f // spaceChar.bounds.getWidth.toFloat
-  private[this] val PairLYK     = 0.038f // 0.019f
-  private[this] val PairRYK     = 0.030f // 0.015f
   private[this] val DragMX      = 1.0f - 0.2f // 0.1f
   private[this] val DragMY      = 1.0f - 0.2f // 0.1f
 //  private[this] val PairYL      = 0.0f

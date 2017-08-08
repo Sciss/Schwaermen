@@ -2,12 +2,10 @@ import com.typesafe.sbt.packager.linux.LinuxPackageMapping
 
 lazy val baseName         = "Schwaermen"
 lazy val baseNameL        = baseName.toLowerCase
-lazy val projectVersion   = "0.1.6-SNAPSHOT"
 
 lazy val baseDescr        = "An art project"
 
 lazy val commonSettings = Seq(
-  version             := projectVersion,
   organization        := "de.sciss",
   homepage            := Some(url(s"https://github.com/Sciss/$baseName")),
   scalaVersion        := "2.12.3",
@@ -31,6 +29,7 @@ lazy val root = Project(id = baseNameL, base = file("."))
 lazy val common = Project(id = s"$baseName-common", base = file("common"))
   .settings(commonSettings)
   .settings(
+    version     := "0.1.6-SNAPSHOT",
     description := s"$baseDescr - common structure",
     libraryDependencies ++= Seq(
       "de.sciss"          %% "fileutil"   % fileUtilVersion,
@@ -50,6 +49,7 @@ lazy val sound = Project(id = soundNameL, base = file("sound"))
   .enablePlugins(JavaAppPackaging, DebianPlugin)
   .settings(commonSettings)
   .settings(
+    version     := "0.1.6-SNAPSHOT",
     description := s"$baseDescr - rpi sound",
     libraryDependencies ++= Seq(
       "de.sciss" %% "soundprocesses" % soundProcessesVersion,
@@ -73,6 +73,7 @@ lazy val video = Project(id = videoNameL, base = file("video"))
   .enablePlugins(JavaAppPackaging, DebianPlugin)
   .settings(commonSettings)
   .settings(
+    version     := "0.1.6-SNAPSHOT",
     description := s"$baseDescr - rpi video",
     libraryDependencies ++= Seq(
       "de.sciss" %% "swingplus" % swingPlusVersion
@@ -91,6 +92,7 @@ lazy val control = Project(id = s"$baseNameL-control", base = file("control"))
   .enablePlugins(BuildInfoPlugin)
   .settings(commonSettings)
   .settings(
+    version     := "0.1.6-SNAPSHOT",
     description := s"$baseDescr - laptop control",
     libraryDependencies ++= Seq(
       "de.sciss" %% "swingplus"  % swingPlusVersion,

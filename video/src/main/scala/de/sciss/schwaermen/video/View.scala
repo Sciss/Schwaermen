@@ -43,9 +43,19 @@ object View {
 
     var clip    = true
 
-    def paintFun(g: Graphics2D, w: Int, h: Int): Unit = {
+    val screen      = GraphicsEnvironment.getLocalGraphicsEnvironment.getDefaultScreenDevice
+    val screenConf  = screen.getDefaultConfiguration
+    val screenB     = screenConf.getBounds
+    val NominalWidth  = 1024 // 800 // 1920
+    val NominalHeight = 1024 // 400 // 1080
+    val screenWidth   = screenB.width
+    val screenHeight  = screenB.height
+    val NominalX      = (screenWidth  - NominalWidth)/2
+    val NominalY      = (screenHeight - NominalHeight)/2
+
+    def paintFun(g: Graphics2D): Unit = {
       g.setColor(Color.black)
-      g.fillRect(0, 0, w, h)
+      g.fillRect(0, 0, screenWidth, screenHeight)
       g.setColor(Color.white)
       g.setRenderingHint(RenderingHints.KEY_ANTIALIASING  , RenderingHints.VALUE_ANTIALIAS_ON )
       g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE  )
@@ -58,19 +68,16 @@ object View {
       val atOrig = g.getTransform
       if (clip) {
 //        g.clipRect(200, 0, 400, h)
-//        g.translate(200, 0)
+        g.translate(NominalX, NominalY)
         gl.render(g)
       } else {
-        g.drawLine(200, 0, 200, h)
-        g.drawLine(1224, 0, 1224, h)
+        g.drawLine(200, 0, 200, screenHeight)
+        g.drawLine(200 + NominalWidth, 0, 200 + NominalWidth, screenHeight)
         g.translate(200, 0)
         gl.render(g)
       }
       g.setTransform(atOrig)
     }
-
-    val NominalWidth  = 1024 // 800 // 1920
-    val NominalHeight = 1024 // 400 // 1080
 
 //    val comp = new Component {
 ////      background = Color.black
@@ -92,20 +99,18 @@ object View {
 
 //    val tk = comp.peer.getToolkit
 
-    val screen      = GraphicsEnvironment.getLocalGraphicsEnvironment.getDefaultScreenDevice
-    val screenConf  = screen.getDefaultConfiguration
     val mainWindow = new Frame(null, screenConf) {
       setUndecorated  (true)
       setResizable    (false)
       // setIgnoreRepaint(true)
 
-      setPreferredSize((NominalWidth, NominalHeight))
+      setPreferredSize((screenWidth, screenHeight))
 
       override def paint(g: Graphics): Unit = {
         super.paint(g)
-        val w = getWidth
-        val h = getHeight
-        paintFun(g.asInstanceOf[Graphics2D], w, h)
+//        val w = getWidth
+//        val h = getHeight
+        paintFun(g.asInstanceOf[Graphics2D])
       }
     }
 
@@ -119,11 +124,11 @@ object View {
 
     val strategy = mainWindow.getBufferStrategy
 
-    val OffScreenImg  = new BufferedImage(NominalWidth, NominalHeight, BufferedImage.TYPE_INT_ARGB)
+    val OffScreenImg  = new BufferedImage(screenWidth, screenHeight, BufferedImage.TYPE_INT_ARGB)
     val OffScreenG    = {
       val res = OffScreenImg.createGraphics()
       res.setColor(Color.black)
-      res.fillRect(0, 0, NominalWidth, NominalHeight)
+      res.fillRect(0, 0, screenWidth, screenHeight)
       res
     }
 
@@ -132,52 +137,42 @@ object View {
 //    def warn(s: String): Unit =
 //      Console.err.println(s"Warning: $s")
 
-    val tk = mainWindow.getToolkit
+    val tk      = mainWindow.getToolkit
+    val fpsT    = new Array[Long](11)
+    var fpsIdx  = 0
+
+    @volatile
+    var swingBusy = false
 
     def tick(): Unit = {
       gl.step()
       // val strategy = mainWindow.getBufferStrategy
 
       // paintOffScreen()
-      Swing.onEDT {
-        val width  = mainWindow.getWidth
-        val height = mainWindow.getHeight
-        paintFun(OffScreenG, width, height)
-
-        do {
-          do {
-            val g = strategy.getDrawGraphics
-            //          if (width == NominalWidth && height == NominalHeight) {
-            g.drawImage(OffScreenImg, 0, 0, NominalWidth, NominalHeight, 0, 0, NominalWidth, NominalHeight, null)
-            //          } else {
-            //            if (!haveWarnedWinSize) {
-            //              warn(s"Full screen window has dimensions $width x $height instead of $NominalWidth x $NominalHeight")
-            //              haveWarnedWinSize = true
-            //            }
-            //            g.drawImage(OffScreenImg, 0, 0, width, height, 0, 0, NominalWidth, NominalHeight, null)
-            //            g.dispose()
-            //          }
-          } while (strategy.contentsRestored())
-          strategy.show()
-        } while (strategy.contentsLost())
-
-        // mainWindow.repaint()
-        tk.sync()
+      if (!swingBusy) {
+        swingBusy = true
+        // Swing.onEDT {
+          try {
+            paintFun(OffScreenG)
+            do {
+              do {
+                val g = strategy.getDrawGraphics
+                g.drawImage(OffScreenImg, 0, 0, screenWidth, screenHeight, 0, 0, screenWidth, screenHeight, null)
+              } while (strategy.contentsRestored())
+              strategy.show()
+            } while (strategy.contentsLost())
+            tk.sync()
+          } finally {
+            swingBusy = false
+          }
+        // }
       }
-    }
 
-    val fpsT    = new Array[Long](11)
-    var fpsIdx  = 0
+      fpsT(fpsIdx)  = System.currentTimeMillis()
+      fpsIdx        = (fpsIdx + 1) % 11
+    }
 
     var t = Option.empty[java.util.Timer]
-    val tt = new TimerTask {
-      def run(): Unit = {
-        tick()
-        fpsT(fpsIdx)  = System.currentTimeMillis()
-        fpsIdx        = (fpsIdx + 1) % 11
-      }
-    }
-    //    t.start()
 
     def ToggleButton(title: String)(fun: Boolean => Unit): ToggleButton =
       new ToggleButton(title) {
@@ -190,6 +185,9 @@ object View {
     def startAnim(): Unit = {
       val dly = 1000 / config.fps
       val tim = new java.util.Timer("animation")
+      val tt  = new TimerTask {
+        def run(): Unit = tick()
+      }
       tim.schedule(tt, 0L, dly)
       t = Some(tim)
     }
@@ -203,8 +201,8 @@ object View {
 
     val ggClip = ToggleButton("Clip") { selected =>
       clip = selected
-      if (selected) mainWindow.setSize(1024, 1024)
-      else          mainWindow.setSize(1224, 1024)
+//      if (selected) mainWindow.setSize(1024, 1024)
+//      else          mainWindow.setSize(1224, 1024)
     }
     ggClip.selected = clip
 
@@ -265,6 +263,7 @@ object View {
     val cursor = mainWindow.getToolkit.createCustomCursor(cursorImg, new Point(0, 0), "blank")
     mainWindow.setCursor(cursor)
 
+    screen.setFullScreenWindow(mainWindow)
     mainWindow.requestFocus()
     startAnim()
   }
