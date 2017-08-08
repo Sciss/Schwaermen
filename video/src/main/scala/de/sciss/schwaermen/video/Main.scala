@@ -76,14 +76,6 @@ object Main extends MainLike {
       val host = Network.thisIP()
       if (!config.isLaptop) {
         Network.compareIP(host)
-//        // cf. https://github.com/Pi4J/pi4j/issues/238
-//        try {
-//          GpioUtil.enableNonPrivilegedAccess()
-//        } catch {
-//          case NonFatal(ex) =>
-//            Console.err.println("Could not enable GPIO access")
-//            ex.printStackTrace()
-//        }
       }
       checkConfig(config)
       run(host, config)
@@ -94,7 +86,7 @@ object Main extends MainLike {
     /* val c = */ OSCClient(config, host)
     // new Heartbeat(c)
     Swing.onEDT {
-      View.run(config)
+      new TextView(config).run()
     }
   }
 }
