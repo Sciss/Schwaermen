@@ -42,7 +42,8 @@ object Glyphosat {
     _condensedFont.deriveFont(size)
   }
 
-  def apply(text: String, font: Font): Glyphosat = {
+  def apply(config: Config, text: String): Glyphosat = {
+    val font    = mkFont(config.fontSize)
     val tmpImg  = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB)
     val tmpG    = tmpImg.createGraphics()
     val fm      = tmpG.getFontMetrics(font)
@@ -82,7 +83,9 @@ object Glyphosat {
       charShapes      = charShapes,
       charPairSpacing = charPairSpacing,
       words           = words,
-      characters      = characters
+      characters      = characters,
+      NominalVX       = -config.textVX,
+      EjectVY         = -config.textEjectVY
     )
   }
 
@@ -133,20 +136,21 @@ object Glyphosat {
 }
 final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
                               charPairSpacing : Map[(Char, Char), Double  ],
-                              words: Array[Array[Int]], characters: Array[CharInfo]) {
+                              words: Array[Array[Int]], characters: Array[CharInfo],
+                              NominalVX: Float, EjectVY: Float) {
+//  private[this] val vertexPool =   ...
+
   private[this] var _head: CharVertex = _
   private[this] var _last: CharVertex = _
   private[this] var _lastWord: CharVertex = _
 
   private[this] val spaceChar = charShapes(' ')
 
-  private[this] val NominalY    = 80f // 16f
+  private[this] val NominalY    = 512f // 80f // 16f
   private[this] val NominalYK   = 0.01f
-  private[this] val NominalVX   = -1.5f
   private[this] val NominalVXK  = 0.1f
   private[this] val PairLXK     = 0.15f
   private[this] val EjectXK     = 0.01f
-  private[this] val EjectVY     = -2.5f
   private[this] val EjectVYK    = 0.2f
   private[this] val PairRXK     = 0.05f
 //  private[this] val PairXL      = 0.0f // spaceChar.bounds.getWidth.toFloat
@@ -155,7 +159,7 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
   private[this] val DragMX      = 1.0f - 0.1f
   private[this] val DragMY      = 1.0f - 0.1f
 //  private[this] val PairYL      = 0.0f
-  private[this] val ScreenWidth = 400f
+  private[this] val ScreenWidth = 1024f // 400f
 
   def head    : CharVertex = _head
   def last    : CharVertex = _last
@@ -169,13 +173,14 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
     val v0    = new CharVertex(ch0, wordIndex = wordIndex) // XXX TODO --- could avoid allocation
     var pred  = pred0
     if (pred == null) {
-      _head      = v0
-      v0.x       = ScreenWidth
-      v0.y       = NominalY
+      _head     = v0
+      v0.x      = ScreenWidth
+      v0.y      = NominalY
     } else {
       pred.succ = v0
-      v0.x       = math.max(ScreenWidth, pred.x + pred.info.right)
-      v0.y       = pred.y
+      v0.x      = math.max(ScreenWidth, pred.x + pred.info.right)
+      v0.y      = pred.y
+      v0.vy     = pred.vy
     }
     var wi = 1
     pred = v0
@@ -186,6 +191,7 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
       v.x       = pred.x + pred.info.right
       // v.x    = math.max(-100, math.min(v.x))
       v.y       = pred.y
+      v.vy      = pred.vy
       pred      = v
       wi       += 1
     }

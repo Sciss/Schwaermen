@@ -7,6 +7,10 @@ final case class Config(
                          baseDir            : File    = userHome/"Documents"/"projects"/"Schwaermen",
                          dumpOSC            : Boolean = false,
                          isLaptop           : Boolean = false,
-                         disableEnergySaving: Boolean  = true
+                         disableEnergySaving: Boolean = true,
+                         fps                : Int     = 16,   /* bloody Pi can't do more than this */
+                         fontSize           : Float   = 72f,
+                         textVX             : Float   = 3f,
+                         textEjectVY        : Float   = 5f
                        )
   extends ConfigLike

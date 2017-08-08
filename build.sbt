@@ -2,7 +2,7 @@ import com.typesafe.sbt.packager.linux.LinuxPackageMapping
 
 lazy val baseName         = "Schwaermen"
 lazy val baseNameL        = baseName.toLowerCase
-lazy val projectVersion   = "0.1.5-SNAPSHOT"
+lazy val projectVersion   = "0.1.6-SNAPSHOT"
 
 lazy val baseDescr        = "An art project"
 

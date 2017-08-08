@@ -70,7 +70,7 @@ class MainFrame(c: OSCClient) {
   private val columns: Array[Column] = Array(
     Column( 0, "Pos"    , 64,  64,  64, _.pos     , Some(RightAlignedRenderer), Some(Ordering.Int)),
     Column( 1, "Id"     , 64,  64,  64, _.dot     , Some(RightAlignedRenderer), Some(Ordering.Int)),
-    Column( 2, "Version", 64, 320, 320, _.version , None, None),
+    Column( 2, "Version", 64, 360, 360, _.version , None, None),
     Column( 3, "Update" , 74,  74,  74, _.update  , Some(AmountRenderer)      , Some(Ordering.Double))
   )
 
@@ -172,8 +172,9 @@ class MainFrame(c: OSCClient) {
   private[this] val ggUpdate = Button("Update Software...") {
     val instances = selection
     if (instances.nonEmpty) {
+      val isSound = instances.head.version.contains("sound")
       val dir = lastUpdate.flatMap(_.parentOption).getOrElse {
-        userHome / "Documents" / "devel" / "Schwaermen" / "sound" / "target"
+        userHome / "Documents" / "devel" / "Schwaermen" / (if (isSound) "sound" else "video") / "target"
       }
       val candidates  = dir.children(_.ext == "deb")
       // this also works for `-SNAPSHOT_all.deb` vs. `_all.deb`

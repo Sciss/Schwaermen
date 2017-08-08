@@ -1,5 +1,5 @@
 /*
- *  TestRotation.scala
+ *  View.scala
  *  (Schwaermen)
  *
  *  Copyright (c) 2017 Hanns Holger Rutz. All rights reserved.
@@ -25,7 +25,7 @@ import scala.swing.Swing._
 import scala.swing.event.ButtonClicked
 import scala.swing.{Button, Component, FlowPanel, Graphics2D, MainFrame, Swing, ToggleButton}
 
-object TestRotation {
+object View {
   def loadText(): String = {
 //    val url = getClass.getClassLoader.getResource("/de/sciss/schwaermen/text1.txt")
 //    val is  = getClass.getClassLoader.getResourceAsStream("/de/sciss/schwaermen/text1.txt")
@@ -37,10 +37,9 @@ object TestRotation {
     Util.readTextResource("text1.txt")
   }
 
-  def run(): Unit = {
+  def run(config: Config): Unit = {
     val text    = loadText()
-    val font    = Glyphosat.mkFont(64f)
-    val gl      = Glyphosat(text, font)
+    val gl      = Glyphosat(config, text)
 
     var clip    = true
 
@@ -58,35 +57,38 @@ object TestRotation {
       //        g.scale(scale, scale)
       val atOrig = g.getTransform
       if (clip) {
-        g.clipRect(200, 0, 400, h)
-        g.translate(200, 0)
+//        g.clipRect(200, 0, 400, h)
+//        g.translate(200, 0)
         gl.render(g)
       } else {
         g.drawLine(200, 0, 200, h)
-        g.drawLine(600, 0, 600, h)
+        g.drawLine(1224, 0, 1224, h)
         g.translate(200, 0)
         gl.render(g)
       }
       g.setTransform(atOrig)
     }
 
-    val comp = new Component {
-//      background = Color.black
-//      foreground = Color.white
-      opaque     = true
+    val NominalWidth  = 1024 // 800 // 1920
+    val NominalHeight = 1024 // 400 // 1080
 
-      preferredSize = (800, 400)
-
-      override protected def paintComponent(g: Graphics2D): Unit = {
-        super.paintComponent(g)
-        val w = peer.getWidth
-        val h = peer.getHeight
-//        g.setColor(background)
-//        g.fillRect(0, 0, w, h)
-//        g.setColor(foreground)
-        paintFun(g, w, h)
-      }
-    }
+//    val comp = new Component {
+////      background = Color.black
+////      foreground = Color.white
+//      opaque     = true
+//
+//      preferredSize = (NominalWidth, NominalHeight)
+//
+//      override protected def paintComponent(g: Graphics2D): Unit = {
+//        super.paintComponent(g)
+//        val w = peer.getWidth
+//        val h = peer.getHeight
+////        g.setColor(background)
+////        g.fillRect(0, 0, w, h)
+////        g.setColor(foreground)
+//        paintFun(g, w, h)
+//      }
+//    }
 
 //    val tk = comp.peer.getToolkit
 
@@ -97,7 +99,7 @@ object TestRotation {
       setResizable    (false)
       // setIgnoreRepaint(true)
 
-      setPreferredSize(comp.preferredSize)
+      setPreferredSize((NominalWidth, NominalHeight))
 
       override def paint(g: Graphics): Unit = {
         super.paint(g)
@@ -117,8 +119,6 @@ object TestRotation {
 
     val strategy = mainWindow.getBufferStrategy
 
-    val NominalWidth  = 800 // 1920
-    val NominalHeight = 400 // 1080
     val OffScreenImg  = new BufferedImage(NominalWidth, NominalHeight, BufferedImage.TYPE_INT_ARGB)
     val OffScreenG    = {
       val res = OffScreenImg.createGraphics()
@@ -131,6 +131,8 @@ object TestRotation {
 //
 //    def warn(s: String): Unit =
 //      Console.err.println(s"Warning: $s")
+
+    val tk = mainWindow.getToolkit
 
     def tick(): Unit = {
       gl.step()
@@ -159,10 +161,17 @@ object TestRotation {
       } while (strategy.contentsLost())
 
       // mainWindow.repaint()
-      // tk.sync()
+     tk.sync()
     }
 
-    val t = new Timer(30, Swing.ActionListener { _ => tick() })
+    val fpsT    = new Array[Long](11)
+    var fpsIdx  = 0
+
+    val t = new Timer(1000 / config.fps, Swing.ActionListener { _ =>
+      tick()
+      fpsT(fpsIdx)  = System.currentTimeMillis()
+      fpsIdx        = (fpsIdx + 1) % 11
+    })
     //    t.start()
 
     def ToggleButton(title: String)(fun: Boolean => Unit): ToggleButton =
@@ -178,10 +187,22 @@ object TestRotation {
     }
     ggAnim.selected = true
 
-    val ggClip = ToggleButton("Clip")(clip = _)
+    val ggClip = ToggleButton("Clip") { selected =>
+      clip = selected
+      if (selected) mainWindow.setSize(1024, 1024)
+      else          mainWindow.setSize(1224, 1024)
+    }
     ggClip.selected = clip
 
     val ggTick = Button("Tick")(tick())
+
+    val controlWindow = new MainFrame
+
+    val ggInfo = Button("Info") {
+      val dt  = fpsT((fpsIdx + 10) % 11) - fpsT(fpsIdx)  // millis-per-ten-frames
+      val fps = 10000.0 / dt
+      controlWindow.title = f"$fps%g fps"
+    }
 
     def eject(): Unit = {
       val v = gl.lastWord
@@ -190,9 +211,11 @@ object TestRotation {
 
     val ggEject = Button("Eject")(eject())
 
-    val pBottom = new FlowPanel(ggAnim, ggTick, ggEject, ggClip)
+    val pBottom = new FlowPanel(ggAnim, ggTick, ggEject, ggClip, ggInfo)
 
-    val controlWindow = new MainFrame {
+    {
+      import controlWindow._
+
       contents = pBottom
       //      new BorderPanel {
       //        add(comp    , BorderPanel.Position.Center)
