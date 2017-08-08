@@ -55,7 +55,7 @@ object Glyphosat {
       val gv      = font.createGlyphVector(frc, c.toString)
       val shape   = gv.getOutline
       val bounds  = gv.getLogicalBounds
-      c -> CharInfo(c, shape, bounds)
+      c -> new CharInfo(c, shape, bounds)
     } (breakOut)
 
     val charPairs: Set[(Char, Char)]  = (text: Vec[Char]).mapPairs((a, b) => (a, b))(breakOut): Set[(Char, Char)]
@@ -101,7 +101,7 @@ object Glyphosat {
     res
   }
 
-  private final case class CharInfo(c: Char, shape: Shape, bounds: Rectangle2D) {
+  final class CharInfo(val c: Char, val shape: Shape, val bounds: Rectangle2D) {
     val left  : Float = bounds.getMinX.toFloat
     val right : Float = bounds.getMaxX.toFloat
     val top   : Float = bounds.getMinX.toFloat
@@ -119,7 +119,7 @@ object Glyphosat {
 
    */
 
-  private final class CharVertex(val info: CharInfo, val wordIndex: Int) {
+  final class CharVertex(val info: CharInfo, val wordIndex: Int) {
     var  x: Float = 0f  // position x
     var  y: Float = 0f  // position y
     var vx: Float = 0f  // velocity x
@@ -128,27 +128,40 @@ object Glyphosat {
 //    var ay: Float = 0f  // acceleration y
 
     var succ: CharVertex = _
+    var eject: Boolean = false
   }
 }
 final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
                               charPairSpacing : Map[(Char, Char), Double  ],
                               words: Array[Array[Int]], characters: Array[CharInfo]) {
-  private[this] var head: CharVertex = _
+  private[this] var _head: CharVertex = _
+  private[this] var _last: CharVertex = _
+  private[this] var _lastWord: CharVertex = _
 
   private[this] val spaceChar = charShapes(' ')
 
-  private[this] val NominalY    = 64f // 16f
-  private[this] val NominalYK   = 0.1f
-  private[this] val NominalVX   = -1f
+  private[this] val NominalY    = 80f // 16f
+  private[this] val NominalYK   = 0.01f
+  private[this] val NominalVX   = -1.5f
   private[this] val NominalVXK  = 0.1f
   private[this] val PairLXK     = 0.15f
+  private[this] val EjectXK     = 0.01f
+  private[this] val EjectVY     = -2.5f
+  private[this] val EjectVYK    = 0.2f
   private[this] val PairRXK     = 0.05f
 //  private[this] val PairXL      = 0.0f // spaceChar.bounds.getWidth.toFloat
-  private[this] val PairLYK     = 0.15f
-  private[this] val PairRYK     = 0.05f
-  private[this] val DragM       = 1.0f - 0.1f
+  private[this] val PairLYK     = 0.019f
+  private[this] val PairRYK     = 0.015f
+  private[this] val DragMX      = 1.0f - 0.1f
+  private[this] val DragMY      = 1.0f - 0.1f
 //  private[this] val PairYL      = 0.0f
   private[this] val ScreenWidth = 400f
+
+  def head    : CharVertex = _head
+  def last    : CharVertex = _last
+  def lastWord: CharVertex = _lastWord
+
+  def numWords: Int = words.length
 
   private def popWord(wordIndex: Int, pred0: CharVertex): Unit = {
     val word  = words(wordIndex)
@@ -156,7 +169,7 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
     val v0    = new CharVertex(ch0, wordIndex = wordIndex) // XXX TODO --- could avoid allocation
     var pred  = pred0
     if (pred == null) {
-      head      = v0
+      _head      = v0
       v0.x       = ScreenWidth
       v0.y       = NominalY
     } else {
@@ -171,14 +184,18 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
       val v     = new CharVertex(ch, wordIndex = wordIndex)
       pred.succ = v
       v.x       = pred.x + pred.info.right
+      // v.x    = math.max(-100, math.min(v.x))
       v.y       = pred.y
       pred      = v
       wi       += 1
     }
+
+    _lastWord = v0
+    _last     = pred
   }
 
   def render(g: Graphics2D): Unit = {
-    var curr = head
+    var curr = _head
     var px = 0f
     var py = 0f
     while (curr != null) {
@@ -187,46 +204,52 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
       px = curr.x
       py = curr.y
       curr = curr.succ
-      if (curr == head) sys.error("CYCLIC")
+      // if (curr == _head) sys.error("CYCLIC")
     }
   }
 
   def step(): Unit = {
-    var curr = head
+    var curr = _head
     if (curr == null) {
       popWord(0, null)
-      curr = head
+      curr = _head
     }
 
     // ---- updates velocities ----
 
     curr.vx += (NominalVX - curr.vx) * NominalVXK
     curr.vy += (NominalY  - curr. y) * NominalYK
-    curr.vx *= DragM
-    curr.vy *= DragM
+    curr.vx *= DragMX
+    curr.vy *= DragMY
     var pred = curr
     curr = curr.succ
 
-    var FOO = false
+    var isSym = false
 
     while (curr != null) {
-      val x1 = pred.x + pred.info.right
-      val x2 = curr.x + pred.info.left
-      val y1 = pred.y
       val y2 = curr.y
-      val dx = x1 - x2
-      val dy = y1 - y2
-      val dvx = dx * PairLXK
-      val dvy = dy * PairLYK
-      curr.vx *= DragM
-      curr.vy *= DragM
-      curr.vx += dvx
-      curr.vy += dvy
-      if (FOO) {
-        pred.vx -= dx * PairRXK
-        pred.vy -= dy * PairRYK
+      val x2 = curr.x + pred.info.left
+      curr.vx *= DragMX
+      curr.vy *= DragMY
+      if (curr.eject) {
+        val dx = (ScreenWidth/2) - x2 // XXX TODO --- should take word width into account
+        curr.vx += dx * EjectXK                       // (NominalVX - curr.vx) * NominalVXK
+        curr.vy += (EjectVY - curr.vy) * EjectVYK
+        isSym = true
+
       } else {
-        FOO = true
+        val x1 = pred.x + pred.info.right
+        val y1 = pred.y
+        val dx = x1 - x2
+        val dy = y1 - y2
+        curr.vx += dx * PairLXK
+        curr.vy += dy * PairLYK
+        if (isSym) {
+          pred.vx -= dx * PairRXK
+          pred.vy -= dy * PairRYK
+        } else {
+          isSym = true
+        }
       }
       pred = curr
       curr = curr.succ
@@ -234,23 +257,29 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
 
     // ---- update positions ----
 
-    curr = head
+    curr = _head
     pred = curr
     var allOut  = true
     var predIdx = -1
     while (curr != null) {
+      if      (curr.vx < -4f) curr.vx = -4f
+      else if (curr.vx >  4f) curr.vx =  4f
+
+      if      (curr.vy < -4f) curr.vy = -4f
+      else if (curr.vy >  4f) curr.vy =  4f
+
       curr.x += curr.vx
       curr.y += curr.vy
       if (allOut) {
         if (curr.wordIndex != predIdx) {
-          head    = curr // drop previous head
+          _head   = curr // drop previous head
           predIdx = curr.wordIndex
         }
         val currOut = curr.x + curr.info.right <= 0 || curr.y + curr.info.bottom <= 0
         allOut &= currOut
       }
-      pred    = curr
-      curr    = curr.succ
+      pred = curr
+      curr = curr.succ
     }
 
     if (pred.x + pred.info.right < ScreenWidth) {
