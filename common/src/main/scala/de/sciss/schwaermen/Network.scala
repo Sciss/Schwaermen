@@ -95,7 +95,7 @@ object Network {
       host
     } { desiredIP =>
       println(s"This computer has MAC address $macAddress and IP $host")
-      if (desiredIP != host) {
+      if (desiredIP != host && host != "127.0.0.1" && host != "127.0.1.1") {
         val confPath = "/etc/dhcpcd.conf"
         println(s"Designated IP is $desiredIP. Updating /etc/dhcpcd.conf...")
         val header = "interface eth0"
@@ -111,7 +111,7 @@ object Network {
              |""".stripMargin
         val contents = s"$init\n$tail"
 
-        val fOut  = new FileOutputStream(confPath)
+        val fOut = new FileOutputStream(confPath)
         fOut.write(contents.getBytes("UTF-8"))
         fOut.close()
         println("Rebooting...")
