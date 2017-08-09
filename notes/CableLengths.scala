@@ -1,4 +1,4 @@
-def totalLen(maxLen: Double, numSpk: Int, spc0: Double = 0.0): Double = {
+def totalLen(maxLen: Double, numSpk: Int, spc0: Double, init: Double): Double = {
   val spc = if (spc0 == 0) {
     val x = maxLen / numSpk
     println(s"spc = $x")
@@ -9,7 +9,7 @@ def totalLen(maxLen: Double, numSpk: Int, spc0: Double = 0.0): Double = {
     if (rem == 0) res
     else loop(rem - 1, res + rem * spc)
     
-  loop(numSpk, res = 0.0)
+  loop(numSpk, res = init /* 0.0 */)
 }
 
 val arm1 = 270 + 290 + 330               // 890
@@ -30,8 +30,16 @@ val numSpk3m = 37
 
 assert(numSpk1m+numSpk2m+numSpk3m == totalNumSpk)
 
-val totalLen1 = totalLen(arm1, numSpk1m, spc0 = 27) // 27cm
-val totalLen2 = totalLen(arm2, numSpk2m, spc0 = 27) // 27cm
-val totalLen3 = totalLen(arm3, numSpk3m, spc0 = 27) // 27.5cm
+val totalLen1 = totalLen(arm1, numSpk1m, spc0 = 27, init = 0) // 27cm
+val totalLen2 = totalLen(arm2, numSpk2m, spc0 = 27, init = 0) // 27cm
+val totalLen3 = totalLen(arm3, numSpk3m, spc0 = 27, init = 0) // 27.5cm
 val totalTotal = totalLen1 + totalLen2 + totalLen3
 val totalMetres = (totalTotal / 100).ceil.toInt  // 542 metres
+
+///////////
+
+val totalLen1 = totalLen(arm1, numSpk1m, spc0 = 28, init = 28)
+val totalLen2 = totalLen(arm2, numSpk2m, spc0 = 28, init = 28)
+val totalLen3 = totalLen(arm3, numSpk3m, spc0 = 28, init = 28)=
+val totalTotal = totalLen1 + totalLen2 + totalLen3
+val totalMetres = (totalTotal / 100).ceil.toInt  // 563 metres
