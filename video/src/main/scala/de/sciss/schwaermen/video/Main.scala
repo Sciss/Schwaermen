@@ -16,7 +16,7 @@ package video
 
 import de.sciss.file.File
 
-import scala.swing.Swing
+import scala.util.Random
 
 object Main extends MainLike {
   protected val pkgLast = "video"
@@ -71,6 +71,10 @@ object Main extends MainLike {
         .text (s"Text right pairwise spring constant (default ${default.textPairRYK})")
         .validate { v => if (v > 0.001 && v < 1.0) success else failure(s"Must be 0.001 < x < 1.0") }
         .action { (v, c) => c.copy(textPairRYK = v.toFloat) }
+
+      opt[Long] ("seed")
+        .text (s"Seed for the RNG or -1 to use system clock (default ${default.randomSeed})")
+        .action { (v, c) => c.copy(randomSeed = v) }
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
       val host = Network.thisIP()
@@ -83,10 +87,9 @@ object Main extends MainLike {
   }
 
   def run(host: String, config: Config): Unit = {
-    /* val c = */ OSCClient(config, host)
+    val c = OSCClient(config, host)
+    val r = new Random(config.randomSeed)
     // new Heartbeat(c)
-    Swing.onEDT {
-      new TextView(config).start()
-    }
+    new TextState(c, r).init()
   }
 }

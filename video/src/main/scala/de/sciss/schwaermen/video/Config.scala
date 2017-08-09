@@ -8,6 +8,7 @@ final case class Config(
                          dumpOSC            : Boolean = false,
                          isLaptop           : Boolean = false,
                          disableEnergySaving: Boolean = true,
+                         randomSeed         : Long    = -1L,
                          fps                : Int     = 18,   /* bloody Pi can't do more than this */
                          fontSize           : Float   = 72f,
                          textVX             : Float   = 8f,

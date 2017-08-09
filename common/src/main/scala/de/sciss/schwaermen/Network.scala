@@ -34,6 +34,7 @@ object Network {
     "b8:27:eb:c5:19:a6" -> "192.168.0.18",
     "b8:27:eb:36:2e:72" -> "192.168.0.19",
     "b8:27:eb:36:50:58" -> "192.168.0.22",
+    // ??? -> "192.168.0.23",
     "b8:27:eb:85:e5:30" -> "192.168.0.24",
     "b8:27:eb:61:90:b9" -> "192.168.0.25"
   )
@@ -42,8 +43,11 @@ object Network {
   final val soundDotSeq: Vector[Int] =
     Vector(23, 25, 13, 17, 18, 12, 22, 24, 11)
 
+  /** 'left-to-right' facing the window side, i.e.
+    * back wall, middle, entrance wall
+    */
   final val videoDotSeq: Vector[Int] =
-    Vector(15)
+    Vector(15, 16, 19)
 
   final val dotSeqCtl: Vector[Int] = (soundDotSeq ++ videoDotSeq) :+ 77
 

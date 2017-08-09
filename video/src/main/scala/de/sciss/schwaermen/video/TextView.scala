@@ -23,14 +23,7 @@ import scala.swing.Swing._
 import scala.swing.event.ButtonClicked
 import scala.swing.{Button, FlowPanel, Graphics2D, MainFrame, ToggleButton}
 
-final class TextView(config: Config) {
-  def loadText(): String = {
-    Util.readTextResource("text1.txt")
-  }
-
-  private[this] val text          = loadText()
-  private[this] val gl            = Glyphosat(config, text)
-
+final class TextView(config: Config, gl: Glyphosat) {
   private[this] var clip          = true
 
   private[this] val screen        = GraphicsEnvironment.getLocalGraphicsEnvironment.getDefaultScreenDevice
@@ -203,8 +196,4 @@ final class TextView(config: Config) {
   }
 
   def quit(): Unit = sys.exit()
-
-  def initiateEject(): Unit = {
-    ???
-  }
 }
