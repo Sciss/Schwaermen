@@ -86,7 +86,7 @@ object Main extends MainLike {
     /* val c = */ OSCClient(config, host)
     // new Heartbeat(c)
     Swing.onEDT {
-      new TextView(config).run()
+      new TextView(config).start()
     }
   }
 }

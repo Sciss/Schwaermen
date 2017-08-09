@@ -20,7 +20,7 @@ import java.awt.{Font, Shape}
 
 import de.sciss.kollflitz
 import de.sciss.kollflitz.Vec
-import de.sciss.schwaermen.video.Glyphosat.{CharInfo, CharVertex}
+import de.sciss.schwaermen.video.Glyphosat.{CharInfo, CharVertex, Word}
 
 import scala.collection.{Map, Set, breakOut}
 import scala.swing.Graphics2D
@@ -75,8 +75,14 @@ object Glyphosat {
 
     val characters: Array[CharInfo]   = charShapes.values.toArray.sortBy(_.c)
     val charIdxMap: Map[Char, Int]    = characters.iterator.map(_.c).zipWithIndex.toMap
-    val words: Array[Array[Int]]      = textA.split(" ").map { s =>
-      s.map(charIdxMap)(breakOut): Array[Int]
+    val words: Array[Word]            = textA.split(" ").map { s =>
+      var width = 0.0
+      val charIndices: Array[Int] = s.map { c =>
+        val ci = charIdxMap(c)
+        width += characters(ci).bounds.getWidth
+        ci
+      } (breakOut)
+      new Word(width.toFloat, charIndices)
     }
 
     new Glyphosat(
@@ -145,10 +151,14 @@ object Glyphosat {
     @volatile
     var eject: Boolean = false
   }
+
+  final class Word(val width: Float, val charIndices: Array[Int]) {
+    val length: Int = charIndices.length
+  }
 }
 final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
                               charPairSpacing : Map[(Char, Char), Double  ],
-                              words: Array[Array[Int]], characters: Array[CharInfo],
+                              words: Array[Word], characters: Array[CharInfo],
                               NominalVX: Float, EjectVY: Float, PairLYK: Float, PairRYK: Float) {
 //  private[this] val vertexPool =   ...
 
@@ -184,7 +194,7 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
 
   private def popWord(wordIndex: Int, pred0: CharVertex): Unit = {
     val word  = words(wordIndex)
-    val ch0   = characters(word(0))
+    val ch0   = characters(word.charIndices(0))
     val v0    = new CharVertex(ch0, wordIndex = wordIndex) // XXX TODO --- could avoid allocation
     var pred  = pred0
     if (pred == null) {
@@ -200,7 +210,7 @@ final class Glyphosat private(charShapes      : Map[Char        , CharInfo],
     var wi = 1
     pred = v0
     while (wi <= word.length) {
-      val ch    = if (wi < word.length) characters(word(wi)) else spaceChar
+      val ch    = if (wi < word.length) characters(word.charIndices(wi)) else spaceChar
       val v     = new CharVertex(ch, wordIndex = wordIndex)
       pred.succ = v
       v.x       = pred.x + pred.info.right

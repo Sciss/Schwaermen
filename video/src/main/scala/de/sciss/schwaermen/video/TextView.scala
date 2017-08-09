@@ -198,125 +198,13 @@ final class TextView(config: Config) {
   screen.setFullScreenWindow(mainWindow)
   mainWindow.requestFocus()
 
-  def run(): Unit = {
+  def start(): Unit = {
     startAnim()
   }
 
   def quit(): Unit = sys.exit()
 
-//  def runOLD(): Unit = {
-//    val text    = loadText()
-//
-//    val tmpImg  = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB)
-//    val tmpG    = tmpImg.createGraphics()
-//    val font    = Glyphosat.mkFont(64f)
-//    val fm      = tmpG.getFontMetrics(font)
-//    val frc     = fm.getFontRenderContext
-//    val gv      = font.createGlyphVector(frc, text.take(32))
-//    val shape   = gv.getOutline
-//    val rectIn  = shape.getBounds
-//
-//    val extentIn = math.max(rectIn.width, rectIn.height) * 0.33 // 0.2515
-//
-//    val p = new PolarTransform(inWidth = extentIn /* rectIn.width */, inHeight = extentIn /* rectIn.height */,
-//      innerRadius = 0.0, angleStart = 0.0, angleSpan = math.Pi * 0.5,
-//      cx = extentIn * 0.5 /* rectIn.width */ * 0.5 /* rectIn.getCenterX */,
-//      cy = extentIn * 0.5 /* rectIn.height */ * 0.5 /* rectIn.getCenterY */, flipX = true, flipY = true)
-//
-//    val arr   = new Array[Double](6)
-//    val path  = new Path2D.Double()
-//    var angle = 0.0
-//
-//    def updatePath(): Unit = {
-//      path.reset()
-//      p.angleStart = angle
-//      val it    = shape.getPathIterator(AffineTransform.getTranslateInstance(-rectIn.x, -rectIn.y))
-//
-//      while (!it.isDone) {
-//        val tpe = it.currentSegment(arr)
-//        (tpe: @switch) match {
-//          case PathIterator.SEG_MOVETO  =>
-//            p(arr, 0)
-//            path.moveTo(arr(0), arr(1))
-//
-//          case PathIterator.SEG_LINETO  =>
-//            p(arr, 0)
-//            path.lineTo(arr(0), arr(1))
-//
-//          case PathIterator.SEG_QUADTO  =>
-//            p(arr, 0)
-//            p(arr, 2)
-//            path.quadTo(arr(0), arr(1), arr(2), arr(3))
-//
-//          case PathIterator.SEG_CUBICTO =>
-//            p(arr, 0)
-//            p(arr, 2)
-//            p(arr, 4)
-//            path.curveTo(arr(0), arr(1), arr(2), arr(3), arr(4), arr(5))
-//
-//          case PathIterator.SEG_CLOSE   =>
-//            path.closePath()
-//        }
-//        it.next()
-//      }
-//    }
-//
-//    updatePath()
-//    val rectOut = path.getBounds
-//    //    println(rectOut)
-//
-//    val comp = new Component {
-//      background = Color.black
-//      foreground = Color.white
-//      opaque     = true
-//
-//      preferredSize = {
-//        val d = rectOut.getSize
-//        d.width  += 8
-//        d.height += 8
-//        d.width   = math.min(1290, d.width)
-//        d.height  = math.min(1080, d.height)
-//        d
-//      }
-//
-//      override protected def paintComponent(g: Graphics2D): Unit = {
-//        super.paintComponent(g)
-//        val w = peer.getWidth
-//        val h = peer.getHeight
-//        g.setColor(background)
-//        g.fillRect(0, 0, w, h)
-//        g.setColor(foreground)
-//        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING  , RenderingHints.VALUE_ANTIALIAS_ON )
-//        g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE  )
-//
-//        //          val sx = w.toDouble / rectOut.width
-//        //          val sy = h.toDouble / rectOut.height
-//        val sx = (w - 8).toDouble / rectOut.getMaxX
-//        val sy = (h - 8).toDouble / rectOut.getMaxY
-//        val scale = math.min(sx, sy)
-//        g.translate(4, 4)
-//        g.scale(scale, scale)
-//        //          g.translate(4 - rectOut.x , 4 - rectOut.y)
-//        g.fill(path)
-//      }
-//    }
-//
-//    new MainFrame {
-//      contents = comp
-//      pack().centerOnScreen()
-//      open()
-//    }
-//
-//    val Pi2     = math.Pi * 2
-//    val angStep = -0.2 * math.Pi / 180 + Pi2
-//    //    val tk      = comp.peer.getToolkit
-//
-//    val t = new javax.swing.Timer(30, Swing.ActionListener { _ =>
-//      angle = (angle + angStep) % Pi2
-//      updatePath()
-//      comp.repaint()
-//      // tk.sync()
-//    })
-//    t.start()
-//  }
+  def initiateEject(): Unit = {
+    ???
+  }
 }
