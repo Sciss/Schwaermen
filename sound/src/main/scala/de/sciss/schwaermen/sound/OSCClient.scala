@@ -37,8 +37,8 @@ object OSCClient {
 
 }
 /** Undirected pair of transmitter and receiver, sharing the same datagram channel. */
-final class OSCClient(override val config: Config, val dot: Int, val tx: UDP.Transmitter.Undirected,
-                      val rx: UDP.Receiver.Undirected) extends OSCClientLike {
+final class OSCClient(override val config: Config, val dot: Int, val transmitter: UDP.Transmitter.Undirected,
+                      val receiver: UDP.Receiver.Undirected) extends OSCClientLike {
   val relay: RelayPins  = RelayPins.map(dot)
 
   override def main: Main.type = Main
@@ -47,19 +47,19 @@ final class OSCClient(override val config: Config, val dot: Int, val tx: UDP.Tra
     case osc.Message("/test-pin-mode") =>
       try {
         relay.bothPins
-        tx.send(osc.Message("/done", "test-pin-mode"), sender)
+        transmitter.send(osc.Message("/done", "test-pin-mode"), sender)
       } catch {
         case NonFatal(ex) =>
-          tx.send(osc.Message("/fail", "test-pin-mode", ex.toString), sender)
+          transmitter.send(osc.Message("/fail", "test-pin-mode", ex.toString), sender)
       }
 
     case osc.Message("/test-channel", ch: Int) =>
       try {
         relay.selectChannel(ch)
-        tx.send(osc.Message("/done", "test-channel", ch), sender)
+        transmitter.send(osc.Message("/done", "test-channel", ch), sender)
       } catch {
         case NonFatal(ex) =>
-          tx.send(osc.Message("/fail", "test-channel", ch, ex.toString), sender)
+          transmitter.send(osc.Message("/fail", "test-channel", ch, ex.toString), sender)
       }
 
     case Network.oscHeart =>

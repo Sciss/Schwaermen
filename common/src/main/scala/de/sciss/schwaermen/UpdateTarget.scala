@@ -27,7 +27,7 @@ final class UpdateTarget(val uid: Int, c: OSCClientLike, val sender: SocketAddre
   private[this] val ch    = raf.getChannel
 
   private def reply(p: osc.Packet): Unit =
-    c.tx.send(p, sender)
+    c.transmitter.send(p, sender)
 
   def begin(): Unit = {
     require(offset == 0L)

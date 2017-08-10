@@ -58,6 +58,9 @@ final class TextScene(c: OSCClient, r: Random) extends Scene.Text {
 
   private def startInitiative()(implicit tx: InTxn): Unit = {
     idleTask() = None
+    if (stateRef() == Idle) {
+
+    }
   }
 
   def init()(implicit tx: InTxn): Unit = {

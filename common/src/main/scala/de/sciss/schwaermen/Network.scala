@@ -18,6 +18,7 @@ import java.net.{InetAddress, InetSocketAddress, SocketAddress}
 import java.nio.ByteBuffer
 
 import de.sciss.file.file
+import de.sciss.kollflitz.Vec
 import de.sciss.osc
 
 object Network {
@@ -40,16 +41,16 @@ object Network {
   )
 
   /** 'bottom up', i.e. left arm (outside-to-inside), middle arm, right arm */
-  final val soundDotSeq: Vector[Int] =
+  final val soundDotSeq: Vec[Int] =
     Vector(23, 25, 13, 17, 18, 12, 22, 24, 11)
 
   /** 'left-to-right' facing the window side, i.e.
     * back wall, middle, entrance wall
     */
-  final val videoDotSeq: Vector[Int] =
+  final val videoDotSeq: Vec[Int] =
     Vector(15, 16, 19)
 
-  final val dotSeqCtl: Vector[Int] = (soundDotSeq ++ videoDotSeq) :+ 77
+  final val dotSeqCtl: Vec[Int] = (soundDotSeq ++ videoDotSeq) :+ 77
 
   final val ClientPort = 57120
 
@@ -58,11 +59,13 @@ object Network {
     new InetSocketAddress(addr, ClientPort)
   }
 
-  final val socketSeq   : Vector[SocketAddress] = soundDotSeq    .map(mkSocket)
-  final val socketSeqCtl: Vector[SocketAddress] = dotSeqCtl .map(mkSocket)
+  final val soundSocketSeq  : Vec[SocketAddress]   = soundDotSeq .map(mkSocket)
+  final val videoSocketSeq  : Vec[SocketAddress]   = videoDotSeq .map(mkSocket)
 
-  final val dotToSocketMap: Map[Int, SocketAddress] = (dotSeqCtl zip socketSeqCtl).toMap
-  final val socketToDotMap: Map[SocketAddress, Int] = dotToSocketMap.map(_.swap)
+  final val socketSeqCtl    : Vec[SocketAddress]   = dotSeqCtl   .map(mkSocket)
+
+  final val dotToSocketMap  : Map[Int, SocketAddress] = (dotSeqCtl zip socketSeqCtl).toMap
+  final val socketToDotMap  : Map[SocketAddress, Int] = dotToSocketMap.map(_.swap)
 
   final val dotToSeqMap: Map[Int, Int] = soundDotSeq.zipWithIndex.toMap
 
