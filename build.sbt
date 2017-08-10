@@ -21,6 +21,7 @@ lazy val scalaOSCVersion        = "1.1.5"
 lazy val scoptVersion           = "3.6.0"
 lazy val soundProcessesVersion  = "3.13.0"
 lazy val swingPlusVersion       = "0.2.4"
+lazy val scalaSTMVersion        = "0.8"
 
 lazy val root = Project(id = baseNameL, base = file("."))
   .aggregate(common, sound, control)
@@ -76,7 +77,8 @@ lazy val video = Project(id = videoNameL, base = file("video"))
     version     := "0.1.6-SNAPSHOT",
     description := s"$baseDescr - rpi video",
     libraryDependencies ++= Seq(
-      "de.sciss" %% "swingplus" % swingPlusVersion
+      "de.sciss"      %% "swingplus" % swingPlusVersion,
+      "org.scala-stm" %% "scala-stm" % scalaSTMVersion
     ),
     buildInfoPackage := "de.sciss.schwaermen.video",
     buildInfoKeys := Seq(name, organization, version, scalaVersion, description,

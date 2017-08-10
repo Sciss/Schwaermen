@@ -16,6 +16,7 @@ package video
 
 import de.sciss.file.File
 
+import scala.concurrent.stm.atomic
 import scala.util.Random
 
 object Main extends MainLike {
@@ -90,6 +91,9 @@ object Main extends MainLike {
     val c = OSCClient(config, host)
     val r = new Random(config.randomSeed)
     // new Heartbeat(c)
-    new TextState(c, r).init()
+    val textScene = new TextScene(c, r)
+    atomic { implicit tx =>
+      textScene.init()
+    }
   }
 }

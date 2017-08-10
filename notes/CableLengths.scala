@@ -43,3 +43,9 @@ val totalLen2 = totalLen(arm2, numSpk2m, spc0 = 28, init = 28)
 val totalLen3 = totalLen(arm3, numSpk3m, spc0 = 28, init = 28)=
 val totalTotal = totalLen1 + totalLen2 + totalLen3
 val totalMetres = (totalTotal / 100).ceil.toInt  // 563 metres
+
+//
+val arm2a = 200 + 110 + /* 150 + */ 345 + 220
+val numSpk2a = arm2a / cmPerSpk // 37.72
+val arm2b = 200 + 110
+val numSpk2b = arm2b / cmPerSpk // 37.72

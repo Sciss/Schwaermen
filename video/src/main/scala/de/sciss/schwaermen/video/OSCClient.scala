@@ -19,6 +19,8 @@ import java.net.{InetSocketAddress, SocketAddress}
 import de.sciss.osc
 import de.sciss.osc.UDP
 
+import scala.concurrent.stm.InTxn
+
 object OSCClient {
   def apply(config: Config, host: String): OSCClient = {
     val c                 = UDP.Config()
@@ -38,6 +40,11 @@ final class OSCClient(override val config: Config, val dot: Int, val tx: UDP.Tra
                       val rx: UDP.Receiver.Undirected) extends OSCClientLike {
 
   override def main: Main.type = Main
+
+  private[this] val timer = new java.util.Timer("video-timer")
+
+  def schedule(delay: Long)(body: InTxn => Unit)(implicit tx: InTxn): Task =
+    Task(timer, delay)(body)
 
   def oscReceived(p: osc.Packet, sender: SocketAddress): Unit = p match {
     case Network.oscHeart =>

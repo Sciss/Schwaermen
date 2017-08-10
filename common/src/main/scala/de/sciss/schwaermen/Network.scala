@@ -194,4 +194,7 @@ object Network {
   final val oscDumpFilter: osc.Dump.Filter = { p =>
     p.encodedSize(oscCodec) < 1024
   }
+
+  final val TimeOutSeconds: Float = 2.0f
+  final val TimeOutMillis : Long  = (TimeOutSeconds * 1000).toLong
 }
