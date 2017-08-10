@@ -37,7 +37,8 @@ lazy val common = Project(id = s"$baseName-common", base = file("common"))
       "de.sciss"          %% "numbers"    % numbersVersion,
       "de.sciss"          %% "scalaosc"   % scalaOSCVersion,
       "de.sciss"          %% "kollflitz"  % kollFlitzVersion,
-      "com.github.scopt"  %% "scopt"      % scoptVersion
+      "com.github.scopt"  %% "scopt"      % scoptVersion,
+      "org.scala-stm"     %% "scala-stm"  % scalaSTMVersion
     )
   )
 
@@ -77,8 +78,7 @@ lazy val video = Project(id = videoNameL, base = file("video"))
     version     := "0.1.6-SNAPSHOT",
     description := s"$baseDescr - rpi video",
     libraryDependencies ++= Seq(
-      "de.sciss"      %% "swingplus" % swingPlusVersion,
-      "org.scala-stm" %% "scala-stm" % scalaSTMVersion
+      "de.sciss"      %% "swingplus" % swingPlusVersion
     ),
     buildInfoPackage := "de.sciss.schwaermen.video",
     buildInfoKeys := Seq(name, organization, version, scalaVersion, description,

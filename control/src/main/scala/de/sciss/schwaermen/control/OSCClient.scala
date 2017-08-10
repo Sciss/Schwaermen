@@ -46,8 +46,8 @@ object OSCClient {
 final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx: UDP.Receiver.Undirected)
   extends ModelImpl[OSCClient.Update] {
 
-  private[this] val sync = new AnyRef
-  private[this] var _instances = Vector.empty[Status]
+  private[this] val sync        = new AnyRef
+  private[this] var _instances  = Vector.empty[Status]
 
   def instances: Vector[Status] = sync.synchronized(_instances)
 

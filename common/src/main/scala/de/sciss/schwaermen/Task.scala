@@ -12,7 +12,6 @@
  */
 
 package de.sciss.schwaermen
-package video
 
 import java.util.TimerTask
 

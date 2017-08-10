@@ -46,8 +46,8 @@ final class TextScene(c: OSCClient, r: Random) extends Scene.Text {
   private[this] var view: TextView = _
 
   /* Pixels per second */
-  private[this] val textSpeed     : Float = config.textVX * config.fps
-  private[this] val timeOutPixels : Float = textSpeed * Network.TimeOutSeconds
+  private[this] val textSpeed         : Float = config.textVX * config.fps
+  private[this] val pixelsUntilTimeOut: Float = textSpeed * Network.TimeOutSeconds
 
   private[this] val idleTask = Ref(Option.empty[Task])
 
@@ -67,7 +67,7 @@ final class TextScene(c: OSCClient, r: Random) extends Scene.Text {
     Swing.onEDT(view.start())
     val idleDur   = r.nextFloat().linlin(0f, 1f, config.textMinDur, config.textMaxDur)
     val idleDurM  = (idleDur * 1000).toLong
-    val task      = c.schedule(idleDurM)(tx => startInitiative()(tx))
+    val task      = c.scheduleTxn(idleDurM)(tx => startInitiative()(tx))
     idleTask.swap(Some(task)).foreach(_.cancel())
   }
 }
