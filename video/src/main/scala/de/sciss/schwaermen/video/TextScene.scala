@@ -17,9 +17,7 @@ package video
 import java.net.SocketAddress
 
 import de.sciss.equal.Implicits._
-import de.sciss.numbers.Implicits._
-import de.sciss.schwaermen.video.Scene.{OscAbortTransaction, OscQueryInjection, OscReplyInjection}
-import de.sciss.schwaermen.video.TextScene.{Ejecting, Idle, InjectPending, InjectQuery, State}
+import de.sciss.schwaermen.video.Scene.{OscInjectAbort, OscInjectCommit, OscInjectQuery, OscInjectReply}
 
 import scala.concurrent.stm.{InTxn, Ref}
 import scala.swing.Swing
@@ -27,16 +25,20 @@ import scala.util.{Failure, Random, Success}
 
 object TextScene {
   private sealed trait State
-  private case object Idle            extends State
-  private case object InjectQuery     extends State
-  private case object InjectPending   extends State
-  private case object Ejecting        extends State
-  private case object Injecting       extends State
+  private case object Idle          extends State
+//  private case object Busy          extends State
+  private case object InjectQuery   extends State
+  private case object InjectPending extends State
+  private case object Ejecting      extends State
+  private case object Injecting     extends State
 }
-final class TextScene(c: OSCClient, r: Random) extends Scene.Text {
+final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
+  import TextScene._
+
   private[this] val config = c.config
 
-  private[this] val stateRef = Ref[State](Idle)
+  private[this] val stateRef    = Ref[State](Idle)
+  private[this] val idleMinTime = Ref(0L)
 
   private[this] val videoIdx: Int = {
     val res = Network.videoDotSeq.indexOf(c.dot)
@@ -50,14 +52,14 @@ final class TextScene(c: OSCClient, r: Random) extends Scene.Text {
     Util.readTextResource(s"text${videoIdx + 1}.txt").replaceAll("\n", " ——— ") // XXX TODO decide here
   }
 
-  private[this] val gl = Glyphosat(config, text, r)
+  private[this] val gl = Glyphosat(config, text)
 
 //  private[this] lazy val debugView: DebugTextView = new DebugTextView
   private[this] lazy val view     : TextView      = new TextView(config, gl)
 
   /* Pixels per second */
-  private[this] val textSpeed         : Float = config.textVX * config.fps
-  private[this] val pixelsUntilTimeOut: Float = textSpeed * Network.TimeOutSeconds
+//  private[this] val textSpeed         : Float = config.textVX * config.fps
+//  private[this] val pixelsUntilTimeOut: Float = textSpeed * Network.TimeOutSeconds
 
   private[this] val idleTask = Ref(Option.empty[Task])
 
@@ -68,15 +70,19 @@ final class TextScene(c: OSCClient, r: Random) extends Scene.Text {
   def queryInjection(sender: SocketAddress, Uid: Long)(implicit tx: InTxn): Unit = {
     if (stateRef() == Idle) {
       stateRef() = InjectPending
-      val reply = OscReplyInjection(Uid, OscReplyInjection.Accepted)
-      c.queryVideos(reply) {
-        case _ => ???
+      val reply = OscInjectReply(Uid, OscInjectReply.Accepted)
+      c.queryTxn(sender, reply) {
+        case OscInjectCommit(Uid, targetDot)  => targetDot === c.dot
+        case OscInjectAbort (Uid)             => false
       } { implicit tx => {
-        case Success(_) =>
-        case Failure(_) =>
+        case Success(QueryResult(_ /* dot */, true)) =>
+          testInjectAndGoBackToIdle()
+        case _ =>
+          debugPrint("Injection target received abortion or was not selected")
+          retryInitiative()
       }}
     } else {
-      val reply = OscReplyInjection(Uid, OscReplyInjection.Rejected)
+      val reply = OscInjectReply(Uid, OscInjectReply.Rejected)
       c.sendTxn(sender, reply)
     }
   }
@@ -87,29 +93,29 @@ final class TextScene(c: OSCClient, r: Random) extends Scene.Text {
       stateRef() = InjectQuery
       debugPrint("Starting initiative")
       val Uid = c.mkTxnId()
-      c.queryVideos(OscQueryInjection(Uid)) {
-        case OscReplyInjection(Uid, accepted) => accepted
+      c.queryVideos(OscInjectQuery(Uid)) {
+        case OscInjectReply(Uid, accepted) => accepted
       } { implicit tx => {
         case Success(list) =>
           debugPrint(s"Got replies: $list")
-          if (list.exists(_.value === OscReplyInjection.Rejected)) {
+          if (list.exists(_.value === OscInjectReply.Rejected)) {
             debugPrint("A node rejected the transaction")
-            c.sendVideos(OscAbortTransaction(Uid))
+            c.sendVideos(OscInjectAbort(Uid))
+            retryInitiative()
           } else {
             val candidates = list.collect {
-              case QueryResult(dot, OscReplyInjection.Accepted) => dot
+              case QueryResult(dot, OscInjectReply.Accepted) => dot
             }
             if (candidates.isEmpty) { // there is no need to 'complete' the transaction in that case
               debugPrint("No node accepted the injection")
               retryInitiative()
             } else {
-              ???
+              val candidate = Util.choose(candidates)
+              c.sendVideos(OscInjectCommit(Uid, targetDot = candidate))
+              testEjectAndGoBackToIdle()
             }
           }
-          stateRef() = Ejecting
-        case Success(list) =>
-          debugPrint(if (list.isEmpty) "No known nodes visible." else "Rejected")
-          retryInitiative()
+
         case Failure(ex) =>
           debugPrint(s"Failed to ping - ${ex.getClass.getSimpleName}.")
           retryInitiative()
@@ -118,7 +124,8 @@ final class TextScene(c: OSCClient, r: Random) extends Scene.Text {
   }
 
   private def retryInitiative()(implicit tx: InTxn): Unit = {
-    assert(stateRef.swap(Idle) == InjectQuery)
+    val oldState = stateRef.swap(Idle)
+    assert(oldState == InjectQuery || oldState == InjectPending)
     debugPrint("Retrying initiative in 4 seconds.")
     scheduleInitiative(4f)
   }
@@ -128,7 +135,32 @@ final class TextScene(c: OSCClient, r: Random) extends Scene.Text {
   def init()(implicit tx: InTxn): Unit = {
     if (!config.debugText) Swing.onEDT(view.start())
 
-    val idleDur = r.nextFloat().linlin(0f, 1f, config.textMinDur, config.textMaxDur)
+    becomeIdle()
+  }
+
+  private def testEjectAndGoBackToIdle()(implicit tx: InTxn): Unit = {
+    debugPrint("Test ejection")
+    stateRef()  = Ejecting
+    val durSecs = 10f
+    val delay   = (durSecs * 1000).toLong
+    /* val task = */ c.scheduleTxn(delay)(tx => becomeIdle()(tx))
+  }
+
+  private def testInjectAndGoBackToIdle()(implicit tx: InTxn): Unit = {
+    debugPrint("Test injection")
+    stateRef()  = Injecting
+    val durSecs = 10f
+    val delay   = (durSecs * 1000).toLong
+    /* val task = */ c.scheduleTxn(delay)(tx => becomeIdle()(tx))
+  }
+
+  private def becomeIdle()(implicit tx: InTxn): Unit = {
+    debugPrint("Becoming idle.")
+    val now       = System.currentTimeMillis()
+    val idleDur   = Util.rrand(config.textMinDur, config.textMaxDur)
+    val minTime   = now + (config.textMinDur * 1000).toLong
+    idleMinTime() = minTime
+    stateRef()    = Idle
     scheduleInitiative(idleDur)
   }
 

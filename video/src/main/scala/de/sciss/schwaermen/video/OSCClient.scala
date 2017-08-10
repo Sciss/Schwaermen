@@ -16,6 +16,7 @@ package video
 
 import java.net.{InetSocketAddress, SocketAddress}
 
+import de.sciss.kollflitz.Vec
 import de.sciss.osc
 import de.sciss.osc.UDP
 
@@ -44,8 +45,11 @@ final class OSCClient(override val config: Config, val dot: Int,
 
   override def main: Main.type = Main
 
+  private[this] val otherVideos: Vec[SocketAddress] =
+    Network.videoSocketSeq.filterNot(_ == transmitter.localSocketAddress)
+
   def oscReceived(p: osc.Packet, sender: SocketAddress): Unit = p match {
-    case Scene.OscQueryInjection(uid) =>
+    case Scene.OscInjectQuery(uid) =>
       atomic { implicit tx =>
         Scene.current().queryInjection(sender, uid)
       }
@@ -54,17 +58,28 @@ final class OSCClient(override val config: Config, val dot: Int,
       oscFallback(p, sender)
   }
 
+  def aliveVideos(): Vec[SocketAddress] = filterAlive(otherVideos)
+
   def queryVideos[A](m: osc.Message)
                     (handler: PartialFunction[osc.Packet, A])
                     (result: InTxn => Try[List[QueryResult[A]]] => Unit)
                     (implicit tx: InTxn): Unit = {
-    val sq  = filterAlive(Network.videoSocketSeq)
+    val sq  = aliveVideos()
     val q   = new Query[A](this, sq, m, result, handler, tx)
     addQuery(q)
   }
 
+  def queryTxn[A](target: SocketAddress, m: osc.Message)
+                 (handler: PartialFunction[osc.Packet, A])
+                 (result: InTxn => Try[QueryResult[A]] => Unit)
+                 (implicit tx: InTxn): Unit = {
+    val sq  = Vector(target)
+    val q   = new Query[A](this, sq, m, tx => seq => result(tx)(seq.map(_.head)), handler, tx)
+    addQuery(q)
+  }
+
   def sendVideos(m: osc.Message)(implicit tx: InTxn): Unit = {
-    val sq = filterAlive(Network.videoSocketSeq)
+    val sq = aliveVideos()
     Txn.afterCommit { _ =>
       sq.foreach { target =>
         transmitter.send(m, target)

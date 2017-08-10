@@ -43,8 +43,8 @@ final case class Config(
                         textEjectVY         : Float   = 12f,
                         textPairLYK         : Float   = 0.038f,
                         textPairRYK         : Float   = 0.030f, // 0.015f
-                        textMinDur          : Float   = 30f,
-                        textMaxDur          : Float   = 60f,
+                        textMinDur          : Float   = 15f, // 30f,
+                        textMaxDur          : Float   = 30f, // 60f,
                         debugText           : Boolean = true // false
 )
   extends ConfigLike

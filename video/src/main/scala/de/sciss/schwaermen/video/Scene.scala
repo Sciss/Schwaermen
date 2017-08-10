@@ -15,16 +15,18 @@ object Scene {
 
   val current: Ref[Scene] = Ref.make[Scene]
 
-  object OscQueryInjection {
-    def apply(uid: Long) = osc.Message("/query-inject", uid)
+  object OscInjectQuery {
+    private[this] val Name = "/inject-query"
+
+    def apply(uid: Long) = osc.Message(Name, uid)
 
     def unapply(m: osc.Message): Option[Long] = m match {
-      case osc.Message("/query-inject", uid: Long) => Some(uid)
+      case osc.Message(Name, uid: Long) => Some(uid)
       case _ => None
     }
   }
 
-  object OscReplyInjection {
+  object OscInjectReply {
     object Mode {
       def apply(id: Int): Mode = (id: @switch) match {
         case Ignored  .id => Ignored
@@ -33,30 +35,36 @@ object Scene {
       }
     }
     sealed trait Mode { def id: Int }
-    case object Ignored  extends Mode { val id = 0 }
-    case object Accepted extends Mode { val id = 1 }
-    case object Rejected extends Mode { val id = 2 }
+    case object Ignored  extends Mode { final val id = 0 }
+    case object Accepted extends Mode { final val id = 1 }
+    case object Rejected extends Mode { final val id = 2 }
 
-    def apply(uid: Long, m: Mode): osc.Message = osc.Message("/reply-inject", uid, m.id)
+    private[this] val Name = "/inject-reply"
+
+    def apply(uid: Long, m: Mode): osc.Message = osc.Message(Name, uid, m.id)
 
     def unapply(m: osc.Message): Option[(Long, Mode)] = m match {
-      case osc.Message("/reply-inject", uid: Long, id: Int) => Some(uid, Mode(id))
+      case osc.Message(Name, uid: Long, id: Int) => Some((uid, Mode(id)))
       case _ => None
     }
   }
 
-  object OscAbortTransaction {
-    def apply(uid: Long) = osc.Message("/txn-abort", uid)
+  object OscInjectAbort {
+    private[this] val Name = "/inject-abort"
+
+    def apply(uid: Long) = osc.Message(Name, uid)
     def unapply(m: osc.Message): Option[Long] = m match {
-      case osc.Message("/txn-abort", uid: Long) => Some(uid)
+      case osc.Message(Name, uid: Long) => Some(uid)
       case _ => None
     }
   }
 
-  object OscCommitTransaction {
-    def apply(uid: Long) = osc.Message("/txn-commit", uid)
-    def unapply(m: osc.Message): Option[Long] = m match {
-      case osc.Message("/txn-commit", uid: Long) => Some(uid)
+  object OscInjectCommit {
+    private[this] val Name = "/inject-commit"
+
+    def apply(uid: Long, targetDot: Int) = osc.Message(Name, uid, targetDot)
+    def unapply(m: osc.Message): Option[(Long, Int)] = m match {
+      case osc.Message(Name, uid: Long, targetDot: Int) => Some((uid, targetDot))
       case _ => None
     }
   }

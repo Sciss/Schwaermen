@@ -93,9 +93,9 @@ object Main extends MainLike {
 
   def run(host: String, config: Config): Unit = {
     val c = OSCClient(config, host)
-    val r = new Random(config.randomSeed)
+    implicit val rnd = new Random(config.randomSeed)
     // new Heartbeat(c)
-    val textScene = new TextScene(c, r)
+    val textScene = new TextScene(c)
     atomic { implicit tx =>
       Scene.current() = textScene
       textScene.init()

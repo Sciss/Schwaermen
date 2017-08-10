@@ -108,10 +108,12 @@ abstract class OSCClientLike {
       case Network.OscQueryVersion =>
         transmitter.send(Network.OscReplyVersion(main.fullVersion), sender)
 
-      case osc.Message("/error", _ @ _*) =>
+      case osc.Message("/error"        , _ @ _*) =>
+      case osc.Message("/inject-abort" , _ @ _*) =>
+      case osc.Message("/inject-commit", _ @ _*) =>
 
       case _ =>
-        Console.err.println(s"Ignoring unknown OSC packet $p")
+        Console.err.println(s"Ignoring unknown OSC $p")
         val args = p match {
           case m: osc.Message => m.name +: m.args
           case _: osc.Bundle  => "osc.Bundle" :: Nil
@@ -131,7 +133,7 @@ abstract class OSCClientLike {
 
   final def dumpOSC(): Unit = {
     transmitter.dump(filter = Network.oscDumpFilter)
-    receiver.dump(filter = Network.oscDumpFilter)
+    receiver   .dump(filter = Network.oscDumpFilter)
   }
 
   final def init(): Unit = {
@@ -145,6 +147,7 @@ abstract class OSCClientLike {
 
   final def mkTxnId()(implicit tx: InTxn): Long = {
     val i = txnCount.getAndTransform(_ + 1)
-    (dot.toLong << 32) | i
+//    (dot.toLong << 32) | i
+    (i.toLong * 1000) + dot
   }
 }

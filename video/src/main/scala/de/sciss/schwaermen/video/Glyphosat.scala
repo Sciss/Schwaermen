@@ -43,7 +43,7 @@ object Glyphosat {
     _condensedFont.deriveFont(size)
   }
 
-  def apply(config: Config, text: String, r: Random): Glyphosat = {
+  def apply(config: Config, text: String)(implicit rnd: Random): Glyphosat = {
     val font    = mkFont(config.fontSize)
     val tmpImg  = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB)
     val tmpG    = tmpImg.createGraphics()
@@ -95,7 +95,7 @@ object Glyphosat {
       EjectVY         = -config.textEjectVY,
       PairLYK         = config.textPairLYK,
       PairRYK         = config.textPairRYK,
-      initialIndex    = r.nextInt(words.length),
+      initialIndex    = Util.rand(words.length),
     )
   }
 
