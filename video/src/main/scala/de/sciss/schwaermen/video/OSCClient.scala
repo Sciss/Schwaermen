@@ -19,7 +19,7 @@ import java.net.{InetSocketAddress, SocketAddress}
 import de.sciss.osc
 import de.sciss.osc.UDP
 
-import scala.concurrent.stm.{InTxn, atomic}
+import scala.concurrent.stm.{InTxn, Txn, atomic}
 import scala.util.Try
 
 object OSCClient {
@@ -45,9 +45,9 @@ final class OSCClient(override val config: Config, val dot: Int,
   override def main: Main.type = Main
 
   def oscReceived(p: osc.Packet, sender: SocketAddress): Unit = p match {
-    case Scene.OscQueryInjection =>
+    case Scene.OscQueryInjection(uid) =>
       atomic { implicit tx =>
-        Scene.current().queryInjection(sender)
+        Scene.current().queryInjection(sender, uid)
       }
 
     case _ =>
@@ -61,6 +61,15 @@ final class OSCClient(override val config: Config, val dot: Int,
     val sq  = filterAlive(Network.videoSocketSeq)
     val q   = new Query[A](this, sq, m, result, handler, tx)
     addQuery(q)
+  }
+
+  def sendVideos(m: osc.Message)(implicit tx: InTxn): Unit = {
+    val sq = filterAlive(Network.videoSocketSeq)
+    Txn.afterCommit { _ =>
+      sq.foreach { target =>
+        transmitter.send(m, target)
+      }
+    }
   }
 
 //  init()

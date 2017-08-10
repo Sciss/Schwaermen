@@ -16,10 +16,10 @@ package video
 
 import java.net.SocketAddress
 
+import de.sciss.equal.Implicits._
 import de.sciss.numbers.Implicits._
-import de.sciss.osc
-import de.sciss.schwaermen.video.Scene.OscReplyInjection
-import de.sciss.schwaermen.video.TextScene.{Ejecting, Idle, Pending, Querying, State}
+import de.sciss.schwaermen.video.Scene.{OscAbortTransaction, OscQueryInjection, OscReplyInjection}
+import de.sciss.schwaermen.video.TextScene.{Ejecting, Idle, InjectPending, InjectQuery, State}
 
 import scala.concurrent.stm.{InTxn, Ref}
 import scala.swing.Swing
@@ -27,10 +27,11 @@ import scala.util.{Failure, Random, Success}
 
 object TextScene {
   private sealed trait State
-  private case object Idle      extends State
-  private case object Querying  extends State
-  private case object Pending   extends State
-  private case object Ejecting  extends State
+  private case object Idle            extends State
+  private case object InjectQuery     extends State
+  private case object InjectPending   extends State
+  private case object Ejecting        extends State
+  private case object Injecting       extends State
 }
 final class TextScene(c: OSCClient, r: Random) extends Scene.Text {
   private[this] val config = c.config
@@ -64,36 +65,51 @@ final class TextScene(c: OSCClient, r: Random) extends Scene.Text {
     view
   }
 
-  def queryInjection(sender: SocketAddress)(implicit tx: InTxn): Unit = {
-    val accepted = if (stateRef() == Idle) {
-      stateRef() = Pending
-      true
+  def queryInjection(sender: SocketAddress, Uid: Long)(implicit tx: InTxn): Unit = {
+    if (stateRef() == Idle) {
+      stateRef() = InjectPending
+      val reply = OscReplyInjection(Uid, OscReplyInjection.Accepted)
+      c.queryVideos(reply) {
+        case _ => ???
+      } { implicit tx => {
+        case Success(_) =>
+        case Failure(_) =>
+      }}
     } else {
-      false
+      val reply = OscReplyInjection(Uid, OscReplyInjection.Rejected)
+      c.sendTxn(sender, reply)
     }
-    val reply = OscReplyInjection(accepted = accepted)
-    c.queryVideos(reply) {
-      case _ => ???
-    } { implicit tx => {
-      case Success(_) =>
-      case Failure(_) =>
-    }}
   }
 
   private def startInitiative()(implicit tx: InTxn): Unit = {
     idleTask() = None
     if (stateRef() == Idle) {
-      stateRef() = Querying
+      stateRef() = InjectQuery
       debugPrint("Starting initiative")
-      c.queryVideos(osc.Message("/ping")) {
-        case osc.Message("/pong", i: Int) => i
+      val Uid = c.mkTxnId()
+      c.queryVideos(OscQueryInjection(Uid)) {
+        case OscReplyInjection(Uid, accepted) => accepted
       } { implicit tx => {
-        case Success(Nil) =>
-          debugPrint("Success, but no known nodes visible.")
-          retryInitiative()
         case Success(list) =>
-          debugPrint(s"Success, got $list values")
+          debugPrint(s"Got replies: $list")
+          if (list.exists(_.value === OscReplyInjection.Rejected)) {
+            debugPrint("A node rejected the transaction")
+            c.sendVideos(OscAbortTransaction(Uid))
+          } else {
+            val candidates = list.collect {
+              case QueryResult(dot, OscReplyInjection.Accepted) => dot
+            }
+            if (candidates.isEmpty) { // there is no need to 'complete' the transaction in that case
+              debugPrint("No node accepted the injection")
+              retryInitiative()
+            } else {
+              ???
+            }
+          }
           stateRef() = Ejecting
+        case Success(list) =>
+          debugPrint(if (list.isEmpty) "No known nodes visible." else "Rejected")
+          retryInitiative()
         case Failure(ex) =>
           debugPrint(s"Failed to ping - ${ex.getClass.getSimpleName}.")
           retryInitiative()
@@ -102,7 +118,7 @@ final class TextScene(c: OSCClient, r: Random) extends Scene.Text {
   }
 
   private def retryInitiative()(implicit tx: InTxn): Unit = {
-    assert(stateRef.swap(Idle) == Querying)
+    assert(stateRef.swap(Idle) == InjectQuery)
     debugPrint("Retrying initiative in 4 seconds.")
     scheduleInitiative(4f)
   }

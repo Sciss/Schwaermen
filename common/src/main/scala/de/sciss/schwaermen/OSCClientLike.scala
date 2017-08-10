@@ -20,7 +20,7 @@ import de.sciss.kollflitz.Vec
 import de.sciss.osc
 import de.sciss.osc.UDP
 
-import scala.concurrent.stm.{InTxn, Ref, atomic}
+import scala.concurrent.stm.{InTxn, Ref, Txn, atomic}
 
 abstract class OSCClientLike {
   // ---- abstract ----
@@ -30,6 +30,7 @@ abstract class OSCClientLike {
 
   def config: ConfigLike
   def main  : MainLike
+  def dot   : Int
 
   protected def oscReceived(p: osc.Packet, sender: SocketAddress): Unit
 
@@ -125,6 +126,9 @@ abstract class OSCClientLike {
       transmitter.send(p, target)
     }
 
+  final def sendTxn(target: SocketAddress, p: osc.Packet)(implicit tx: InTxn): Unit =
+    Txn.afterCommit(_ => transmitter.send(p, target))
+
   final def dumpOSC(): Unit = {
     transmitter.dump(filter = Network.oscDumpFilter)
     receiver.dump(filter = Network.oscDumpFilter)
@@ -135,5 +139,12 @@ abstract class OSCClientLike {
     if (config.dumpOSC) dumpOSC()
     transmitter.connect()
     receiver.connect()
+  }
+
+  private[this] val txnCount = Ref(0)
+
+  final def mkTxnId()(implicit tx: InTxn): Long = {
+    val i = txnCount.getAndTransform(_ + 1)
+    (dot.toLong << 32) | i
   }
 }
