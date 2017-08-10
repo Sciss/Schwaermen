@@ -76,6 +76,10 @@ object Main extends MainLike {
       opt[Long] ("seed")
         .text (s"Seed for the RNG or -1 to use system clock (default ${default.randomSeed})")
         .action { (v, c) => c.copy(randomSeed = v) }
+
+      opt[Unit] ("debug-text")
+        .text ("Debug text scene")
+        .action { (_, c) => c.copy(debugText = true) }
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
       val host = Network.thisIP()
@@ -93,7 +97,10 @@ object Main extends MainLike {
     // new Heartbeat(c)
     val textScene = new TextScene(c, r)
     atomic { implicit tx =>
+      Scene.current() = textScene
       textScene.init()
     }
+    c.init()
+    new Heartbeat(c)
   }
 }

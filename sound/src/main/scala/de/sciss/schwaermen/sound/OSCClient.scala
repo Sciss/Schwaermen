@@ -62,10 +62,8 @@ final class OSCClient(override val config: Config, val dot: Int, val transmitter
           transmitter.send(osc.Message("/fail", "test-channel", ch, ex.toString), sender)
       }
 
-    case Network.oscHeart =>
-
     case _ =>
-      ???
+      oscFallback(p, sender)
   }
 
   init()

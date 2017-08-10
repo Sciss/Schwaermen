@@ -131,10 +131,10 @@ object Network {
   final val oscCodec: osc.PacketCodec =
     osc.PacketCodec().doublePrecision().packetsAsBlobs()
 
-  final val oscQueryVersion: osc.Message =
+  final val OscQueryVersion: osc.Message =
     osc.Message("/query", "version")
 
-  object oscReplyVersion {
+  object OscReplyVersion {
     def apply(s: String): osc.Message = osc.Message("/info", "version", s)
 
     def unapply(p: osc.Packet): Option[String] = p match {
@@ -143,7 +143,7 @@ object Network {
     }
   }
 
-  object oscUpdateInit {
+  object OscUpdateInit {
     def apply(uid: Int, size: Long): osc.Message = osc.Message("/update-init", uid, size)
 
     def unapply(p: osc.Packet): Option[(Int, Long)] = p match {
@@ -152,7 +152,7 @@ object Network {
     }
   }
 
-  object oscUpdateGet {
+  object OscUpdateGet {
     def apply(uid: Int, offset: Long): osc.Message = osc.Message("/update-get", uid, offset)
 
     def unapply(p: osc.Packet): Option[(Int, Long)] = p match {
@@ -161,7 +161,7 @@ object Network {
     }
   }
 
-  object oscUpdateSet {
+  object OscUpdateSet {
     def apply(uid: Int, offset: Long, bytes: ByteBuffer): osc.Message =
       osc.Message("/update-set", uid,offset, bytes)
 
@@ -171,7 +171,7 @@ object Network {
     }
   }
 
-  object oscUpdateError {
+  object OscUpdateError {
     def apply(uid: Int, s: String): osc.Message = osc.Message("/error", "update", uid, s)
 
     def unapply(p: osc.Packet): Option[(Int, String)] = p match {
@@ -180,7 +180,7 @@ object Network {
     }
   }
 
-  object oscUpdateSuccess {
+  object OscUpdateSuccess {
     def apply(uid: Int): osc.Message =
       osc.Message("/update-done", uid)
 
@@ -190,9 +190,9 @@ object Network {
     }
   }
 
-  final val oscShutdown : osc.Message = osc.Message("/shutdown" )
-  final val oscReboot   : osc.Message = osc.Message("/reboot"   )
-  final val oscHeart    : osc.Message = osc.Message("/heart"    )
+  final val OscShutdown : osc.Message = osc.Message("/shutdown" )
+  final val OscReboot   : osc.Message = osc.Message("/reboot"   )
+  final val OscHeart    : osc.Message = osc.Message("/heart"    )
 
   final val oscDumpFilter: osc.Dump.Filter = { p =>
     p.encodedSize(oscCodec) < 1024
@@ -200,4 +200,9 @@ object Network {
 
   final val TimeOutSeconds: Float = 2.0f
   final val TimeOutMillis : Long  = (TimeOutSeconds * 1000).toLong
+
+  final val HeartPeriodSeconds: Float = 15f
+  final val DeathPeriodSeconds: Float = HeartPeriodSeconds * 2.5f
+
+  final val DeathPeriodMillis: Long = (DeathPeriodSeconds * 1000).toLong
 }

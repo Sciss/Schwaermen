@@ -164,7 +164,7 @@ class MainFrame(c: OSCClient) {
 
   private[this] val ggRefresh = Button("Refresh List") {
     // XXX TODO --- restart time-out timer that removes instances which do not respond
-    c ! Network.oscQueryVersion
+    c ! Network.OscQueryVersion
   }
 
   private[this] var lastUpdate = Option.empty[File]
@@ -190,13 +190,13 @@ class MainFrame(c: OSCClient) {
 
   private[this] val ggReboot = Button("Reboot") {
     selection.foreach { instance =>
-      c.tx.send(Network.oscReboot, instance.socketAddress)
+      c.tx.send(Network.OscReboot, instance.socketAddress)
     }
   }
 
   private[this] val ggShutdown = Button("Shutdown") {
     selection.foreach { instance =>
-      c.tx.send(Network.oscShutdown, instance.socketAddress)
+      c.tx.send(Network.OscShutdown, instance.socketAddress)
     }
   }
 

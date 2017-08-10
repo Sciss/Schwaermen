@@ -14,9 +14,15 @@
 package de.sciss.schwaermen
 package video
 
+import java.net.SocketAddress
+
 import scala.concurrent.stm.InTxn
 
 final class TrunkScene extends Scene.Trunk {
 
   def init()(implicit tx: InTxn): Unit = ???
+
+  def queryInjection(sender: SocketAddress)(implicit tx: InTxn): Unit = {
+    ???
+  }
 }

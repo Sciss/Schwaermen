@@ -34,7 +34,7 @@ final class UpdateSource(val uid: Int, config: Config, c: OSCClient, val instanc
     c.tx.send(p, target)
 
   def begin(): Unit = {
-    reply(Network.oscUpdateInit(uid = uid, size = size))
+    reply(Network.OscUpdateInit(uid = uid, size = size))
   }
 
   def sendNext(offset: Long): Unit = {
@@ -47,7 +47,7 @@ final class UpdateSource(val uid: Int, config: Config, c: OSCClient, val instanc
       buf.flip()
       buf
     }
-    reply(Network.oscUpdateSet(uid = uid, offset = offset, bytes = bytes))
+    reply(Network.OscUpdateSet(uid = uid, offset = offset, bytes = bytes))
   }
 
   def dispose(): Unit = {

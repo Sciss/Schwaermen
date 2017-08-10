@@ -84,7 +84,7 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
   }
 
   def oscReceived(p: osc.Packet, sender: SocketAddress): Unit = p match {
-    case Network.oscUpdateGet(uid, off) =>
+    case Network.OscUpdateGet(uid, off) =>
       mapUIDToUpdaterSync.synchronized {
         mapUIDToUpdater.get(uid).fold[Unit] {
           println(s"Warning: update request for unknown uid $uid")
@@ -102,7 +102,7 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
         }
       }
 
-    case Network.oscUpdateError(uid, text) =>
+    case Network.OscUpdateError(uid, text) =>
       val base = s"Update error $uid - $text"
       val msg = mapUIDToUpdaterSync.synchronized {
         mapUIDToUpdater.get(uid).fold(s"$base - no updater found") { u =>
@@ -113,7 +113,7 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
       }
       println(msg)
 
-    case Network.oscUpdateSuccess(uid) =>
+    case Network.OscUpdateSuccess(uid) =>
       mapUIDToUpdaterSync.synchronized {
         mapUIDToUpdater.get(uid).foreach { u =>
           mapUIDToUpdater -= uid
@@ -129,7 +129,7 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
         }
       }
 
-    case Network.oscReplyVersion(v) =>
+    case Network.OscReplyVersion(v) =>
       val dot = getDot(sender)
       if (dot >= 0) {
         val idx = _instances.indexWhere(_.dot == dot)
@@ -147,7 +147,7 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
         }
       }
 
-    case Network.oscHeart =>
+    case Network.OscHeart =>
 
     case _ =>
       Console.err.println(s"Ignoring unknown OSC packet $p")

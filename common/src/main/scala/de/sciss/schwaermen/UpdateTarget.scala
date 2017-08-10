@@ -17,6 +17,7 @@ import java.io.RandomAccessFile
 import java.net.SocketAddress
 import java.nio.ByteBuffer
 
+import de.sciss.equal.Implicits._
 import de.sciss.file._
 import de.sciss.osc
 
@@ -30,16 +31,16 @@ final class UpdateTarget(val uid: Int, c: OSCClientLike, val sender: SocketAddre
     c.transmitter.send(p, sender)
 
   def begin(): Unit = {
-    require(offset == 0L)
+    require(offset === 0L)
     queryNext()
   }
 
   private def queryNext(): Unit =
-    reply(Network.oscUpdateGet(uid = uid, offset = offset))
+    reply(Network.OscUpdateGet(uid = uid, offset = offset))
 
   def write(off: Long, bytes: ByteBuffer): Unit = {
     if (off != offset) {
-      reply(Network.oscUpdateError(uid, s"expected offset $offset but got $off"))
+      reply(Network.OscUpdateError(uid, s"expected offset $offset but got $off"))
       queryNext()
     } else {
       val plus = bytes.remaining()
@@ -62,18 +63,18 @@ final class UpdateTarget(val uid: Int, c: OSCClientLike, val sender: SocketAddre
   private def transferCompleted(): Unit = {
     import sys.process._
     val resInfo = Seq("dpkg", "--info", f.path).!
-    if (resInfo == 0) {
+    if (resInfo === 0) {
       val resInstall = sudo("dpkg", "--install", f.path)
       dispose()
-      val m = if (resInstall == 0) {
-        Network.oscUpdateSuccess(uid)
+      val m = if (resInstall === 0) {
+        Network.OscUpdateSuccess(uid)
       } else {
-        Network.oscUpdateError(uid, s"dpkg --install returned $resInstall")
+        Network.OscUpdateError(uid, s"dpkg --install returned $resInstall")
       }
       reply(m)
 
     } else {
-      reply(Network.oscUpdateError(uid, s"dpkg --info returned $resInfo"))
+      reply(Network.OscUpdateError(uid, s"dpkg --info returned $resInfo"))
     }
   }
 

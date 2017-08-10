@@ -23,7 +23,7 @@ import scala.concurrent.stm.{InTxn, Ref, TSet, Txn}
 import scala.util.{Failure, Success, Try}
 
 final class Query[A](c: OSCClientLike, sq: Vec[SocketAddress], mOut: osc.Message,
-                             result: InTxn => Try[Seq[QueryResult[A]]] => Unit,
+                             result: InTxn => Try[List[QueryResult[A]]] => Unit,
                              handler: PartialFunction[osc.Packet, A],
                              tx0: InTxn) {
 

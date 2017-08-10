@@ -15,6 +15,8 @@ package de.sciss.schwaermen
 
 import java.net.SocketAddress
 
+import de.sciss.equal.Implicits._
+import de.sciss.kollflitz.Vec
 import de.sciss.osc
 import de.sciss.osc.UDP
 
@@ -39,11 +41,17 @@ abstract class OSCClientLike {
 
   private[this] val queries = Ref(List.empty[Query[_]])
 
+  @volatile
+  private[this] var alive   = Map.empty[SocketAddress, Long]
+
+  final def filterAlive(in: Vec[SocketAddress]): Vec[SocketAddress] =
+    in.filter(alive.contains)
+
   final def scheduleTxn(delay: Long)(body: InTxn => Unit)(implicit tx: InTxn): Task =
     Task(timer, delay)(body)
 
   final def removeQuery[A](q: Query[A])(implicit tx: InTxn): Unit =
-    queries.transform(_.filterNot(_ == q))
+    queries.transform(_.filterNot(_ == /* ===  */ q))
 
   protected final def addQuery[A](q: Query[A])(implicit tx: InTxn): Unit =
     queries.transform(q :: _)
@@ -57,44 +65,47 @@ abstract class OSCClientLike {
       _handled
     }
 
-    if (!wasHandled) oscFallback(p, sender)
+    if (!wasHandled) p match {
+      case Network.OscHeart =>
+        val now   = System.currentTimeMillis()
+        val death = now + Network.DeathPeriodMillis
+        alive = alive.filter(_._2 < death) + (sender -> now)
 
-    p match {
-      case Network.oscUpdateSet (uid, off, bytes) =>
+      case Network.OscUpdateSet (uid, off, bytes) =>
         updater.fold[Unit] {
-          transmitter.send(Network.oscUpdateError(uid, "missing /update-init"), sender)
+          transmitter.send(Network.OscUpdateError(uid, "missing /update-init"), sender)
         } { u =>
-          if (u.uid == uid) {
+          if (u.uid === uid) {
             if (u.sender != sender) {
-              transmitter.send(Network.oscUpdateError(uid, "changed sender"), sender)
+              transmitter.send(Network.OscUpdateError(uid, "changed sender"), sender)
             } else {
               u.write(off, bytes)
             }
           } else {
-            transmitter.send(Network.oscUpdateError(uid, s"no updater for uid $uid"), sender)
+            transmitter.send(Network.OscUpdateError(uid, s"no updater for uid $uid"), sender)
           }
         }
 
-      case Network.oscUpdateInit(uid, size) =>
+      case Network.OscUpdateInit(uid, size) =>
         val u = new UpdateTarget(uid, this, sender, size)
         updater.foreach(_.dispose())
         updater = Some(u)
         u.begin()
 
-      case Network.oscShutdown =>
+      case Network.OscShutdown =>
         if (config.isLaptop)
           println("(laptop) ignoring /shutdown")
         else
           Util.shutdown()
 
-      case Network.oscReboot =>
+      case Network.OscReboot =>
         if (config.isLaptop)
           println("(laptop) ignoring /reboot")
         else
           Util.reboot()
 
-      case Network.oscQueryVersion =>
-        transmitter.send(Network.oscReplyVersion(main.fullVersion), sender)
+      case Network.OscQueryVersion =>
+        transmitter.send(Network.OscReplyVersion(main.fullVersion), sender)
 
       case osc.Message("/error", _ @ _*) =>
 
@@ -119,7 +130,7 @@ abstract class OSCClientLike {
     receiver.dump(filter = Network.oscDumpFilter)
   }
 
-  final protected def init(): Unit = {
+  final def init(): Unit = {
     receiver.action = oscReceived
     if (config.dumpOSC) dumpOSC()
     transmitter.connect()
