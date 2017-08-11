@@ -84,6 +84,14 @@ class MainFrame(c: OSCClient) {
 
     override def getColumnName(colIdx: Int): String = columns(colIdx).name
 
+    def clear(): Unit = {
+      val sz = _instances.size
+      if (sz > 0) {
+        _instances = Vector.empty
+        fireTableRowsDeleted(0, sz - 1)
+      }
+    }
+
     def += (status: Status): Unit = {
       val row = _instances.size
       _instances :+= status
@@ -164,6 +172,7 @@ class MainFrame(c: OSCClient) {
 
   private[this] val ggRefresh = Button("Refresh List") {
     // XXX TODO --- restart time-out timer that removes instances which do not respond
+//    model.clear()
     c ! Network.OscQueryVersion
   }
 
