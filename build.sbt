@@ -53,7 +53,7 @@ lazy val sound = Project(id = soundNameL, base = file("sound"))
   .enablePlugins(JavaAppPackaging, DebianPlugin)
   .settings(commonSettings)
   .settings(
-    version     := "0.1.6-SNAPSHOT",
+    version     := "0.1.7-SNAPSHOT",
     description := s"$baseDescr - rpi sound",
     libraryDependencies ++= Seq(
       "de.sciss" %% "soundprocesses" % soundProcessesVersion,

@@ -25,8 +25,8 @@ import de.sciss.swingplus.Table
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Table.AutoResizeMode
-import scala.swing.event.TableRowsSelected
-import scala.swing.{BorderPanel, BoxPanel, Button, Component, FlowPanel, Frame, Orientation, ScrollPane, Swing}
+import scala.swing.event.{ButtonClicked, TableRowsSelected}
+import scala.swing.{BorderPanel, BoxPanel, Button, Component, FlowPanel, Frame, Orientation, ScrollPane, Swing, ToggleButton}
 
 class MainFrame(c: OSCClient) {
   private case class Column(idx: Int, name: String, minWidth: Int, prefWidth: Int, maxWidth: Int,
@@ -215,6 +215,16 @@ class MainFrame(c: OSCClient) {
     }
   }
 
+  private def ToggleButton(title: String)(fun: Boolean => Unit): ToggleButton =
+    new ToggleButton(title) {
+      listenTo(this)
+      reactions += {
+        case ButtonClicked(_) => fun(selected)
+      }
+    }
+
+  private[this] val ggTestSound = ToggleButton("Sound")(_ => ())
+
   private def selectedChanged(): Unit = {
     val hasSelection    = selection.nonEmpty
     ggUpdate  .enabled  = hasSelection
@@ -224,11 +234,11 @@ class MainFrame(c: OSCClient) {
 
   selectedChanged()
 
-  private[this] val pButtons  = new FlowPanel(ggRefresh, ggUpdate, ggReboot, ggShutdown, ggTestPins)
+  private[this] val pButtons  = new FlowPanel(ggRefresh, ggUpdate, ggReboot, ggShutdown, ggTestPins, ggTestSound)
   private[this] val pChannels = new FlowPanel(Seq.tabulate(12) { ch =>
     Button((ch + 1).toString) {
       selection.foreach { instance =>
-        c.tx.send(osc.Message("/test-channel", ch), instance.socketAddress)
+        c.tx.send(osc.Message("/test-channel", ch, ggTestSound.selected), instance.socketAddress)
       }
     }
   }: _*)

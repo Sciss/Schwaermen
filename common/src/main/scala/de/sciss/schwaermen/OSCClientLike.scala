@@ -136,11 +136,12 @@ abstract class OSCClientLike {
     receiver   .dump(filter = Network.oscDumpFilter)
   }
 
-  final def init(): Unit = {
+  def init(): this.type = {
     receiver.action = oscReceived
     if (config.dumpOSC) dumpOSC()
     transmitter.connect()
     receiver.connect()
+    this
   }
 
   private[this] val txnCount = Ref(0)

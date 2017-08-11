@@ -20,6 +20,9 @@ final case class Config(
                         baseDir             : File    = userHome/"Documents"/"projects"/"Schwaermen",
                         dumpOSC             : Boolean = false,
                         isLaptop            : Boolean = false,
-                        disableEnergySaving : Boolean  = true
+                        disableEnergySaving : Boolean = true,
+                        qjLaunch            : Boolean = true,
+                        qjPreset            : String  = "Goobay",
+                        qjPatchBay          : File    = userHome/"Documents"/"jack-defaults.xml"
                        )
   extends ConfigLike

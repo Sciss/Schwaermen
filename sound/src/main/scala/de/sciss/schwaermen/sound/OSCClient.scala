@@ -40,6 +40,7 @@ object OSCClient {
 final class OSCClient(override val config: Config, val dot: Int, val transmitter: UDP.Transmitter.Undirected,
                       val receiver: UDP.Receiver.Undirected) extends OSCClientLike {
   val relay: RelayPins  = RelayPins.map(dot)
+  val test : TestPaths  = new TestPaths
 
   override def main: Main.type = Main
 
@@ -53,9 +54,10 @@ final class OSCClient(override val config: Config, val dot: Int, val transmitter
           transmitter.send(osc.Message("/fail", "test-pin-mode", ex.toString), sender)
       }
 
-    case osc.Message("/test-channel", ch: Int) =>
+    case osc.Message("/test-channel", ch: Int, sound: Boolean) =>
       try {
         relay.selectChannel(ch)
+        if (sound) test.ping(ch / 6)
         transmitter.send(osc.Message("/done", "test-channel", ch), sender)
       } catch {
         case NonFatal(ex) =>
@@ -66,5 +68,9 @@ final class OSCClient(override val config: Config, val dot: Int, val transmitter
       oscFallback(p, sender)
   }
 
-  init()
+  override def init(): this.type = {
+    super.init()
+    test.run()
+    this
+  }
 }

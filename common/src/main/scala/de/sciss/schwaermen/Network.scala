@@ -129,7 +129,7 @@ object Network {
   }
 
   final val oscCodec: osc.PacketCodec =
-    osc.PacketCodec().doublePrecision().packetsAsBlobs()
+    osc.PacketCodec().doublePrecision().booleans().packetsAsBlobs()
 
   final val OscQueryVersion: osc.Message =
     osc.Message("/query", "version")

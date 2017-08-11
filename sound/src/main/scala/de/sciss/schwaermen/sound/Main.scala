@@ -15,7 +15,7 @@ package de.sciss.schwaermen
 package sound
 
 import com.pi4j.wiringpi.GpioUtil
-import de.sciss.file.File
+import de.sciss.file._
 
 import scala.util.control.NonFatal
 
@@ -42,12 +42,26 @@ object Main extends MainLike {
       opt[Unit] ("keep-energy")
         .text ("Do not turn off energy saving")
         .action   { (_, c) => c.copy(disableEnergySaving = false) }
+
+      opt[Unit] ("no-qjackctl")
+        .text ("Do not launch QJackCtl")
+        .action   { (_, c) => c.copy(qjLaunch = false) }
+
+      opt[String]("qjackctl-preset")
+        .text (s"QJackCtl preset name (default: ${default.qjPreset})")
+        .action { (f, c) => c.copy(qjPreset = f) }
+
+      opt[File]("qjackctl-patchbay")
+        .text (s"QJackCtl patchbay path (default: ${default.qjPatchBay})")
+        .action { (f, c) => c.copy(qjPatchBay = f) }
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
       val host = Network.thisIP()
+
       if (!config.isLaptop) {
         Network.compareIP(host)
         // cf. https://github.com/Pi4J/pi4j/issues/238
+        println("Setting up GPIO...")
         try {
           GpioUtil.enableNonPrivilegedAccess()
         } catch {
@@ -56,13 +70,27 @@ object Main extends MainLike {
             ex.printStackTrace()
         }
       }
+
+      if (!config.isLaptop && config.qjLaunch) {
+        println("Launching QJackCtl...")
+        import sys.process._
+        try {
+          // -p preset, -a active patch bay, -s start server
+          Seq("qjackctl", "-p", config.qjPreset, "-a", config.qjPatchBay.path, "-s").run()
+        } catch {
+          case NonFatal(ex) =>
+            Console.err.println("Could not start QJackCtl")
+            ex.printStackTrace()
+        }
+      }
+
       checkConfig(config)
       run(host, config)
     }
   }
 
   def run(host: String, config: Config): Unit = {
-    val c = OSCClient(config, host)
+    val c = OSCClient(config, host).init()
     new Heartbeat(c)
     if (!config.isLaptop) {
       try {
