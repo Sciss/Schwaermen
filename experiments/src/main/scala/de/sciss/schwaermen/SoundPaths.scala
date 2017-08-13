@@ -1,6 +1,7 @@
 package de.sciss.schwaermen
 
 import de.sciss.file._
+import de.sciss.kollflitz.Vec
 import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
 import de.sciss.lucre.confluent.TxnRandom
 import de.sciss.lucre.expr.{DoubleObj, LongObj}
@@ -21,7 +22,7 @@ object SoundPaths {
   type S = InMemory
 
   def main(args: Array[String]): Unit = {
-    val edges     = ShowSimilarities.loadGraph(weightPow = WEIGHT_POW)
+    val edges     = ShowSimilarities.loadGraph(1::3::Nil, weightPow = WEIGHT_POW, dropAmt = 0.0)
     val map       = mkEdgeMap(edges)
 
     val system    = InMemory()
@@ -52,6 +53,8 @@ object SoundPaths {
     val dur     = "dur"     .ir
     val fadeIn  = "fade-in" .ir
     val fadeOut = "fade-out".ir
+//    fadeIn .poll(0, "fade-in ")
+//    fadeOut.poll(0, "fade-out")
 //    val line    = Line.kr(0, 0, dur)
     val env     = Env.linen(attack = fadeIn, sustain = dur - (fadeIn + fadeOut), release = fadeOut, curve = Curve.sine)
     val eg      = EnvGen.ar(env)
@@ -62,23 +65,32 @@ object SoundPaths {
 
   class State(val p: Proc[S], val offset: LongObj.Var[S], val duration: DoubleObj.Var[S],
               val fadeIn: DoubleObj.Var[S], val fadeOut: DoubleObj.Var[S],
-              val t: Transport[S], val vertices: Vector[Vertex], val edgeMap: EdgeMap,
+              val cueVar: AudioCue.Obj.Var[S], cues: Vec[AudioCue.Obj[S]],
+              val t: Transport[S], val vertices1: Vector[Vertex], val vertices2: Vector[Vertex], val edgeMap: EdgeMap,
               val rnd: TxnRandom[S#Tx]) {
+
+    val alternate = Ref(false)
 
     val path: Ref[Vector[Vertex]] = Ref(Vector.empty)
 
     def newPath()(implicit tx: S#Tx): Vector[Vertex] = {
-      val startIdx = rnd.nextInt(vertices.size)
-      val stopIdx  = {
-        val x = rnd.nextInt(vertices.size - 1)
-        if (x < startIdx) x else x + 1
-      }
+      val a   = alternate.transformAndGet(! _)
+      val vx1 = if (a) vertices1 else vertices2
+      val vx2 = if (a) vertices2 else vertices1
 
-      val v1 = vertices(startIdx)
-      val v2 = vertices(stopIdx )
+      val startIdx  = rnd.nextInt(vx1.size)
+      val stopIdx   = rnd.nextInt(vx2.size)
+//      val stopIdx  = {
+//        val x = rnd.nextInt(vertices.size - 1)
+//        if (x < startIdx) x else x + 1
+//      }
+
+      val v1 = vx1(startIdx)
+      val v2 = vx2(stopIdx )
 
       val seq = ExplorePaths.calcPath(v1, v2, edgeMap).toVector
       path() = seq
+      println(seq.size)
       seq
     }
 
@@ -97,6 +109,7 @@ object SoundPaths {
       pathPos() = pathPos1 + 1
 
       val v: Vertex = path1(pathPos1)
+      val textIdx   = v.textIdx
 
       val offV    = framesFromFile(v.span.start)
       val durV    = v.span.length / fileSR
@@ -105,7 +118,8 @@ object SoundPaths {
       offset  ()  = offV
       duration()  = durV
       fadeIn  ()  = fdInV
-      fadeIn  ()  = fdOutV
+      fadeOut ()  = fdOutV
+      cueVar  ()  = cues(textIdx - 1)
 
       println(f"vertex ${v.quote}, offset $offV, duration $durV%g, fade-in $fdInV%g, fade-out $fdOutV%g")
 
@@ -116,24 +130,33 @@ object SoundPaths {
   def booted(aural: AuralSystem, s: Server, edgeMap: EdgeMap)
             (implicit tx: S#Tx, cursor: stm.Cursor[S]): Unit = {
     val vertices = edgeMap.keys.toVector
+    val (vx1, vx2) = vertices.partition(_.textIdx == 1)
 
-    val fileIn      = BuildSimilarities.audioFileIn
-    val specIn      = AudioFile.readSpec(fileIn)
-    val loc         = ArtifactLocation.newConst[S](fileIn.parent)
-    val artIn       = Artifact(loc, fileIn)
     val offVar      = LongObj   .newVar[S](0L)
     val durVar      = DoubleObj .newVar[S](2.0)
     val fadeInVar   = DoubleObj .newVar[S](0.0)
     val fadeOutVar  = DoubleObj .newVar[S](0.0)
-    val cue         = AudioCue.Obj[S](artIn, specIn, offVar, 1.0)
+
+    def mkCue(textIdx: Int) = {
+      val fileIn      = BuildSimilarities.audioFileIn(textIdx)
+      val specIn      = AudioFile.readSpec(fileIn)
+      val loc         = ArtifactLocation.newConst[S](fileIn.parent)
+      val artIn       = Artifact(loc, fileIn)
+      AudioCue.Obj[S](artIn, specIn, offVar, 1.0)
+    }
+
+    val cue1 = mkCue(1)
+    val cue3 = mkCue(3)
 
     val p = Proc[S]
     import WorkspaceHandle.Implicits.dummy
 
+    val cue   = AudioCue.Obj.newVar(cue1)
     val rnd   = TxnRandom(tx.newID())
     val t     = Transport[S](aural)
     val state = new State(p = p, offset = offVar, duration = durVar, fadeIn = fadeInVar, fadeOut = fadeOutVar,
-      t = t, vertices = vertices, edgeMap = edgeMap, rnd = rnd)
+      cueVar = cue, cues = Vector(cue1, null, cue3),
+      t = t, vertices1 = vx1, vertices2 = vx2, edgeMap = edgeMap, rnd = rnd)
 
     p.graph() = playGraph
     val pa = p.attr

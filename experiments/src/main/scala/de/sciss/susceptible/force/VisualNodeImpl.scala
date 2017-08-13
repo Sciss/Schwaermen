@@ -53,6 +53,8 @@ object VisualNodeImpl {
 trait VisualNodeImpl extends VisualNode /* with VisualDataImpl */ {
   import VisualNodeImpl._
 
+  protected def color: Int
+
   //  private[this] var _pNode: PNode = _
   //
   //  def dispose(): Unit = {
@@ -83,6 +85,7 @@ trait VisualNodeImpl extends VisualNode /* with VisualDataImpl */ {
     val vis = main.visualization
     val vi  = vis.getVisualItem(Visual.GROUP_GRAPH, _pNode)
     vi.set(Visual.COL_MUTA, this)
+//    vi.setTextColor(color)
     //      val sz  = nodeSize
     //      if (sz != 1.0f) vi.set(VisualItem.SIZE, sz)
     //      parent.aggr.addItem(vi)
@@ -204,7 +207,9 @@ trait VisualNodeImpl extends VisualNode /* with VisualDataImpl */ {
         g.setColor(main.display.getBackground)
         g.fill(labelShapeO)
       }
-      g.setColor(ColorLib.getColor(vi.getTextColor))
+//      val colr = ColorLib.getColor(vi.getTextColor)
+      val colr = ColorLib.getColor(color)
+      g.setColor(colr)
       g.fill(labelShape)
 
     } else {

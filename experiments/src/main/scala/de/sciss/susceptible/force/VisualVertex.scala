@@ -19,10 +19,10 @@ import prefuse.visual.VisualItem
 import scala.swing.Graphics2D
 
 object VisualVertex {
-  def apply(main: Visual, word: String): VisualVertex =
-    new Impl(main, word = word)
+  def apply(main: Visual, word: String, color: Int = 0): VisualVertex =
+    new Impl(main, word = word, color = color | 0xFF000000)
 
-  private final class Impl(val main: Visual, var word: String)
+  private final class Impl(val main: Visual, var word: String, val color: Int)
     extends VisualVertex with VisualVertexImpl {
 
     protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit = {

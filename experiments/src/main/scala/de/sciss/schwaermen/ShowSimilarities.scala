@@ -1,5 +1,6 @@
 package de.sciss.schwaermen
 
+import java.awt.Color
 import java.io.{DataInputStream, FileInputStream}
 import javax.swing.{KeyStroke, SpinnerNumberModel}
 
@@ -22,21 +23,26 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Failure
 
 object ShowSimilarities {
-  def loadGraph(weightPow: Double = 1.0): List[SimEdge] = {
-    val fIn = file("/data/temp/edges.bin")
+  def loadGraph(textIndices: Seq[Int], weightPow: Double = 1.0, dropAmt: Double = 0.0): List[SimEdge] = {
+    val fIn = file(s"/data/temp/edges${textIndices.mkString}.bin")
     val din = new DataInputStream(new FileInputStream(fIn))
     val edgesI = try {
-      val numEdges = (fIn.length() / 8).toInt
+      val numEdges = (fIn.length() / 10 /* 8 */).toInt
 
-      def getVertex(i: Int): Vertex =
-        BuildSimilarities.readVertices(1).find(_.index == i).getOrElse(sys.error(s"Vertex $i not found"))
+      val vertices: Map[Int, Vector[Vertex]] =
+        textIndices.map(i => i -> BuildSimilarities.readVertices(i).to[Vector])(breakOut)
+
+      def getVertex(t: Int, i: Int): Vertex =
+        vertices(t).find(_.index == i).getOrElse(sys.error(s"Vertex $i not found"))
 
       List.fill(numEdges) {
+        val v1T     = din.readByte()
         val v1Index = din.readShort()
+        val v2T     = din.readByte()
         val v2Index = din.readShort()
         val sim0    = din.readFloat().toDouble
-        val v1      = getVertex(v1Index)
-        val v2      = getVertex(v2Index)
+        val v1      = getVertex(v1T, v1Index)
+        val v2      = getVertex(v2T, v2Index)
         val sim1    = sim0 // math.pow(sim0, 2)
         Edge(v1, v2, sim1): SimEdge
       }
@@ -44,21 +50,33 @@ object ShowSimilarities {
       din.close()
     }
 
-    val minSim  = edgesI.iterator.map(_.weight).min
-    val maxSim  = edgesI.iterator.map(_.weight).max
+    val edgesIS = edgesI.sortBy(_.weight)
+    val drop    = (edgesIS.size * dropAmt).toInt
+    if (drop > 0) println(s"Dropping $drop (${(dropAmt * 100).toInt}%) edges")
+    val edgesID = edgesIS.drop(drop)
+
+    val minSim  = edgesID.iterator.map(_.weight).min
+    val maxSim  = edgesID.iterator.map(_.weight).max
     // println(f"minSim = $minSim%g, maxSim = $maxSim%g")
     import numbers.Implicits._
-    val edgesN = edgesI.map(e => e.copy(weight = e.weight.linlin(minSim, maxSim, 1.0, 0.0).pow(weightPow)))
+    val edgesN = edgesID.map(e => e.copy(weight = e.weight.linlin(minSim, maxSim, 1.0, 0.0).pow(weightPow)))
 
     implicit val ord: Ordering[Vertex] = Ordering.by(_.words.head.index)
     val edges = MSTKruskal[Vertex, SimEdge](edgesN)
     edges
   }
 
+//  private[this] val colors = Array[Int](0xFF0000, 0x00C000, 0x0000FF)
+  private[this] val colors = Array[Int](0xFF0000, 0x0000FF, 0x00C000)
+
+  final val USE_COLOR = true
+
   def main(args: Array[String]): Unit = {
-    val edges = loadGraph()
+    val edges = loadGraph(1 :: 3 :: Nil, dropAmt = 0.2)
     val vertices  = edges.flatMap(e => Seq(e.start, e.end)).toSet
-    val wordMap: Map[Vertex, Visual.Word] = vertices.map(v => v -> Visual.Word(v.wordsString))(breakOut)
+    val wordMap: Map[Vertex, Visual.Word] = vertices.map { v =>
+      v -> Visual.Word(v.wordsString, color = if (USE_COLOR) colors(v.textIdx - 1) else 0)
+    } (breakOut)
 
     val wordEdges = edges.map { e =>
       Edge(wordMap(e.start), wordMap(e.end), e.weight)
@@ -74,6 +92,9 @@ object ShowSimilarities {
     v.displaySize = (800, 800)
 
     v.text = edges
+    if (USE_COLOR) {
+      v.edgeColor = Color.gray
+    }
 
     lazy val ggAutoZoom: ToggleButton = new ToggleButton("Zoom") {
       selected = true

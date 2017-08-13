@@ -80,9 +80,9 @@ object Visual {
   }
 
   /** Returns to reference equality */
-  final class Word(val peer: String)
+  final class Word(val peer: String, val color: Int = 0)
 
-  def Word(peer: String): Word = new Word(peer)
+  def Word(peer: String, color: Int = 0): Word = new Word(peer, color = color)
 
   type WordEdge   = Edge[Word]
   type WordEdges  = ISeq[WordEdge]
@@ -171,7 +171,7 @@ object Visual {
       val words = value.flatMap(edge => edge.start :: edge.end :: Nil).distinct
 
       val wordMap: Map[Word, VisualVertex] = words.map { word =>
-        val vv = VisualVertex(this, word = word.peer)
+        val vv = VisualVertex(this, word = word.peer, color = word.color)
         wordVec :+= vv
         word -> vv
       } (breakOut)
@@ -196,6 +196,19 @@ object Visual {
     @inline private def startAnimation(): Unit =
       _vis.run(ACTION_COLOR)
 
+    private[this] lazy val actionEdgeStrokeColor =
+      new ColorAction(GROUP_EDGES, VisualItem.STROKECOLOR, ColorLib.rgb(255, 255, 255))
+
+    private[this] lazy val actionEdgeFillColor =
+      new ColorAction(GROUP_EDGES, VisualItem.FILLCOLOR  , ColorLib.rgb(255, 255, 255))
+
+    def edgeColor: Color = ColorLib.getColor(actionEdgeFillColor.getDefaultColor)
+    def edgeColor_=(value: Color): Unit = {
+      val c = ColorLib.color(value)
+      actionEdgeStrokeColor.setDefaultColor(c)
+      actionEdgeFillColor  .setDefaultColor(c)
+    }
+
     private def mkActionColor(): Unit = {
       // colors
       val actionNodeStrokeColor  = new ColorAction(GROUP_NODES, VisualItem.STROKECOLOR, ColorLib.rgb(255, 255, 255))
@@ -205,8 +218,6 @@ object Visual {
       actionNodeFillColor.add(VisualItem.HIGHLIGHT, ColorLib.rgb(63, 63, 0))
       val actionTextColor   = new ColorAction(GROUP_NODES, VisualItem.TEXTCOLOR  , ColorLib.rgb(255, 255, 255))
 
-      val actionEdgeStrokeColor = new ColorAction(GROUP_EDGES, VisualItem.STROKECOLOR, ColorLib.rgb(255, 255, 255))
-      val actionEdgeFillColor   = new ColorAction(GROUP_EDGES, VisualItem.FILLCOLOR  , ColorLib.rgb(255, 255, 255))
       //      val actionAggrFill    = new ColorAction(AGGR_PROC  , VisualItem.FILLCOLOR  , ColorLib.rgb(80, 80, 80))
       //      val actionAggrStroke  = new ColorAction(AGGR_PROC  , VisualItem.STROKECOLOR, ColorLib.rgb(255, 255, 255))
 
@@ -550,4 +561,6 @@ trait Visual {
 
   var displaySize: Dimension
   var imageSize  : Dimension
+
+  var edgeColor: Color
 }

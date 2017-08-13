@@ -21,7 +21,7 @@ object ExplorePaths {
   def WEIGHT_POW  = 1.0 // no effect on MST!
 
   def main(args: Array[String]): Unit = {
-    val edges     = ShowSimilarities.loadGraph(weightPow = WEIGHT_POW)
+    val edges     = ShowSimilarities.loadGraph(1::3::Nil, weightPow = WEIGHT_POW, dropAmt = 0.1)
     val map       = mkEdgeMap(edges)
     val vertices  = map.keys.toIndexedSeq
 

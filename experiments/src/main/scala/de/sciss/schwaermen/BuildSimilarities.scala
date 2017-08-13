@@ -9,6 +9,7 @@ import de.sciss.numbers
 import de.sciss.span.Span
 import de.sciss.synth.io.{AudioFile, AudioFileSpec}
 
+import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.{Failure, Success}
@@ -22,27 +23,41 @@ object BuildSimilarities {
     }
   }
 
+  object Vertex {
+    implicit val Ord: Ordering[Vertex] = Ordering.by((v: Vertex) => (v.textIdx, v.words.head.index))
+  }
   final case class Vertex(textIdx: Int, words: List[Word]) {
     def span: Span = Span(words.head.span.start, words.last.span.stop)
 
     def index     : Int = words.head.index
     def lastIndex : Int = words.last.index
 
+    def fadeIn    : Int = words.head.fadeIn
+    def fadeOut   : Int = words.last.fadeOut
+
     def wordsString: String = words.map(_.text).mkString(" ")
 
     def quote: String =
-      BuildSimilarities.quote(words.map(_.text).mkString(s"$index: ", " ", ""))
+      BuildSimilarities.quote(words.map(_.text).mkString(s"$textIdx-$index: ", " ", ""))
   }
 
   def main(args: Array[String]): Unit = {
-    val vertices = readVertices(1)
-    println(s"No. vertices = ${vertices.size}")
+    val vertices1 = readVertices(1)
+    val vertices3 = readVertices(3)
+    println(s"No. vertices1 = ${vertices1.size}; No. vertices3 = ${vertices3.size}")
     // run(vertices)
+    val fOut = file("/data/temp/edges13.bin")
+    if (fOut.exists()) {
+      println(s"File $fOut already exists. Not overwriting.")
+    } else {
+      run(vertices1 ++ vertices3, fOut = fOut)
+    }
   }
 
   type SimEdge = Edge[Vertex]
 
-  val audioFileIn: File = file("/data/projects/Schwaermen/audio_work/to_copy/gertrude_text1.aif")
+  def audioFileIn(textIdx: Int): File =
+    file(s"/data/projects/Schwaermen/audio_work/to_copy/gertrude_text$textIdx.aif")
 
   def readVertices(textIdx: Int): List[Vertex] = {
     val fin = getClass.getResourceAsStream(s"/text${textIdx}words.bin")
@@ -71,17 +86,18 @@ object BuildSimilarities {
     }
   }
 
-  def run(selection: List[Vertex]): Unit = {
+  def run(selection: List[Vertex], fOut: File): Unit = {
     val numComb = selection.combinations(2).size
     println(s"Number of combinations: $numComb")
 
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val t: Future[List[SimEdge]] = Future {
-      val af = AudioFile.openRead(audioFileIn)
-      val dos = new DataOutputStream(new FileOutputStream(file("/data/temp/edges.bin")))
+      val mapAf = mutable.Map.empty[Int, AudioFile]
+      val dos = new DataOutputStream(new FileOutputStream(fOut))
 
-      def copy(span: Span, target: File): Unit = {
+      def copy(textIdx: Int, span: Span, target: File): Unit = {
+        val af  = mapAf.getOrElseUpdate(textIdx, AudioFile.openRead(audioFileIn(textIdx)))
         val len = span.length.toInt
         val b   = af.buffer(len)
         af.seek(span.start)
@@ -115,7 +131,13 @@ object BuildSimilarities {
                 map.getOrElse(v, {
                   val f1 = File.createTemp()
                   val f2 = File.createTemp()
-                  copy(v.span, f1)
+                  val span0 = v.span
+                  val span1 = if (v.fadeIn == 0) span0
+                    else Span(span0.start + (v.fadeIn * 0.5 * 44100).toLong, span0.stop)
+                  val span2 = if (v.fadeOut == 0) span1
+                    else Span(span1.start, span1.stop - (v.fadeOut * 0.5 * 44100).toLong)
+
+                  copy(v.textIdx, span2, f1)
                   val g = mkAnalysisGraph(inFile = f1, outFile = f2, name = s"ana $v")
                   val c = Control()
                   c.run(g)
@@ -135,7 +157,9 @@ object BuildSimilarities {
                   val c = Control()
                   c.run(g)
                   val sim = Await.result(fut, Duration.Inf)
+                  dos.writeByte (v1.textIdx)
                   dos.writeShort(v1.index)
+                  dos.writeByte (v2.textIdx)
                   dos.writeShort(v2.index)
                   dos.writeFloat(sim.toFloat)
                   println(f"${v1.quote} -- ${v2.quote} : $sim%g")
@@ -154,7 +178,8 @@ object BuildSimilarities {
         res
 
       } finally {
-        af.cleanUp()
+        mapAf.valuesIterator.foreach(_.cleanUp())
+//        af.cleanUp()
         dos.close()
       }
 
@@ -176,7 +201,7 @@ object BuildSimilarities {
         import numbers.Implicits._
         val edges   = edgesI.map(e => e.copy(weight = e.weight.linlin(minSim, maxSim, 1.0, 0.0)))
 
-        implicit val ord: Ordering[Vertex] = Ordering.by(_.words.head.index)
+//        implicit val ord: Ordering[Vertex] = Ordering.by(_.words.head.index)
         val mst = MSTKruskal[Vertex, SimEdge](edges)
 
         def vName(v: Vertex): String = s"v${v.index}"
