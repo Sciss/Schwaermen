@@ -1,3 +1,16 @@
+/*
+ *  ExplorePaths.scala
+ *  (Schwaermen)
+ *
+ *  Copyright (c) 2017 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.schwaermen
 
 import java.awt.{Color, Font}
@@ -153,7 +166,9 @@ object ExplorePaths {
     loop(edges, Map.empty)
   }
 
-  /** Uses depth-first-search. Requires that the graph has no cycles */
+  /** Uses depth-first-search. Requires that the graph has no cycles.
+    * Returns `Nil` if no path is found.
+    */
   def calcPath(source: Vertex, sink: Vertex, map: EdgeMap): List[Vertex] = {
     @tailrec
     def loop(back: List[(Vertex, Set[SimEdge])], rem: EdgeMap): List[Vertex] =

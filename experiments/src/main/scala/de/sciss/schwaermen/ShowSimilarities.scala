@@ -1,3 +1,16 @@
+/*
+ *  ShowSimilarities.scala
+ *  (Schwaermen)
+ *
+ *  Copyright (c) 2017 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.schwaermen
 
 import java.awt.Color
@@ -23,7 +36,12 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Failure
 
 object ShowSimilarities {
-  def loadGraph(textIndices: Seq[Int], weightPow: Double = 1.0, dropAmt: Double = 0.0): List[SimEdge] = {
+  /** Loads a text graph and returns its minimum-spanning-tree.
+    * Edges are constructed such that 'smaller' vertices (using `Vertex.Ord`) are
+    * the `start` position and 'larger' vertices are the `end` position.
+    */
+  def loadGraph(textIndices: Seq[Int], weightPow: Double = 1.0, dropAmt: Double = 0.0,
+                mst: Boolean = true): List[SimEdge] = {
     val fIn = file(s"/data/temp/edges${textIndices.mkString}.bin")
     val din = new DataInputStream(new FileInputStream(fIn))
     val edgesI = try {
@@ -44,7 +62,10 @@ object ShowSimilarities {
         val v1      = getVertex(v1T, v1Index)
         val v2      = getVertex(v2T, v2Index)
         val sim1    = sim0 // math.pow(sim0, 2)
-        Edge(v1, v2, sim1): SimEdge
+        if (Vertex.Ord.lt(v1, v2))
+          Edge(v1, v2)(sim1): SimEdge
+        else
+          Edge(v2, v1)(sim1): SimEdge
       }
     } finally {
       din.close()
@@ -59,10 +80,10 @@ object ShowSimilarities {
     val maxSim  = edgesID.iterator.map(_.weight).max
     // println(f"minSim = $minSim%g, maxSim = $maxSim%g")
     import numbers.Implicits._
-    val edgesN = edgesID.map(e => e.copy(weight = e.weight.linlin(minSim, maxSim, 1.0, 0.0).pow(weightPow)))
+    val edgesN = edgesID.map(e => e.updateWeight(e.weight.linlin(minSim, maxSim, 1.0, 0.0).pow(weightPow)))
 
 //    implicit val ord: Ordering[Vertex] = Ordering.by(_.words.head.index)
-    val edges = MSTKruskal[Vertex, SimEdge](edgesN)
+    val edges = if (mst) MSTKruskal[Vertex, SimEdge](edgesN) else edgesN
     edges
   }
 
@@ -82,7 +103,7 @@ object ShowSimilarities {
     } (breakOut)
 
     val wordEdges = edges.map { e =>
-      Edge(wordMap(e.start), wordMap(e.end), e.weight)
+      Edge(wordMap(e.start), wordMap(e.end))(e.weight)
     }
 
     onEDT {

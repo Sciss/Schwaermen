@@ -191,7 +191,7 @@ final class TextView(config: Config, gl: Glyphosat) {
   screen.setFullScreenWindow(mainWindow)
   mainWindow.requestFocus()
 
-  private[this] val testTimer = new javax.swing.Timer(20000L, Swing.ActionListener(_ => testSwitch()))
+  private[this] val testTimer = new javax.swing.Timer(20000, Swing.ActionListener(_ => testSwitch()))
   testTimer.setRepeats(true)
 
   def testSwitch(): Unit = {

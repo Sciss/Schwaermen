@@ -1,3 +1,16 @@
+/*
+ *  SoundPaths.scala
+ *  (Schwaermen)
+ *
+ *  Copyright (c) 2017 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.schwaermen
 
 import de.sciss.file._
@@ -9,7 +22,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.stm.TxnLike.peer
 import de.sciss.lucre.synth.{InMemory, Server, Txn}
-import de.sciss.schwaermen.BuildSimilarities.Vertex
+import de.sciss.schwaermen.BuildSimilarities.{SimEdge, Vertex}
 import de.sciss.schwaermen.ExplorePaths.{EdgeMap, WEIGHT_POW, mkEdgeMap}
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.{Action, AudioCue, AuralSystem, Proc, TimeRef, Transport, WorkspaceHandle}
@@ -17,20 +30,21 @@ import de.sciss.synth.{Curve, SynthGraph, proc}
 
 import scala.Predef.{any2stringadd => _, _}
 import scala.concurrent.stm.Ref
+import scala.util.control.NonFatal
 
 object SoundPaths {
   type S = InMemory
 
   def main(args: Array[String]): Unit = {
-    val edges     = ShowSimilarities.loadGraph(1::3::Nil, weightPow = WEIGHT_POW, dropAmt = 0.0)
-    val map       = mkEdgeMap(edges)
-
+    val edges     = ShowSimilarities.loadGraph(1::3::Nil, weightPow = WEIGHT_POW, dropAmt = 0.0, mst = false)
+    val edgesMST  = MSTKruskal[Vertex, SimEdge](edges)
+    val map       = mkEdgeMap(edgesMST)
     val system    = InMemory()
     val aural     = AuralSystem()
     system.step { implicit tx =>
       aural.addClient(new AuralSystem.Client {
         def auralStarted(s: Server)(implicit tx: Txn): Unit = {
-          booted(aural, s, map)(system.wrap(tx.peer), system)
+          booted(aural, s, edges = edges, edgeMap = map)(system.wrap(tx.peer), system)
         }
 
         def auralStopped()(implicit tx: Txn): Unit = ()
@@ -66,30 +80,113 @@ object SoundPaths {
   class State(val p: Proc[S], val offset: LongObj.Var[S], val duration: DoubleObj.Var[S],
               val fadeIn: DoubleObj.Var[S], val fadeOut: DoubleObj.Var[S],
               val cueVar: AudioCue.Obj.Var[S], cues: Vec[AudioCue.Obj[S]],
-              val t: Transport[S], val vertices1: Vector[Vertex], val vertices2: Vector[Vertex], val edgeMap: EdgeMap,
+              val t: Transport[S], val vertices1: Vector[Vertex], val vertices2: Vector[Vertex],
+              val edges: List[SimEdge], val edgeMap: EdgeMap,
               val rnd: TxnRandom[S#Tx]) {
 
     val alternate = Ref(false)
 
     val path: Ref[Vector[Vertex]] = Ref(Vector.empty)
 
-    def newPath()(implicit tx: S#Tx): Vector[Vertex] = {
+    def expandPath(seq0: Vector[Vertex], targetLen: Int)
+                  (implicit tx: S#Tx): Vector[Vertex] = {
+      var seq1      = seq0
+      var sz1       = seq0.size
+      //        var edgeMap1  = edgeMap
+      var edgesSet  = edges.toSet
+
+//      seq0.foreach { va =>
+//        val ea = edgeMap.getOrElse(va, Set.empty)
+//        ea.foreach { e =>
+//          edgesSet -= e
+//          val vb = if (e.start == va) e.end else e.start
+//
+//        }
+//      }
+
+      println(s"expandPath - sz0 is $sz1, targetLen is $targetLen")
+
+      while (sz1 < targetLen) {
+        val idxRem  = rnd.nextInt(sz1 - 1)
+        val (pre, post) = seq1.splitAt(idxRem + 1)
+        val v1i     = pre .last // seq1(idxRem    )
+        val v2i     = post.head // seq1(idxRem + 1)
+        val edgeRem = if (Vertex.Ord.lt(v1i, v2i))
+          Edge(v1i, v2i)(0.0)   // weight doesn't matter for equality
+        else
+          Edge(v2i, v1i)(0.0)
+
+        //          val v1Set0    = edgeMap1.getOrElse(v1, Set.empty)
+        //          val v1Set1    = v1Set0 - edgeRem
+        //          edgeMap1      = if (v1Set1.isEmpty) edgeMap1 - v1 else edgeMap1 + (v1 -> v1Set1)
+        //          val v2Set0    = edgeMap1.getOrElse(v2, Set.empty)
+        //          val v2Set1    = v2Set0 - edgeRem
+        //          edgeMap1      = if (v2Set1.isEmpty) edgeMap1 - v2 else edgeMap1 + (v2 -> v2Set1)
+
+        var edgesSetTemp = edgesSet - edgeRem
+
+        val edgeMapI  = mkEdgeMap(edges)
+        edgesSetTemp = (edgesSet /: (pre.init ++ post.tail))((res, v) => res -- edgeMapI.getOrElse(v, Set.empty))
+//        assert(seq0.forall(v => !edgesSet.exists(e => e.start == v || e.end == v)))
+
+        val edges1    = edgesSetTemp.toList
+        val mst1      = MSTKruskal[Vertex, SimEdge](edges1)
+        println(s"Remaining edges is ${edges1.size}; mst is ${mst1.size}")
+        val edgeMap1  = mkEdgeMap(mst1)
+        val seq0i     = ExplorePaths.calcPath(v1i, v2i, edgeMap1).toVector
+
+        if (seq0i.isEmpty) {
+          println("WARNING: didn't find a path") // XXX TODO
+
+        } else {
+          edgesSet  = edgesSetTemp
+          assert  (seq0i.head == v1i)
+          assert  (seq0i.last == v2i)
+          val slice     = seq0i.slice(1, seq0i.size - 1)
+          seq1          = pre ++ slice ++ post
+          sz1           = seq1.size
+          println(s"Splicing ${slice.map(_.quote).mkString(" -- ")} -> size is $sz1")
+
+//          edgesSet = (edgesSet /: slice)((res, v) => res -- edgeMapI.getOrElse(v, Set.empty))
+//          assert(slice.forall(v => !edgesSet.exists(e => e.start == v || e.end == v)))
+        }
+      }
+      seq1
+    }
+
+    def newPath(targetLen: Int)(implicit tx: S#Tx): Vector[Vertex] = {
+      require(targetLen >= 2)
       val a   = alternate.transformAndGet(! _)
       val vx1 = if (a) vertices1 else vertices2
       val vx2 = if (a) vertices2 else vertices1
 
       val startIdx  = rnd.nextInt(vx1.size)
       val stopIdx   = rnd.nextInt(vx2.size)
-//      val stopIdx  = {
-//        val x = rnd.nextInt(vertices.size - 1)
-//        if (x < startIdx) x else x + 1
-//      }
 
-      val v1 = vx1(startIdx)
-      val v2 = vx2(stopIdx )
+      val v1        = vx1(startIdx)
+      val v2        = vx2(stopIdx )
 
-      val seq = ExplorePaths.calcPath(v1, v2, edgeMap).toVector
-      path() = seq
+      val seq0      = ExplorePaths.calcPath(v1, v2, edgeMap).toVector
+      val sz0       = seq0.size
+      val seq1      = if (sz0 >= targetLen) seq0 else {
+        expandPath(seq0, targetLen = targetLen)
+      }
+      val sz1       = seq1.size
+
+      val seq       = if (sz1 == targetLen) {
+        seq1
+      } else {
+        var seq2    = seq1
+        var sz2     = sz1
+        while (sz2 > targetLen) {
+          val idx = rnd.nextInt(sz2 - 1) + 1
+          seq2    = seq2.patch(idx, Nil, 1)
+          sz2    -= 1
+        }
+        seq2
+      }
+
+      path()        = seq
       println(seq.size)
       seq
     }
@@ -103,7 +200,14 @@ object SoundPaths {
       val path0: Seq[Vertex] = path()
       val pathPos0: Int = pathPos()
       val (path1, pathPos1) = if (pathPos0 < path0.size) (path0, pathPos0) else {
-        val p = newPath()
+        val p = try {
+          newPath(50)
+        } catch {
+          case NonFatal(ex) =>
+            println("newPath:")
+            ex.printStackTrace()
+            throw ex
+        }
         (p, 0)
       }
       pathPos() = pathPos1 + 1
@@ -127,7 +231,7 @@ object SoundPaths {
     }
   }
 
-  def booted(aural: AuralSystem, s: Server, edgeMap: EdgeMap)
+  def booted(aural: AuralSystem, s: Server, edges: List[SimEdge], edgeMap: EdgeMap)
             (implicit tx: S#Tx, cursor: stm.Cursor[S]): Unit = {
     val vertices = edgeMap.keys.toVector
     val (vx1, vx2) = vertices.partition(_.textIdx == 1)
@@ -156,7 +260,7 @@ object SoundPaths {
     val t     = Transport[S](aural)
     val state = new State(p = p, offset = offVar, duration = durVar, fadeIn = fadeInVar, fadeOut = fadeOutVar,
       cueVar = cue, cues = Vector(cue1, null, cue3),
-      t = t, vertices1 = vx1, vertices2 = vx2, edgeMap = edgeMap, rnd = rnd)
+      t = t, vertices1 = vx1, vertices2 = vx2, edges = edges, edgeMap = edgeMap, rnd = rnd)
 
     p.graph() = playGraph
     val pa = p.attr
