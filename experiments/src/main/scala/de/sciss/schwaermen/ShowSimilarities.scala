@@ -61,10 +61,13 @@ object ShowSimilarities {
     import numbers.Implicits._
     val edgesN = edgesID.map(e => e.copy(weight = e.weight.linlin(minSim, maxSim, 1.0, 0.0).pow(weightPow)))
 
-    implicit val ord: Ordering[Vertex] = Ordering.by(_.words.head.index)
+//    implicit val ord: Ordering[Vertex] = Ordering.by(_.words.head.index)
     val edges = MSTKruskal[Vertex, SimEdge](edgesN)
     edges
   }
+
+//  def mkMinimumSpanningTree(in: List[SimEdge]): List[SimEdge] =
+//    MSTKruskal[Vertex, SimEdge](in)
 
 //  private[this] val colors = Array[Int](0xFF0000, 0x00C000, 0x0000FF)
   private[this] val colors = Array[Int](0xFF0000, 0x0000FF, 0x00C000)

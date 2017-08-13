@@ -21,7 +21,7 @@ import java.util.TimerTask
 
 import scala.swing.Swing._
 import scala.swing.event.ButtonClicked
-import scala.swing.{Button, FlowPanel, Graphics2D, MainFrame, ToggleButton}
+import scala.swing.{Button, FlowPanel, Graphics2D, MainFrame, Swing, ToggleButton}
 
 final class TextView(config: Config, gl: Glyphosat) {
   private[this] var clip          = true
@@ -191,8 +191,16 @@ final class TextView(config: Config, gl: Glyphosat) {
   screen.setFullScreenWindow(mainWindow)
   mainWindow.requestFocus()
 
+  private[this] val testTimer = new javax.swing.Timer(20000L, Swing.ActionListener(_ => testSwitch()))
+  testTimer.setRepeats(true)
+
+  def testSwitch(): Unit = {
+    ???
+  }
+
   def start(): Unit = {
     startAnim()
+    testTimer.restart()
   }
 
   def quit(): Unit = sys.exit()

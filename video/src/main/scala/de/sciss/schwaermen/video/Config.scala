@@ -45,6 +45,6 @@ final case class Config(
                         textPairRYK         : Float   = 0.030f, // 0.015f
                         textMinDur          : Float   = 15f, // 30f,
                         textMaxDur          : Float   = 30f, // 60f,
-                        debugText           : Boolean = true // false
+                        debugText           : Boolean = false
 )
   extends ConfigLike
