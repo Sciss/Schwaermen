@@ -42,7 +42,7 @@ object BuildSimilarities {
 
   type SimEdge = Edge[Vertex]
 
-  val audioFileIn: File = file("/data/projects/Schwaermen/audio_work/Gertrude_DaDrehtSichDerBaum_slow_170605.aif")
+  val audioFileIn: File = file("/data/projects/Schwaermen/audio_work/to_copy/gertrude_text1.aif")
 
   def readVertices(textIdx: Int): List[Vertex] = {
     val fin = getClass.getResourceAsStream(s"/text${textIdx}words.bin")
