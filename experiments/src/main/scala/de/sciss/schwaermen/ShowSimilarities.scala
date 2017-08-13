@@ -29,7 +29,7 @@ object ShowSimilarities {
       val numEdges = (fIn.length() / 8).toInt
 
       def getVertex(i: Int): Vertex =
-        BuildSimilarities.vertices.find(_.index == i).getOrElse(sys.error(s"Vertex $i not found"))
+        BuildSimilarities.readVertices(1).find(_.index == i).getOrElse(sys.error(s"Vertex $i not found"))
 
       List.fill(numEdges) {
         val v1Index = din.readShort()
