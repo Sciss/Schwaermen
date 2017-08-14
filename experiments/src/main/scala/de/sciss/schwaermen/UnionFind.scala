@@ -95,4 +95,19 @@ final class UnionFind[A](nodes: Vector[Node[A]], indexMap: Map[A, Int]) {
       case Some(parent) => root(parent)
     }
   }
+
+  /** For hypothesis testing */
+  def pathToRoot(vertex: A): List[A] = {
+    @tailrec
+    def loop(child: A, res: List[A]): List[A] = {
+      val res1  = child :: res
+      val idx   = indexMap(child)
+      nodes(idx).parent match {
+        case None         => res1
+        case Some(parent) => loop(parent, res1)
+      }
+    }
+
+    loop(vertex, Nil)
+  }
 }
