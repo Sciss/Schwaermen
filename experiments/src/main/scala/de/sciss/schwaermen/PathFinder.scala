@@ -13,11 +13,56 @@
 
 package de.sciss.schwaermen
 
-import scala.annotation.tailrec
 import java.{util => ju}
 
-final class PathHelper {
-  
+import de.sciss.kollflitz.Vec
+import de.sciss.schwaermen.BuildSimilarities.Vertex
+
+import scala.annotation.tailrec
+import scala.collection.breakOut
+
+/** Transition before we store the vertices more efficiently */
+object PathHelper {
+  def apply(textIdx1: Int, textIdx2: Int): PathHelper = {
+    // they'll come out sorted by similarity, so we have to reverse that
+    val simEdge         = ShowSimilarities.loadGraph(textIdx1 :: textIdx2 :: Nil, mst = false)
+    val simEdgeR        = simEdge.reverse
+    // sorting will be with all textIdx1 first, followed by all textIdx2 (Vertex.Ord)
+    val allVertices: Vec[Vertex] = {
+      val tmp: Vec[Vertex] = simEdgeR.flatMap(e => e.start :: e.end :: Nil)(breakOut)
+      tmp.distinct.sorted
+    }
+
+    val numVertices     = allVertices.size
+    println(s"numVertices = $numVertices")
+    val numText1        = allVertices.indexWhere(_.textIdx == textIdx2)
+    require(numText1 > 0)
+    val numText2        = numVertices - numText1
+    val vertexIndexMap  = allVertices.zipWithIndex.toMap
+
+    val allEdgesSorted: Array[Int] = simEdgeR.map { e =>
+      val v1i   = vertexIndexMap(e.start)
+      val v2i   = vertexIndexMap(e.end  )
+      val start = if (v1i < v2i) v1i else v2i
+      val end   = if (v1i < v2i) v2i else v1i
+      (start << 16) | end
+    } (breakOut)
+
+    val finder = new PathFinder(numVertices = numVertices, allEdgesSorted = allEdgesSorted)
+    new PathHelper(finder = finder, vertices = allVertices, vertexIndexMap = vertexIndexMap,
+      numText1 = numText1, numText2 = numText2)
+  }
+}
+final class PathHelper(val finder: PathFinder, val vertices: Vec[Vertex], val vertexIndexMap: Map[Vertex, Int],
+                       val numText1: Int, val numText2: Int) {
+  def perform(v1: Vertex, v2: Vertex /* , pathLen: Int */): List[Vertex] = {
+    val t1  = System.currentTimeMillis()
+    val arr = finder.perform(sourceVertex = vertexIndexMap(v1).toShort,
+      targetVertex = vertexIndexMap(v2).toShort /* , pathLen = pathLen */)
+    val t2  = System.currentTimeMillis()
+    println(s"Took ${t2-t1}ms.")
+    arr.map(vertices(_))(breakOut)
+  }
 }
 
 /** Optimised algorithm for iterative DFS search in MST, given a target path length.
@@ -33,10 +78,18 @@ final class PathHelper {
   *                         Since the graph is assumed to be complete, the number of
   *                         edges must be `numVertices * (numVertices - 1) / 2`.
   */
-final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int], maxPathLen: Int) {
+final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPathLen: Int */) {
   // a complete graph "has n(n − 1)/2 edges (a triangular number)"
-  private[this] val numEdges    = numVertices * (numVertices - 1) / 2
-  require(allEdgesSorted.length == numEdges)
+//  private[this] val numEdgesComplete = numVertices * (numVertices - 1) / 2
+
+  private[this] val numEdges    = allEdgesSorted.length
+
+// XXX TODO --- not that currently we do not provide all edges,
+// because we skipped those between 'sub-phrases'.
+// this is fine until we want to efficiently toggle edgeEnabled
+
+//  require(numEdges == numEdgesComplete,
+//    s"allEdgesSorted should have length numEdgesComplete, but instead has $numEdges")
 
   private[this] val ufParents   = new Array[Short](numVertices)
   private[this] val ufTreeSizes = new Array[Short](numVertices)
@@ -52,17 +105,17 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int], maxPathLen:
     ju.Arrays.fill(ufTreeSizes,   1 .toShort)
   }
 
-  private def ufIsConnected(from: Int, to: Int): Boolean =
+  private def ufIsConnected(from: Short, to: Short): Boolean =
     from == to || ufRoot(from) == ufRoot(to)
 
   @tailrec
-  private def ufRoot(vertex: Int): Int = {
+  private def ufRoot(vertex: Short): Int = {
     val p = ufParents(vertex)
     if (p < 0) vertex
     else ufRoot(p)
   }
 
-  private def ufUnion(from: Int, to: Int): Unit = {
+  private def ufUnion(from: Short, to: Short): Unit = {
     val nodeA = ufRoot(from)
     val nodeB = ufRoot(to)
     // If `from` and `to` are already in the same set do nothing
@@ -86,7 +139,7 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int], maxPathLen:
   // Recreates the MST, but aborts as soon as both
   // v1 and v2 have been seen, so we can start the DFS from here.
   // Fills in `mst` and returns the number of edges.
-  private def shortKruskal(v1: Int, v2: Int): Int = {
+  private def shortKruskal(v1: Short, v2: Short): Int = {
     ufInit()
 
     var edgeIdx = 0
@@ -96,8 +149,8 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int], maxPathLen:
     while (edgeIdx < numEdges) {
       if (edgeEnabled(edgeIdx)) {
         val edge  = allEdgesSorted(edgeIdx)
-        val start = edge >> 16
-        val end   = edge & 0xFFFF
+        val start = (edge >> 16   ).toShort
+        val end   = (edge & 0xFFFF).toShort
         if (!ufIsConnected(start, end)) {
           ufUnion(start, end)
           mst(mstSize) = edge
@@ -156,6 +209,7 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int], maxPathLen:
     ju.Arrays.sort(mst          , 0, mstLen)
     ju.Arrays.sort(dfsEdgesByEnd, 0, mstLen)
 
+    edgeIdx         = 0
     var edgeIdxRev  = 0
     var lastVertex  = -1
     var vertexIndex = -1
@@ -219,22 +273,22 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int], maxPathLen:
 
   }
 
-  private def dfsVertexIndex(global: Int): Int = {
-    val res = ju.Arrays.binarySearch(dfsVertexIndices, global.toShort)
-    assert(res >= 0)
-    res
-  }
+//  private def dfsVertexIndex(global: Int): Int = {
+//    val res = ju.Arrays.binarySearch(dfsVertexIndices, global.toShort)
+//    assert(res >= 0)
+//    res
+//  }
 
   // Returns the DFS path len, the path itself is found in `dfsPath`
-  private def depthFirstSearch(v1: Int, v2: Int, mstLen: Int): Int = {
+  private def depthFirstSearch(v1: Short, v2: Short, mstLen: Int): Int = {
     dfsInit(mstLen)
-    val v1i = dfsVertexIndex(v1)
+    val v1i = dfsVertexIndices(v1)
 
     var pathIdx       = 0
     var currVertex    = v1
     var currVertexI   = v1i
-    dfsPath (0)       = v1 .toShort
-    dfsPathI(0)       = v1i.toShort
+    dfsPath (0)       = v1
+    dfsPathI(0)       = v1i
 
     while (true) {
       val numUnseen = dfsEdgeMapNum(currVertexI)
@@ -250,29 +304,26 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int], maxPathLen:
         dfsEdgeMapNum(currVertexI) = numU1.toShort
         val edgeMapIdx    = dfsEdgeMapOff(currVertexI) + numU1
         val edge          = dfsEdgeMap(edgeMapIdx)
-        val start         = edge >> 16
-        val end           = edge & 0xFFF
+        val start         = (edge >> 16   ).toShort
+        val end           = (edge & 0xFFFF).toShort
         val target        = if (start == currVertex) end else start
         currVertex        = target
+        currVertexI       = dfsVertexIndices(target)
         pathIdx          += 1
-        dfsPath(pathIdx)  = currVertex .toShort
+        dfsPath (pathIdx) = currVertex
+        dfsPathI(pathIdx) = currVertexI
         if (target == v2) return pathIdx + 1
-        currVertexI       = dfsVertexIndex(target)
-        dfsPath(pathIdx)  = currVertexI.toShort
       }
     }
 
     -1  // never here
   }
 
-  def perform(sourceVertex: Int, targetVertex: Int, pathLen: Int): Any = {
+  def perform(sourceVertex: Short, targetVertex: Short /* , pathLen: Int */): Array[Short] = {
     require (sourceVertex != targetVertex)
     val mstLen = shortKruskal(v1 = sourceVertex, v2 = targetVertex)
-    depthFirstSearch(v1 = sourceVertex, v2 = targetVertex, mstLen = mstLen)
-
-//    ju.Arrays.binarySearch()
-
-
-    ???
+    println(s"mstLen = $mstLen")
+    val dfsLen = depthFirstSearch(v1 = sourceVertex, v2 = targetVertex, mstLen = mstLen)
+    dfsPath.take(dfsLen)
   }
 }

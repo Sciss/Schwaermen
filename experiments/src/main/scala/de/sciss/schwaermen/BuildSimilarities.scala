@@ -176,7 +176,7 @@ object BuildSimilarities {
                   dos.writeShort(v2.index)
                   dos.writeFloat(sim.toFloat)
                   println(f"${v1.quote} -- ${v2.quote} : $sim%g")
-                  val e = Edge(v1, v2, sim): SimEdge
+                  val e = Edge(v1, v2)(sim): SimEdge
                   Some(e)
 
                 case _ => None
@@ -212,7 +212,7 @@ object BuildSimilarities {
         val maxSim  = edgesI.iterator.map(_.weight).max
         println(f"minSim = $minSim%g, maxSim = $maxSim%g")
         import numbers.Implicits._
-        val edges   = edgesI.map(e => e.copy(weight = e.weight.linlin(minSim, maxSim, 1.0, 0.0)))
+        val edges   = edgesI.map(e => e.updateWeight(e.weight.linlin(minSim, maxSim, 1.0, 0.0)))
 
 //        implicit val ord: Ordering[Vertex] = Ordering.by(_.words.head.index)
         val mst = MSTKruskal[Vertex, SimEdge](edges)
