@@ -16,6 +16,10 @@ package de.sciss.schwaermen
 import scala.annotation.tailrec
 import java.{util => ju}
 
+final class PathHelper {
+  
+}
+
 /** Optimised algorithm for iterative DFS search in MST, given a target path length.
   * We assume that vertices are encoded as shorts, and an edge in `allEdgesSorted`
   * denotes `((v1 << 16) | v2)`, where the two vertices are strictly following the
@@ -126,6 +130,9 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int], maxPathLen:
   // for dfs-local vertex indices, the number of successive edges in dfsEdgeMap
   private[this] val dfsEdgeMapNum     = new Array[Short](numVertices)
 
+  private[this] val dfsPath           = new Array[Short](numVertices - 1)
+  private[this] val dfsPathI          = new Array[Short](numVertices - 1) // same as dfsPath, but indices are dfs-local
+
   @inline
   private[this] def reverseEdge(edge: Int): Int = {
     val start = edge >> 16
@@ -211,14 +218,56 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int], maxPathLen:
      */
 
   }
-  
-  private def depthFirstSearch(v1: Int, v2: Int, mstLen: Int): Unit = {
-    ???
+
+  private def dfsVertexIndex(global: Int): Int = {
+    val res = ju.Arrays.binarySearch(dfsVertexIndices, global.toShort)
+    assert(res >= 0)
+    res
+  }
+
+  // Returns the DFS path len, the path itself is found in `dfsPath`
+  private def depthFirstSearch(v1: Int, v2: Int, mstLen: Int): Int = {
+    dfsInit(mstLen)
+    val v1i = dfsVertexIndex(v1)
+
+    var pathIdx       = 0
+    var currVertex    = v1
+    var currVertexI   = v1i
+    dfsPath (0)       = v1 .toShort
+    dfsPathI(0)       = v1i.toShort
+
+    while (true) {
+      val numUnseen = dfsEdgeMapNum(currVertexI)
+      if (numUnseen == 0) {
+        // backtrack
+        assert(pathIdx > 0)
+        pathIdx -= 1
+        currVertex   = dfsPath (pathIdx)
+        currVertexI  = dfsPathI(pathIdx)
+
+      } else {
+        val numU1         = numUnseen - 1
+        dfsEdgeMapNum(currVertexI) = numU1.toShort
+        val edgeMapIdx    = dfsEdgeMapOff(currVertexI) + numU1
+        val edge          = dfsEdgeMap(edgeMapIdx)
+        val start         = edge >> 16
+        val end           = edge & 0xFFF
+        val target        = if (start == currVertex) end else start
+        currVertex        = target
+        pathIdx          += 1
+        dfsPath(pathIdx)  = currVertex .toShort
+        if (target == v2) return pathIdx + 1
+        currVertexI       = dfsVertexIndex(target)
+        dfsPath(pathIdx)  = currVertexI.toShort
+      }
+    }
+
+    -1  // never here
   }
 
   def perform(sourceVertex: Int, targetVertex: Int, pathLen: Int): Any = {
+    require (sourceVertex != targetVertex)
     val mstLen = shortKruskal(v1 = sourceVertex, v2 = targetVertex)
-    dfsInit(mstLen)
     depthFirstSearch(v1 = sourceVertex, v2 = targetVertex, mstLen = mstLen)
 
 //    ju.Arrays.binarySearch()
