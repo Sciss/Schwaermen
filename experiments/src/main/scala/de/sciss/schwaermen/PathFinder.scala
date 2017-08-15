@@ -214,38 +214,36 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
     var lastVertex  = -1
     var vertexIndex = -1
     var edgeMapIdx  = 0
-    while (edgeIdx < mstLen && edgeIdxRev < mstLen) {
+    while (edgeIdx < mstLen || edgeIdxRev < mstLen) {
       // determine the next edge in the 'dual sorted' structure
       var edge        = 0
       var currVertex  = 0
 
       if (edgeIdx < mstLen) {
         val edge1 = mst(edgeIdx)
-        edgeIdx += 1
-        val v1 = edge1 >> 16
         if (edgeIdxRev == mstLen) {
+          edgeIdx += 1
           edge        = edge1
-          currVertex  = v1
+          currVertex  = edge1 >> 16
         } else {
           val edge2r  = dfsEdgesByEnd(edgeIdxRev)
-          edgeIdxRev += 1
-          val v2      = edge2r >> 16
-          if (v1 <= v2) {
+          if (edge1 <= edge2r) {
+            edgeIdx += 1
             edge        = edge1
-            currVertex  = v1
+            currVertex  = edge1 >> 16
           } else {
+            edgeIdxRev += 1
             val edge2   = reverseEdge(edge2r)
             edge        = edge2
-            currVertex  = v2
+            currVertex  = edge2r >> 16
           }
         }
       } else {
         val edge2r  = dfsEdgesByEnd(edgeIdxRev)
         edgeIdxRev += 1
-        val v2      = edge2r >> 16
         val edge2   = reverseEdge(edge2r)
         edge        = edge2
-        currVertex  = v2
+        currVertex  = edge2r >> 16
       }
 
       // update edge-map info for current vertex

@@ -28,6 +28,7 @@ object PathFinderTest {
       val v2i   = vertices.indexOf(e.end  )
       val start = if (v1i < v2i) v1i else v2i
       val end   = if (v1i < v2i) v2i else v1i
+      println(s"$start -> $end")
       (start << 16) | end
     }   .toArray
     val finder = new PathFinder(numVertices = numVertices, allEdgesSorted = allEdgesSorted)
