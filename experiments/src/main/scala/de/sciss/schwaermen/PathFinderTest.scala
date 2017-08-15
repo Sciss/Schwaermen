@@ -20,7 +20,7 @@ import scala.util.Random
 
 object PathFinderTest {
   def main(args: Array[String]): Unit = {
-    run2()
+    run1()
   }
 
   def run2(): Unit = {

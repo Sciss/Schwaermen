@@ -136,16 +136,13 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
     }
   }
 
-  // Recreates the MST, but aborts as soon as both
-  // v1 and v2 have been seen, so we can start the DFS from here.
+  // Recreates the MST.
   // Fills in `mst` and returns the number of edges.
-  private def shortKruskal(v1: Short, v2: Short): Int = {
+  private def kruskal(): Int = {
     ufInit()
 
     var edgeIdx = 0
     var mstSize = 0
-    var seen1   = false
-    var seen2   = false
     while (edgeIdx < numEdges) {
       if (edgeEnabled(edgeIdx)) {
         val edge  = allEdgesSorted(edgeIdx)
@@ -155,15 +152,6 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
           ufUnion(start, end)
           mst(mstSize) = edge
           mstSize += 1
-
-          if (start == v1 || end == v1) {
-            if (seen2) return mstSize
-            seen1 = true
-          }
-          if (start == v2 || end == v2) {
-            if (seen1) return mstSize
-            seen2 = true
-          }
         }
       }
       edgeIdx += 1
@@ -324,7 +312,7 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
   def perform(sourceVertex: Short, targetVertex: Short /* , pathLen: Int */): Array[Short] = {
     require (sourceVertex != targetVertex)
 //    val mstLen = shortKruskal(v1 = sourceVertex, v2 = targetVertex)
-    val mstLen = shortKruskal(v1 = -1, v2 = -1)
+    val mstLen = kruskal()
 //    println(s"mstLen = $mstLen")
     val dfsLen = depthFirstSearch(v1 = sourceVertex, v2 = targetVertex, mstLen = mstLen)
     dfsPath.take(dfsLen)
