@@ -57,7 +57,7 @@ final class PathHelper(val finder: PathFinder, val vertices: Vec[Vertex], val ve
                        val numText1: Int, val numText2: Int) {
   def perform(v1: Vertex, v2: Vertex /* , pathLen: Int */): List[Vertex] = {
     val t1  = System.currentTimeMillis()
-    val arr = finder.perform(sourceVertex = vertexIndexMap(v1).toShort,
+    val arr = finder.findPath(sourceVertex = vertexIndexMap(v1).toShort,
       targetVertex = vertexIndexMap(v2).toShort /* , pathLen = pathLen */)
     val t2  = System.currentTimeMillis()
     println(s"Took ${t2-t1}ms.")
@@ -80,16 +80,13 @@ final class PathHelper(val finder: PathFinder, val vertices: Vec[Vertex], val ve
   */
 final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPathLen: Int */) {
   // a complete graph "has n(n − 1)/2 edges (a triangular number)"
-//  private[this] val numEdgesComplete = numVertices * (numVertices - 1) / 2
+  private[this] val numEdgesComplete  = numVertices * (numVertices - 1) / 2
+  private[this] val numEdges          = allEdgesSorted.length
 
-  private[this] val numEdges    = allEdgesSorted.length
-
-// XXX TODO --- not that currently we do not provide all edges,
-// because we skipped those between 'sub-phrases'.
-// this is fine until we want to efficiently toggle edgeEnabled
-
-//  require(numEdges == numEdgesComplete,
-//    s"allEdgesSorted should have length numEdgesComplete, but instead has $numEdges")
+  if (numEdges != numEdgesComplete) {
+    println(s"Warning: allEdgesSorted should have length $numEdgesComplete, but instead has $numEdges.")
+    println( "This renders `findExpandedPath` unusable.")
+  }
 
   private[this] val ufParents   = new Array[Short](numVertices)
   private[this] val ufTreeSizes = new Array[Short](numVertices)
@@ -107,6 +104,25 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
 
   private def ufIsConnected(from: Short, to: Short): Boolean =
     from == to || ufRoot(from) == ufRoot(to)
+
+  // Calculates the index for the `edgeEnabled` array.
+  // cf. https://stackoverflow.com/questions/27086195/linear-index-upper-triangular-matrix
+  // idx = (numVertices*(numVertices-1)/2) - (numVertices-row)*((numVertices-row)-1)/2 + col - row - 1
+  //     = numEdges(numVertices) - numEdges(numVertices-row) - row + (col - 1)
+  // And we have row = start, col = end
+  private def indexInEdgeEnabled(start: Short, end: Short): Int = {
+    val numM = numVertices - start
+    numEdgesComplete - (numM * (numM - 1)) / 2 - start + (end - 1)
+  }
+
+  private def setVertexEnabled(vertex: Short, state: Boolean): Unit = {
+    var end = vertex + 1
+    while (end < numVertices) {
+      val idx = indexInEdgeEnabled(start = vertex, end = end.toShort)
+      edgeEnabled(idx) = state
+      end += 1
+    }
+  }
 
   @tailrec
   private def ufRoot(vertex: Short): Int = {
@@ -309,12 +325,22 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
     -1  // never here
   }
 
-  def perform(sourceVertex: Short, targetVertex: Short /* , pathLen: Int */): Array[Short] = {
-    require (sourceVertex != targetVertex)
-//    val mstLen = shortKruskal(v1 = sourceVertex, v2 = targetVertex)
+  private def iterate(v1: Short, v2: Short): Int = {
     val mstLen = kruskal()
-//    println(s"mstLen = $mstLen")
-    val dfsLen = depthFirstSearch(v1 = sourceVertex, v2 = targetVertex, mstLen = mstLen)
+    val dfsLen = depthFirstSearch(v1 = v1, v2 = v2, mstLen = mstLen)
+    dfsLen
+  }
+
+  def findPath(sourceVertex: Short, targetVertex: Short): Array[Short] = {
+    require (sourceVertex != targetVertex)
+    val dfsLen = iterate(v1 = sourceVertex, v2 = targetVertex)
     dfsPath.take(dfsLen)
+  }
+
+  def findExpandedPath(sourceVertex: Short, targetVertex: Short, pathLen: Int): Array[Short] = {
+    require (sourceVertex != targetVertex)
+    val mstLen = kruskal()
+    val dfsLen = depthFirstSearch(v1 = sourceVertex, v2 = targetVertex, mstLen = mstLen)
+    ???
   }
 }

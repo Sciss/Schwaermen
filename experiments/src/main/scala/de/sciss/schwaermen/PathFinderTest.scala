@@ -48,7 +48,7 @@ object PathFinderTest {
       (start << 16) | end
     }   .toArray
     val finder = new PathFinder(numVertices = numVertices, allEdgesSorted = allEdgesSorted)
-    val res0  = finder.perform(0.toShort, (numVertices - 1).toShort)
+    val res0  = finder.findPath(0.toShort, (numVertices - 1).toShort)
     val res   = res0.map(vertices(_))
     println(res.mkString("\nNew:\n", "\n", ""))
   }
@@ -87,7 +87,7 @@ object PathFinderTest {
       (start << 16) | end
     }   .toArray
     val finder = new PathFinder(numVertices = numVertices, allEdgesSorted = allEdgesSorted)
-    val res0  = finder.perform(0.toShort, (numVertices - 1).toShort)
+    val res0  = finder.findPath(0.toShort, (numVertices - 1).toShort)
     val res   = res0.map(vertices(_))
     println(res.mkString)
   }
