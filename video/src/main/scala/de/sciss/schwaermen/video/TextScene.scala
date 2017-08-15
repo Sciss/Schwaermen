@@ -40,16 +40,18 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   private[this] val stateRef    = Ref[State](Idle)
   private[this] val idleMinTime = Ref(0L)
 
-  private[this] val videoIdx: Int = {
-    val res = Network.videoDotSeq.indexOf(c.dot)
-    if (res >= 0) res else {
-      Console.err.println(s"WARNING: No dedicated video text for ${c.dot}. Using first instead")
-      0
+  private[this] val videoId: Int = {
+    if (config.videoId >= 0) config.videoId else {
+      val res = Network.videoDotSeq.indexOf(c.dot)
+      if (res >= 0) res else {
+        Console.err.println(s"WARNING: No dedicated video text for ${c.dot}. Using first instead")
+        0
+      }
     }
   }
 
   private[this] val text: String = {
-    Util.readTextResource(s"text${videoIdx + 1}.txt").replaceAll("\n", " ——— ") // XXX TODO decide here
+    Util.readTextResource(s"text${videoId + 1}.txt").replaceAll("\n", " ——— ") // XXX TODO decide here
   }
 
   private[this] val gl = Glyphosat(config, text)

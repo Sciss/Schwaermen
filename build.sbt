@@ -77,10 +77,10 @@ lazy val video = Project(id = videoNameL, base = file("video"))
   .enablePlugins(JavaAppPackaging, DebianPlugin)
   .settings(commonSettings)
   .settings(
-    version     := "0.1.7-SNAPSHOT",
+    version     := "0.1.8-SNAPSHOT",
     description := s"$baseDescr - rpi video",
     libraryDependencies ++= Seq(
-      "de.sciss"      %% "swingplus" % swingPlusVersion
+      "de.sciss" %% "swingplus" % swingPlusVersion
     ),
     buildInfoPackage := "de.sciss.schwaermen.video",
     buildInfoKeys := Seq(name, organization, version, scalaVersion, description,

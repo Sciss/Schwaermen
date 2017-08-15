@@ -24,14 +24,20 @@ import scala.concurrent.stm.{InTxn, Txn, atomic}
 import scala.util.{Random, Try}
 
 object OSCClient {
-  def apply(config: Config, host: String, meta: PathFinder.Meta)(implicit rnd: Random): OSCClient = {
+  def apply(config: Config, localSocketAddress: InetSocketAddress, meta: PathFinder.Meta)
+           (implicit rnd: Random): OSCClient = {
     val c                 = UDP.Config()
     c.codec               = Network.oscCodec
-    val localSocket       = new InetSocketAddress(host, Network.ClientPort)
-    val dot               = Network.socketToDotMap.getOrElse(localSocket, -1)
-    if (dot < 0) println(s"Warning - could not determine 'dot' for host $host")
-    c.localSocketAddress  = localSocket
-    println(s"OSCClient local socket $localSocket")
+    val dot = if (config.dot >= 0) config.dot else {
+      val dot0 = Network.socketToDotMap.getOrElse(localSocketAddress, -1)
+      val res = if (dot0 >= 0) dot0 else {
+        localSocketAddress.getAddress.getAddress.last.toInt
+      }
+      if (dot0 < 0) println(s"Warning - could not determine 'dot' for host $localSocketAddress - assuming $res")
+      res
+    }
+    c.localSocketAddress  = localSocketAddress
+    println(s"OSCClient local socket $localSocketAddress")
     val tx                = UDP.Transmitter(c)
     val rx                = UDP.Receiver(tx.channel, c)
     new OSCClient(config, dot, tx, rx, meta = meta)
@@ -47,8 +53,14 @@ final class OSCClient(override val config: Config, val dot: Int,
 
   override def main: Main.type = Main
 
-  private[this] val otherVideos: Vec[SocketAddress] =
-    Network.videoSocketSeq.filterNot(_ == transmitter.localSocketAddress)
+  private[this] val otherVideos: Vec[SocketAddress] = {
+    val seqRaw = if (config.otherVideoSockets.nonEmpty) config.otherVideoSockets else Network.videoSocketSeq
+    seqRaw.filterNot(_ == transmitter.localSocketAddress)
+  }
+
+  override protected val socketSeqCtl: Vec[SocketAddress] =
+    if (config.otherVideoSockets.nonEmpty) config.otherVideoSockets
+    else Network.socketSeqCtl
 
   def oscReceived(p: osc.Packet, sender: SocketAddress): Unit = p match {
     case Scene.OscInjectQuery(uid) =>

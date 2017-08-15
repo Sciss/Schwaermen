@@ -14,7 +14,10 @@
 package de.sciss.schwaermen
 package video
 
+import java.net.InetSocketAddress
+
 import de.sciss.file._
+import de.sciss.kollflitz.Vec
 
 /**
   * @param baseDir              base directory within which resources such as the video files will be found
@@ -45,6 +48,10 @@ final case class Config(
                         textPairRYK         : Float   = 0.030f, // 0.015f
                         textMinDur          : Float   = 15f, // 30f,
                         textMaxDur          : Float   = 30f, // 60f,
-                        debugText           : Boolean = false
+                        debugText           : Boolean = false,
+                        ownSocket           : Option[InetSocketAddress] = None,
+                        videoId             : Int     = -1,
+                        dot                 : Int     = -1,
+                        otherVideoSockets   : Vec[InetSocketAddress] = Vector.empty
 )
   extends ConfigLike

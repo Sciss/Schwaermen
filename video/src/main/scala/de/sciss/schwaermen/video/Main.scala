@@ -14,10 +14,14 @@
 package de.sciss.schwaermen
 package video
 
-import de.sciss.file.File
+import java.net.InetSocketAddress
 
+import de.sciss.file.File
+import de.sciss.kollflitz.Vec
+
+import scala.collection.breakOut
 import scala.concurrent.stm.atomic
-import scala.util.Random
+import scala.util.{Failure, Random, Success, Try}
 import scala.util.control.NonFatal
 
 object Main extends MainLike {
@@ -81,18 +85,72 @@ object Main extends MainLike {
       opt[Unit] ("debug-text")
         .text ("Debug text scene")
         .action { (_, c) => c.copy(debugText = true) }
+
+      def parseSocket(s: String): Either[String, InetSocketAddress] = {
+        val arr = s.split(':')
+        if (arr.length != 2) Left(s"Must be of format <host>:<port>")
+        else {
+          val host = arr(0)
+          val port = arr(1)
+          Try(new InetSocketAddress(host, port.toInt)) match {
+            case Success(addr)  => Right(addr)
+            case Failure(ex)    => Left(s"Invalid socket address: $s - ${ex.getClass.getSimpleName}")
+          }
+        }
+      }
+
+      opt[String] ("own-socket")
+        .text (s"Override own IP address and port; must be <host>:<port> ")
+        .validate { v =>
+          parseSocket(v) match {
+            case Left(msg)  => failure(msg)
+            case Right(_)   => success
+          }
+        }
+        .action { (v, c) =>
+          val addr = parseSocket(v).right.get
+          c.copy(ownSocket = Some(addr))
+        }
+
+      opt[Seq[String]] ("video-sockets")
+        .text (s"Override other video nodes' IP addresses and ports; must be a list of <host>:<port> ")
+        .validate { vs =>
+          ((Right(()): Either[String, Unit]) /: vs) { case (e, v) =>
+            e.flatMap { _ => parseSocket(v).map(_ => ()) }
+          } match {
+            case Left(msg)  => failure(msg)
+            case Right(_)   => success
+          }
+        }
+        .action { (v, c) =>
+          val addr: Vec[InetSocketAddress] = v.map(parseSocket(_).right.get)(breakOut)
+          c.copy(otherVideoSockets = addr)
+        }
+
+      opt[Int] ("video-id")
+        .text ("Explicit video id. Must be 1, 2, or 3.")
+        .validate { v => if (Seq(1, 2, 3).contains(v)) success else failure("Must be 1, 2, or 3") }
+        .action { (v, c) => c.copy(videoId = v) }
+
+      opt[Int] ("dot")
+        .text ("Explicit 'dot' (normally the last element of the IP address). Used for transaction ids.")
+        .validate { v => if (v >= -1 && v <= 255) success else failure("Must be -1, or 0 to 255") }
+        .action { (v, c) => c.copy(dot = v) }
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
-      val host = Network.thisIP()
-      if (!config.isLaptop) {
-        Network.compareIP(host)
+      val localSocketAddress = config.ownSocket.getOrElse {
+        val host = Network.thisIP()
+        if (!config.isLaptop) {
+          Network.compareIP(host)
+        }
+        new InetSocketAddress(host, Network.ClientPort)
       }
       checkConfig(config)
-      run(host, config)
+      run(localSocketAddress, config)
     }
   }
 
-  def run(host: String, config: Config): Unit = {
+  def run(localSocketAddress: InetSocketAddress, config: Config): Unit = {
     implicit val rnd: Random = new Random(config.randomSeed)
     val meta = try {
       PathFinder.read(textId1 = 1, textId2 = 3, maxPathLen = 60)
@@ -103,7 +161,7 @@ object Main extends MainLike {
         null
     }
 
-    val c = OSCClient(config, host, meta)
+    val c = OSCClient(config, localSocketAddress, meta)
     // new Heartbeat(c)
     val textScene = new TextScene(c)
 

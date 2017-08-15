@@ -21,6 +21,7 @@ import de.sciss.osc
 import de.sciss.osc.UDP
 
 import scala.concurrent.stm.{InTxn, Ref, Txn, atomic}
+import scala.util.control.NonFatal
 
 abstract class OSCClientLike {
   // ---- abstract ----
@@ -122,14 +123,27 @@ abstract class OSCClientLike {
     }
   }
 
+  /** Sub-classes may override this */
+  protected def socketSeqCtl: Vec[SocketAddress] = Network.socketSeqCtl
+
+  private def sendNow(p: osc.Packet, target: SocketAddress): Unit =
+    try {
+      transmitter.send(p, target)
+    } catch {
+      case NonFatal(ex) =>
+        Console.err.println(s"Failed to send ${p.name} to $target - ${ex.getClass.getSimpleName}")
+    }
+
   /** Sends to all possible targets. */
   final def ! (p: osc.Packet): Unit =
-    Network.socketSeqCtl.foreach { target =>
-      transmitter.send(p, target)
+    socketSeqCtl.foreach { target =>
+      sendNow(p, target)
     }
 
   final def sendTxn(target: SocketAddress, p: osc.Packet)(implicit tx: InTxn): Unit =
-    Txn.afterCommit(_ => transmitter.send(p, target))
+    Txn.afterCommit { _ =>
+      sendNow(p, target)
+    }
 
   final def dumpOSC(): Unit = {
     transmitter.dump(filter = Network.oscDumpFilter)
@@ -139,8 +153,8 @@ abstract class OSCClientLike {
   def init(): this.type = {
     receiver.action = oscReceived
     if (config.dumpOSC) dumpOSC()
-    transmitter.connect()
-    receiver.connect()
+    transmitter .connect()
+    receiver    .connect()
     this
   }
 
@@ -148,7 +162,6 @@ abstract class OSCClientLike {
 
   final def mkTxnId()(implicit tx: InTxn): Long = {
     val i = txnCount.getAndTransform(_ + 1)
-//    (dot.toLong << 32) | i
     (i.toLong * 1000) + dot
   }
 }
