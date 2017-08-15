@@ -36,14 +36,9 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Failure
 
 object ShowSimilarities {
-  /** Loads a text graph and returns its minimum-spanning-tree.
-    * Edges are constructed such that 'smaller' vertices (using `Vertex.Ord`) are
-    * the `start` position and 'larger' vertices are the `end` position.
-    */
-  def loadGraph(textIndices: Seq[Int], weightPow: Double = 1.0, dropAmt: Double = 0.0,
-                mst: Boolean = true): List[SimEdge] = {
-    val fIn = file(s"/data/temp/edges${textIndices.mkString}.bin")
-    val din = new DataInputStream(new FileInputStream(fIn))
+  def loadGraph(textIndices: Seq[Int]): List[SimEdge] = {
+    val fIn   = file(s"/data/temp/edges${textIndices.mkString}.bin")
+    val din   = new DataInputStream(new FileInputStream(fIn))
     val edgesI = try {
       val numEdges = (fIn.length() / 10 /* 8 */).toInt
 
@@ -70,7 +65,16 @@ object ShowSimilarities {
     } finally {
       din.close()
     }
+    edgesI
+  }
 
+  /** Loads a text graph and returns its minimum-spanning-tree.
+    * Edges are constructed such that 'smaller' vertices (using `Vertex.Ord`) are
+    * the `start` position and 'larger' vertices are the `end` position.
+    */
+  def loadAndSortGraph(textIndices: Seq[Int], weightPow: Double = 1.0, dropAmt: Double = 0.0,
+                       mst: Boolean = true): List[SimEdge] = {
+    val edgesI  = loadGraph(textIndices)
     val edgesIS = edgesI.sortBy(_.weight)
     val drop    = (edgesIS.size * dropAmt).toInt
     if (drop > 0) println(s"Dropping $drop (${(dropAmt * 100).toInt}%) edges")
@@ -96,7 +100,7 @@ object ShowSimilarities {
   final val USE_COLOR = true
 
   def main(args: Array[String]): Unit = {
-    val edges = loadGraph(1 :: 3 :: Nil, dropAmt = 0.2)
+    val edges = loadAndSortGraph(1 :: 3 :: Nil, dropAmt = 0.2)
     val vertices  = edges.flatMap(e => Seq(e.start, e.end)).toSet
     val wordMap: Map[Vertex, Visual.Word] = vertices.map { v =>
       v -> Visual.Word(v.wordsString, color = if (USE_COLOR) colors(v.textIdx - 1) else 0)

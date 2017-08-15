@@ -96,7 +96,7 @@ object PathFinderTest {
     val textIdx1  = 1
     val textIdx2  = 3
 
-    val edges     = ShowSimilarities.loadGraph(textIdx1 :: textIdx2 ::Nil, mst = false)
+    val edges     = ShowSimilarities.loadAndSortGraph(textIdx1 :: textIdx2 ::Nil, mst = false)
     val edgesMST  = MSTKruskal[Vertex, SimEdge](edges)
     val edgeMap   = mkEdgeMap(edgesMST)
 

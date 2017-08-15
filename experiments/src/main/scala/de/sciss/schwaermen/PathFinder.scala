@@ -25,7 +25,7 @@ import scala.collection.breakOut
 object PathHelper {
   def apply(textIdx1: Int, textIdx2: Int): PathHelper = {
     // they'll come out sorted by similarity, so we have to reverse that
-    val simEdge         = ShowSimilarities.loadGraph(textIdx1 :: textIdx2 :: Nil, mst = false)
+    val simEdge         = ShowSimilarities.loadAndSortGraph(textIdx1 :: textIdx2 :: Nil, mst = false)
     val simEdgeR        = simEdge.reverse
     // sorting will be with all textIdx1 first, followed by all textIdx2 (Vertex.Ord)
     val allVertices: Vec[Vertex] = {
@@ -83,10 +83,10 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
   private[this] val numEdgesComplete  = numVertices * (numVertices - 1) / 2
   private[this] val numEdges          = allEdgesSorted.length
 
-  if (numEdges != numEdgesComplete) {
-    println(s"Warning: allEdgesSorted should have length $numEdgesComplete, but instead has $numEdges.")
-    println( "This renders `findExpandedPath` unusable.")
-  }
+//  if (numEdges != numEdgesComplete) {
+//    println(s"Warning: allEdgesSorted should have length $numEdgesComplete, but instead has $numEdges.")
+//    println( "This renders `findExpandedPath` unusable.")
+//  }
 
   private[this] val ufParents   = new Array[Short](numVertices)
   private[this] val ufTreeSizes = new Array[Short](numVertices)
@@ -110,16 +110,22 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
   // idx = (numVertices*(numVertices-1)/2) - (numVertices-row)*((numVertices-row)-1)/2 + col - row - 1
   //     = numEdges(numVertices) - numEdges(numVertices-row) - row + (col - 1)
   // And we have row = start, col = end
+  @inline
   private def indexInEdgeEnabled(start: Short, end: Short): Int = {
     val numM = numVertices - start
     numEdgesComplete - (numM * (numM - 1)) / 2 - start + (end - 1)
   }
 
+  @inline
+  private def setEdgeEnabled(start: Short, end: Short, state: Boolean): Unit = {
+    val idx = indexInEdgeEnabled(start = start, end = end)
+    edgeEnabled(idx) = state
+  }
+
   private def setVertexEnabled(vertex: Short, state: Boolean): Unit = {
     var end = vertex + 1
     while (end < numVertices) {
-      val idx = indexInEdgeEnabled(start = vertex, end = end.toShort)
-      edgeEnabled(idx) = state
+      setEdgeEnabled(start = vertex, end = end.toShort, state = state)
       end += 1
     }
   }

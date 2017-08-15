@@ -9,7 +9,7 @@ import scala.util.Random
 /** TL;DR - this hypothesis didn't hold */
 object UnionFindHypothesis {
   def main(args: Array[String]): Unit = {
-    val edges           = ShowSimilarities.loadGraph(1::3::Nil, weightPow = WEIGHT_POW, dropAmt = 0.0, mst = false)
+    val edges           = ShowSimilarities.loadAndSortGraph(1::3::Nil, weightPow = WEIGHT_POW, dropAmt = 0.0, mst = false)
     val (edgesMST, uf)  = kruskalWithUF[Vertex, SimEdge](edges)
     val edgeMap         = mkEdgeMap(edgesMST)
     val vertices        = edgeMap.keysIterator.toVector

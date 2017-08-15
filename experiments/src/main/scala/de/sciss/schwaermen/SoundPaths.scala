@@ -36,7 +36,7 @@ object SoundPaths {
   type S = InMemory
 
   def main(args: Array[String]): Unit = {
-    val edges     = ShowSimilarities.loadGraph(1::3::Nil, weightPow = WEIGHT_POW, dropAmt = 0.0, mst = false)
+    val edges     = ShowSimilarities.loadAndSortGraph(1::3::Nil, weightPow = WEIGHT_POW, dropAmt = 0.0, mst = false)
     val edgesMST  = MSTKruskal[Vertex, SimEdge](edges)
     // println(s"MST size is ${edgesMST.size}; text 1 has ${BuildSimilarities.readVertices(1).size}; vertices; text 3 has ${BuildSimilarities.readVertices(3).size} vertices")
     val map       = mkEdgeMap(edgesMST)
