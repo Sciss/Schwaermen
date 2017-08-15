@@ -21,10 +21,10 @@ import de.sciss.osc
 import de.sciss.osc.UDP
 
 import scala.concurrent.stm.{InTxn, Txn, atomic}
-import scala.util.Try
+import scala.util.{Random, Try}
 
 object OSCClient {
-  def apply(config: Config, host: String): OSCClient = {
+  def apply(config: Config, host: String, meta: PathFinder.Meta)(implicit rnd: Random): OSCClient = {
     val c                 = UDP.Config()
     c.codec               = Network.oscCodec
     val localSocket       = new InetSocketAddress(host, Network.ClientPort)
@@ -34,13 +34,15 @@ object OSCClient {
     println(s"OSCClient local socket $localSocket")
     val tx                = UDP.Transmitter(c)
     val rx                = UDP.Receiver(tx.channel, c)
-    new OSCClient(config, dot, tx, rx)
+    new OSCClient(config, dot, tx, rx, meta = meta)
   }
 }
 /** Undirected pair of transmitter and receiver, sharing the same datagram channel. */
 final class OSCClient(override val config: Config, val dot: Int,
                       val transmitter : UDP.Transmitter .Undirected,
-                      val receiver    : UDP.Receiver    .Undirected)
+                      val receiver    : UDP.Receiver    .Undirected,
+                      val meta        : PathFinder.Meta
+                     )(implicit rnd: Random)
   extends OSCClientLike {
 
   override def main: Main.type = Main
@@ -53,6 +55,16 @@ final class OSCClient(override val config: Config, val dot: Int,
       atomic { implicit tx =>
         Scene.current().queryInjection(sender, uid)
       }
+
+    case m @ osc.Message("/test-path-finder") =>
+      val t1  = System.currentTimeMillis()
+      val v1  =  rnd.nextInt(meta.textLen1)                 .toShort
+      val v2  = (rnd.nextInt(meta.textLen2) + meta.textLen1).toShort
+      meta.finder.findExtendedPath(sourceVertex = v1, targetVertex = v2, pathLen = meta.finder.maxPathLen)
+      val t2 = System.currentTimeMillis()
+      val dt = t2 - t1
+      println(s"$m -- took ${dt}ms")
+      transmitter.send(osc.Message("/test-path-reply", dt), sender)
 
     case _ =>
       oscFallback(p, sender)

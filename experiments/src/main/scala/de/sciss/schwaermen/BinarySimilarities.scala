@@ -1,50 +1,118 @@
-///*
-// *  BinarySimilarities.scala
-// *  (Schwaermen)
-// *
-// *  Copyright (c) 2017 Hanns Holger Rutz. All rights reserved.
-// *
-// *  This software is published under the GNU General Public License v2+
-// *
-// *
-// *  For further information, please contact Hanns Holger Rutz at
-// *  contact@sciss.de
-// */
-//
-//package de.sciss.schwaermen
-//
-//import de.sciss.file._
-//import de.sciss.kollflitz.Vec
-//import de.sciss.schwaermen.BuildSimilarities.{SimEdge, Vertex}
-//
-//import scala.collection.breakOut
-//
-//object BinarySimilarities {
+/*
+ *  BinarySimilarities.scala
+ *  (Schwaermen)
+ *
+ *  Copyright (c) 2017 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
+package de.sciss.schwaermen
+
+import java.io.{DataInputStream, DataOutputStream, FileInputStream, FileOutputStream, IOException}
+
+import de.sciss.file._
+import de.sciss.kollflitz.Vec
+import de.sciss.schwaermen.BuildSimilarities.{SimEdge, Vertex}
+
+import scala.collection.breakOut
+import scala.util.Random
+
+object BinarySimilarities {
 //  def triangularIndex(numVertices: Int, start: Short, end: Short): Int = {
 //    val numM              = numVertices - start
 //    val numEdgesComplete  = (numVertices * (numVertices  - 1)) / 2
 //    numEdgesComplete - (numM * (numM - 1)) / 2 - start + (end - 1)
 //  }
-//
-//  /** Converts the output from `BuildSimilarities` into a reduced and
-//    * more regular format easy to read for `PathFinder`.
-//    * Among other things, produces _all_ edges
-//    */
-//  def convert(textIndices: Seq[Int], fOut: File): Unit = {
-//    val edges: List[SimEdge] = ShowSimilarities.loadGraph(textIndices = textIndices)
+
+  private final val COOKIE = 0x45646765 // "Edge"
+
+  def main(args: Array[String]): Unit = {
+    require(args.length == 3)
+    val textId1 = args(0).toInt
+    val textId2 = args(1).toInt
+    val fOut    = file(args(2))
+    convert(textId1 = textId1, textId2 = textId2, fOut = fOut)
+  }
+
+  /** Converts the output from `BuildSimilarities` into a reduced and
+    * more regular format easy to read for `PathFinder`.
+    * Among other things, produces _all_ edges
+    */
+  def convert(textId1: Int, textId2: Int, fOut: File): Unit = {
+    if (fOut.exists()) {
+      Console.err.println(s"File $fOut already exists. Not overwriting!")
+      return
+    }
+
+    val simEdge: List[SimEdge] =
+      ShowSimilarities.loadAndSortGraph(textIndices = textId1 :: textId2 :: Nil, mst = false)
+
+    val simEdgeR = simEdge.reverse
 //    val edgeMap = edges.groupBy(_.start.index).map {
 //      case (start, targets) => start -> targets.groupBy(_.end)
 //    }
-//    val allVertices: Vec[Vertex] = {
-//      val tmp: Vec[Vertex] = edges.flatMap(e => e.start :: e.end :: Nil)(breakOut)
-//      tmp.distinct.sorted
-//    }
-//    val numVertices = allVertices.size
-//    val edgeMapReg = (0 until numVertices).combinations(2).foreach {
-//      case (start, end) =>
-//        val v1    = allVertices(start)
-//        val v2    = allVertices(end )
-//        val edge  =   ...
-//    }
-//  }
-//}
+    val allVertices: Vec[Vertex] = {
+      val tmp: Vec[Vertex] = simEdge.flatMap(e => e.start :: e.end :: Nil)(breakOut)
+      tmp.distinct.sorted
+    }
+    val numVertices     = allVertices.size
+    println(s"numVertices = $numVertices")
+    val textLen1        = allVertices.indexWhere(_.textIdx == textId2)
+    require(textLen1 > 0)
+    val textLen2        = numVertices - textLen1
+    val vertexIndexMap  = allVertices.zipWithIndex.toMap
+
+    val allEdgesSorted: Array[Int] = simEdgeR.map { e =>
+      val v1i   = vertexIndexMap(e.start)
+      val v2i   = vertexIndexMap(e.end  )
+      val start = if (v1i < v2i) v1i else v2i
+      val end   = if (v1i < v2i) v2i else v1i
+      (start << 16) | end
+    } (breakOut)
+
+    val fos = new FileOutputStream(fOut)
+    try {
+      val dos = new DataOutputStream(fos)
+      dos.writeInt(COOKIE)
+      dos.writeByte   (textId1)
+      dos.writeShort  (textLen1)
+      dos.writeByte   (textId2)
+      dos.writeShort  (textLen2)
+      dos.writeInt    (allEdgesSorted.length)
+      allEdgesSorted.foreach(dos.writeInt)
+
+    } finally {
+      fos.close()
+    }
+  }
+
+  def read(fIn: File, maxPathLen: Int)(implicit rnd: Random): PathFinder = {
+    val fis = new FileInputStream(fIn)
+    try {
+      val dis         = new DataInputStream(fis)
+      val cookie      = dis.readInt()
+      if (cookie != COOKIE) throw new IOException(s"File $fIn does not have magic cookie ${COOKIE.toHexString}")
+      /* val textId1 = */ dis.readByte  ()
+      val textLen1    = dis.readShort ()
+      /* val textId2 = */ dis.readByte  ()
+      val textLen2    = dis.readShort ()
+      val numVertices = textLen1 + textLen2
+      val numEdges    = dis.readInt   ()
+      val edgesSorted = new Array[Int](numEdges)
+      var edgeIdx     = 0
+      while (edgeIdx < numEdges) {
+        edgesSorted(edgeIdx) = dis.readInt()
+        edgeIdx += 1
+      }
+      new PathFinder(numVertices = numVertices, allEdgesSorted = edgesSorted, maxPathLen = maxPathLen)
+
+    } finally {
+      fis.close()
+    }
+  }
+}

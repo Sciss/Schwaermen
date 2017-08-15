@@ -215,6 +215,12 @@ class MainFrame(c: OSCClient) {
     }
   }
 
+  private[this] val ggTestPath = Button("Test Path") {
+    selection.foreach { instance =>
+      c.tx.send(osc.Message("/test-path-finder"), instance.socketAddress)
+    }
+  }
+
   private def ToggleButton(title: String)(fun: Boolean => Unit): ToggleButton =
     new ToggleButton(title) {
       listenTo(this)
@@ -234,7 +240,7 @@ class MainFrame(c: OSCClient) {
 
   selectedChanged()
 
-  private[this] val pButtons  = new FlowPanel(ggRefresh, ggUpdate, ggReboot, ggShutdown, ggTestPins, ggTestSound)
+  private[this] val pButtons  = new FlowPanel(ggRefresh, ggUpdate, ggReboot, ggShutdown, ggTestPins, ggTestPath, ggTestSound)
   private[this] val pChannels = new FlowPanel(Seq.tabulate(12) { ch =>
     Button((ch + 1).toString) {
       selection.foreach { instance =>

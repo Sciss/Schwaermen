@@ -96,19 +96,8 @@ object SoundPaths {
       var sz1       = seq0.size
       println(s"expandPath ${seq0.map(_.quote).mkString(" -- ")} - sz0 is $sz1, targetLen is $targetLen")
 
-      //        var edgeMap1  = edgeMap
-//      var edgesSet  = edges.toSet
       val edgesSet  = edges.toSet
       val edgeMapI  = mkEdgeMap(edges)
-
-//      seq0.foreach { va =>
-//        val ea = edgeMap.getOrElse(va, Set.empty)
-//        ea.foreach { e =>
-//          edgesSet -= e
-//          val vb = if (e.start == va) e.end else e.start
-//
-//        }
-//      }
 
       while (sz1 < targetLen) {
         val idxRem  = rnd.nextInt(sz1 - 1)
@@ -121,19 +110,10 @@ object SoundPaths {
           Edge(v2i, v1i)(0.0)
 
         println(s"Attempt insert at $idxRem (${edgeRem.start} -- ${edgeRem.end})")
-
-        //          val v1Set0    = edgeMap1.getOrElse(v1, Set.empty)
-        //          val v1Set1    = v1Set0 - edgeRem
-        //          edgeMap1      = if (v1Set1.isEmpty) edgeMap1 - v1 else edgeMap1 + (v1 -> v1Set1)
-        //          val v2Set0    = edgeMap1.getOrElse(v2, Set.empty)
-        //          val v2Set1    = v2Set0 - edgeRem
-        //          edgeMap1      = if (v2Set1.isEmpty) edgeMap1 - v2 else edgeMap1 + (v2 -> v2Set1)
-
         assert (edgesSet.contains(edgeRem))
         var edgesSetTemp = edgesSet - edgeRem
 
         edgesSetTemp = (edgesSetTemp /: (pre.init ++ post.tail))((res, v) => res -- edgeMapI.getOrElse(v, Set.empty))
-//        assert(seq0.forall(v => !edgesSet.exists(e => e.start == v || e.end == v)))
 
         val edges1    = edgesSetTemp.toList
         val mst1      = MSTKruskal[Vertex, SimEdge](edges1)
@@ -152,9 +132,6 @@ object SoundPaths {
           seq1          = pre ++ slice ++ post
           sz1           = seq1.size
           println(s"Splicing ${slice.map(_.quote).mkString(" -- ")} -> size is $sz1")
-
-//          edgesSet = (edgesSet /: slice)((res, v) => res -- edgeMapI.getOrElse(v, Set.empty))
-//          assert(slice.forall(v => !edgesSet.exists(e => e.start == v || e.end == v)))
         }
       }
 

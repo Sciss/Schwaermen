@@ -18,6 +18,7 @@ import de.sciss.file.File
 
 import scala.concurrent.stm.atomic
 import scala.util.Random
+import scala.util.control.NonFatal
 
 object Main extends MainLike {
   protected val pkgLast = "video"
@@ -92,10 +93,20 @@ object Main extends MainLike {
   }
 
   def run(host: String, config: Config): Unit = {
-    val c = OSCClient(config, host)
-    implicit val rnd = new Random(config.randomSeed)
+    implicit val rnd: Random = new Random(config.randomSeed)
+    val meta = try {
+      PathFinder.read(textId1 = 1, textId2 = 3, maxPathLen = 60)
+    } catch {
+      case NonFatal(ex) =>
+        Console.err.println("Error reading path finder resource")
+        ex.printStackTrace()
+        null
+    }
+
+    val c = OSCClient(config, host, meta)
     // new Heartbeat(c)
     val textScene = new TextScene(c)
+
     atomic { implicit tx =>
       Scene.current() = textScene
       textScene.init()
