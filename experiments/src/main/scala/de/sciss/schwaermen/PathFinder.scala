@@ -305,13 +305,16 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
         val start         = (edge >> 16   ).toShort
         val end           = (edge & 0xFFFF).toShort
         val target        = if (start == currVertex) end else start
-        // if (pathIdx == 0 || dfsPath(pathIdx - 1) != target) ...
-        currVertex        = target
-        currVertexI       = dfsVertexIndices(target)
-        pathIdx          += 1
-        dfsPath (pathIdx) = currVertex
-        dfsPathI(pathIdx) = currVertexI
-        if (target == v2) return pathIdx + 1
+        // we have not automatically removed the incoming edge,
+        // so add an additional check here which acts as a lazy removal of that edge
+        if (pathIdx == 0 || dfsPath(pathIdx - 1) != target) {
+          currVertex        = target
+          currVertexI       = dfsVertexIndices(target)
+          pathIdx          += 1
+          dfsPath (pathIdx) = currVertex
+          dfsPathI(pathIdx) = currVertexI
+          if (target == v2) return pathIdx + 1
+        }
       }
     }
 

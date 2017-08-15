@@ -1,6 +1,19 @@
+/*
+ *  PathFinderTest.scala
+ *  (Schwaermen)
+ *
+ *  Copyright (c) 2017 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.schwaermen
 
-import de.sciss.schwaermen.BuildSimilarities.{SimEdge, Vertex, Word}
+import de.sciss.schwaermen.BuildSimilarities.{SimEdge, Vertex}
 import de.sciss.schwaermen.ExplorePaths.mkEdgeMap
 
 import scala.util.Random
@@ -11,8 +24,8 @@ object PathFinderTest {
   }
 
   def run2(): Unit = {
-    val rnd       = new Random(5L)
-    val vertices  = 'A' to 'E'
+    val rnd       = new Random(3L)
+    val vertices  = 'A' to 'Z'
     val allEdges  = vertices.combinations(2).map {
       case Seq(a, b) => Edge(a, b)(rnd.nextInt(26))
     } .toList
