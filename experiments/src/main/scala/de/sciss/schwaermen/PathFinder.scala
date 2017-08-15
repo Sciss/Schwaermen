@@ -183,8 +183,8 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
   // for dfs-local vertex indices, the number of successive edges in dfsEdgeMap
   private[this] val dfsEdgeMapNum     = new Array[Short](numVertices)
 
-  private[this] val dfsPath           = new Array[Short](numVertices - 1)
-  private[this] val dfsPathI          = new Array[Short](numVertices - 1) // same as dfsPath, but indices are dfs-local
+  private[this] val dfsPath           = new Array[Short](numVertices)
+  private[this] val dfsPathI          = new Array[Short](numVertices) // same as dfsPath, but indices are dfs-local
 
   @inline
   private[this] def reverseEdge(edge: Int): Int = {
@@ -305,6 +305,7 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
         val start         = (edge >> 16   ).toShort
         val end           = (edge & 0xFFFF).toShort
         val target        = if (start == currVertex) end else start
+        // if (pathIdx == 0 || dfsPath(pathIdx - 1) != target) ...
         currVertex        = target
         currVertexI       = dfsVertexIndices(target)
         pathIdx          += 1
@@ -321,7 +322,7 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
     require (sourceVertex != targetVertex)
 //    val mstLen = shortKruskal(v1 = sourceVertex, v2 = targetVertex)
     val mstLen = shortKruskal(v1 = -1, v2 = -1)
-    println(s"mstLen = $mstLen")
+//    println(s"mstLen = $mstLen")
     val dfsLen = depthFirstSearch(v1 = sourceVertex, v2 = targetVertex, mstLen = mstLen)
     dfsPath.take(dfsLen)
   }

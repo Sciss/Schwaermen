@@ -11,8 +11,8 @@ object PathFinderTest {
   }
 
   def run2(): Unit = {
-    val rnd       = new Random(12L)
-    val vertices  = 'A' to 'D'
+    val rnd       = new Random(5L)
+    val vertices  = 'A' to 'E'
     val allEdges  = vertices.combinations(2).map {
       case Seq(a, b) => Edge(a, b)(rnd.nextInt(26))
     } .toList
@@ -20,7 +20,10 @@ object PathFinderTest {
     println(allEdges.mkString("\nAll edges:\n", "\n", ""))
 
     val mst1 = MSTKruskal[Char, Edge[Char]](allEdges)
-    println(mst1.mkString("\nOld:\n", "\n", ""))
+//    println(mst1.mkString("\nOld:\n", "\n", ""))
+    val edgeMap = mkEdgeMap(mst1)
+    val resOld = ExplorePaths.calcPath(vertices.head, vertices.last, edgeMap)
+    println(resOld.mkString("\nOld:\n", "\n", ""))
 
     val numVertices     = vertices.size
     val allEdgesSorted  = allEdges.sortBy(_.weight).map { e =>
@@ -28,7 +31,7 @@ object PathFinderTest {
       val v2i   = vertices.indexOf(e.end  )
       val start = if (v1i < v2i) v1i else v2i
       val end   = if (v1i < v2i) v2i else v1i
-      println(s"$start -> $end")
+//      println(s"$start -> $end")
       (start << 16) | end
     }   .toArray
     val finder = new PathFinder(numVertices = numVertices, allEdgesSorted = allEdgesSorted)

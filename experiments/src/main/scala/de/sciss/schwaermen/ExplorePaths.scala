@@ -148,9 +148,9 @@ object ExplorePaths {
 
   type EdgeMap = Map[Vertex, Set[SimEdge]]
 
-  def mkEdgeMap(edges: List[SimEdge]): EdgeMap = {
+  def mkEdgeMap[A](edges: List[Edge[A]]): Map[A, Set[Edge[A]]] = {
     @tailrec
-    def loop(rem: List[SimEdge], res: EdgeMap): EdgeMap =
+    def loop(rem: List[Edge[A]], res: Map[A, Set[Edge[A]]]): Map[A, Set[Edge[A]]] =
       rem match {
         case edge :: tail =>
           val oldS = res.getOrElse(edge.start, Set.empty)
@@ -169,9 +169,9 @@ object ExplorePaths {
   /** Uses depth-first-search. Requires that the graph has no cycles.
     * Returns `Nil` if no path is found.
     */
-  def calcPath(source: Vertex, sink: Vertex, map: EdgeMap): List[Vertex] = {
+  def calcPath[A](source: A, sink: A, map: Map[A, Set[Edge[A]]]): List[A] = {
     @tailrec
-    def loop(back: List[(Vertex, Set[SimEdge])], rem: EdgeMap): List[Vertex] =
+    def loop(back: List[(A, Set[Edge[A]])], rem: Map[A, Set[Edge[A]]]): List[A] =
       back match {
         case (v, edges) :: tail =>
           if (v == sink) back.reverseIterator.map(_._1).toList
