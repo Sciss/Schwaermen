@@ -7,6 +7,36 @@ import scala.util.Random
 
 object PathFinderTest {
   def main(args: Array[String]): Unit = {
+    run2()
+  }
+
+  def run2(): Unit = {
+    val rnd       = new Random(12L)
+    val vertices  = 'A' to 'D'
+    val allEdges  = vertices.combinations(2).map {
+      case Seq(a, b) => Edge(a, b)(rnd.nextInt(26))
+    } .toList
+
+    println(allEdges.mkString("\nAll edges:\n", "\n", ""))
+
+    val mst1 = MSTKruskal[Char, Edge[Char]](allEdges)
+    println(mst1.mkString("\nOld:\n", "\n", ""))
+
+    val numVertices     = vertices.size
+    val allEdgesSorted  = allEdges.sortBy(_.weight).map { e =>
+      val v1i   = vertices.indexOf(e.start)
+      val v2i   = vertices.indexOf(e.end  )
+      val start = if (v1i < v2i) v1i else v2i
+      val end   = if (v1i < v2i) v2i else v1i
+      (start << 16) | end
+    }   .toArray
+    val finder = new PathFinder(numVertices = numVertices, allEdgesSorted = allEdgesSorted)
+    val res0  = finder.perform(0.toShort, (numVertices - 1).toShort)
+    val res   = res0.map(vertices(_))
+    println(res.mkString("\nNew:\n", "\n", ""))
+  }
+
+  def run0(): Unit = {
     // cf. http://i.imgur.com/yf8K1AK.png
     // but we have other MST
 

@@ -321,7 +321,8 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
 
   def perform(sourceVertex: Short, targetVertex: Short /* , pathLen: Int */): Array[Short] = {
     require (sourceVertex != targetVertex)
-    val mstLen = shortKruskal(v1 = sourceVertex, v2 = targetVertex)
+//    val mstLen = shortKruskal(v1 = sourceVertex, v2 = targetVertex)
+    val mstLen = shortKruskal(v1 = -1, v2 = -1)
     println(s"mstLen = $mstLen")
     val dfsLen = depthFirstSearch(v1 = sourceVertex, v2 = targetVertex, mstLen = mstLen)
     dfsPath.take(dfsLen)
