@@ -21,20 +21,26 @@ import java.util.TimerTask
 
 import scala.swing.Swing._
 import scala.swing.event.ButtonClicked
-import scala.swing.{Button, FlowPanel, Graphics2D, MainFrame, Swing, ToggleButton}
+import scala.swing.{Button, FlowPanel, Graphics2D, ToggleButton}
 
-final class TextView(config: Config, gl: Glyphosat) {
+final class TextView(config: Config, gl: Glyphosat, videoId: Int) {
   private[this] var clip          = true
 
   private[this] val screen        = GraphicsEnvironment.getLocalGraphicsEnvironment.getDefaultScreenDevice
   private[this] val screenConf    = screen.getDefaultConfiguration
   private[this] val screenB       = screenConf.getBounds
-  private[this] val NominalWidth  = 1024 // 800 // 1920
-  private[this] val NominalHeight = 1024 // 400 // 1080
+  private[this] val NominalWidth  = if (config.smallWindow) 512 else 1024 // 800 // 1920
+  private[this] val NominalHeight = if (config.smallWindow) 512 else 1024 // 400 // 1080
   private[this] val screenWidth   = screenB.width
   private[this] val screenHeight  = screenB.height
-  private[this] val NominalX      = (screenWidth  - NominalWidth)/2
+  private[this] val NominalX      = (screenWidth  - NominalWidth )/2
   private[this] val NominalY      = (screenHeight - NominalHeight)/2
+
+  private[this] val OffScreenW    = if (config.smallWindow) NominalWidth  else screenWidth
+  private[this] val OffScreenH    = if (config.smallWindow) NominalHeight else screenHeight
+  private[this] val clipExtent    = 200 // if (config.smallWindow) 100 else 200
+
+  private[this] val isFullScreen = !config.smallWindow
 
   private def paintFun(g: Graphics2D): Unit = {
     g.setColor(Color.black)
@@ -44,23 +50,36 @@ final class TextView(config: Config, gl: Glyphosat) {
     g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE  )
 
     val atOrig = g.getTransform
-    if (clip) {
-      g.translate(NominalX, NominalY)
-      gl.render(g)
+    if (isFullScreen) {
+      if (clip) {
+        g.translate(NominalX, NominalY)
+        gl.render(g)
+      } else {
+        g.drawLine(clipExtent, 0, clipExtent, OffScreenH)
+        g.drawLine(clipExtent + NominalWidth, 0, clipExtent + NominalWidth, OffScreenH)
+        g.translate(clipExtent, 0)
+        gl.render(g)
+      }
     } else {
-      g.drawLine(200, 0, 200, screenHeight)
-      g.drawLine(200 + NominalWidth, 0, 200 + NominalWidth, screenHeight)
-      g.translate(200, 0)
+      g.scale(0.5, 0.5)
       gl.render(g)
     }
     g.setTransform(atOrig)
   }
 
   private[this] val mainWindow = new Frame(null, screenConf) {
-    setUndecorated  (true)
-    setResizable    (false)
+    if (isFullScreen) {
+      setUndecorated(true)
+    } else {
+      setTitle(s"video ${videoId + 1}")
+    }
 
-    setPreferredSize((screenWidth, screenHeight))
+    setResizable(false)
+
+    if (isFullScreen)
+      setPreferredSize((screenWidth, screenHeight))
+    else
+      setPreferredSize((NominalWidth, NominalHeight))
 
     override def paint(g: Graphics): Unit = {
       super.paint(g)
@@ -70,19 +89,31 @@ final class TextView(config: Config, gl: Glyphosat) {
 
   mainWindow.pack()
   mainWindow.setLocationRelativeTo(null)
+  if (!isFullScreen) {
+    val pad = (screenWidth - 3 * NominalWidth) / 2
+    val x   = videoId * (NominalWidth + pad)
+    mainWindow.setLocation(x, mainWindow.getY)
+  }
   mainWindow.setVisible(true)
 
-  Thread.sleep(50)
-  mainWindow.createBufferStrategy(2)
-  Thread.sleep(50)
+  private[this] val strategy = {
+    //    if (isFullScreen) {
+    Thread.sleep(50)
+    mainWindow.createBufferStrategy(2)
+    Thread.sleep(50)
+    mainWindow.getBufferStrategy
+    //    } else {
+    //      null
+    //    }
+  }
 
-  private[this] val strategy = mainWindow.getBufferStrategy
+  private[this] val OffScreenImg  =
+    new BufferedImage(OffScreenW, OffScreenH, BufferedImage.TYPE_INT_ARGB)
 
-  private[this] val OffScreenImg  = new BufferedImage(screenWidth, screenHeight, BufferedImage.TYPE_INT_ARGB)
   private[this] val OffScreenG    = {
     val res = OffScreenImg.createGraphics()
     res.setColor(Color.black)
-    res.fillRect(0, 0, screenWidth, screenHeight)
+    res.fillRect(0, 0, OffScreenW, OffScreenH)
     res
   }
 
@@ -93,14 +124,18 @@ final class TextView(config: Config, gl: Glyphosat) {
   private def tick(): Unit = {
     gl.step()
 
-    paintFun(OffScreenG)
-    do {
+//    if (isFullScreen) {
+      paintFun(OffScreenG)
       do {
-        val g = strategy.getDrawGraphics
-        g.drawImage(OffScreenImg, 0, 0, screenWidth, screenHeight, 0, 0, screenWidth, screenHeight, null)
-      } while (strategy.contentsRestored())
-      strategy.show()
-    } while (strategy.contentsLost())
+        do {
+          val g = strategy.getDrawGraphics
+          g.drawImage(OffScreenImg, 0, 0, OffScreenW, OffScreenH, 0, 0, OffScreenW, OffScreenH, null)
+        } while (strategy.contentsRestored())
+        strategy.show()
+      } while (strategy.contentsLost())
+//    } else {
+//      mainWindow.repaint()
+//    }
     tk.sync()
 
     fpsT(fpsIdx)  = System.currentTimeMillis()
@@ -141,7 +176,9 @@ final class TextView(config: Config, gl: Glyphosat) {
 
   private[this] val ggTick = Button("Tick")(tick())
 
-  private[this] val controlWindow = new MainFrame
+  private[this] val controlWindow = new scala.swing.Frame {
+    override def closeOperation(): Unit = if (isFullScreen) sys.exit()
+  }
 
   private[this] val ggInfo = Button("Info") {
     val dt  = fpsT((fpsIdx + 10) % 11) - fpsT(fpsIdx)  // millis-per-ten-frames
@@ -171,7 +208,7 @@ final class TextView(config: Config, gl: Glyphosat) {
     override def keyTyped  (e: KeyEvent): Unit = ()
     override def keyPressed(e: KeyEvent): Unit = {
       e.getKeyCode match {
-        case KeyEvent.VK_ESCAPE => quit()
+        case KeyEvent.VK_ESCAPE => if (isFullScreen) quit()
         case KeyEvent.VK_E      => eject()
         case KeyEvent.VK_C      => controlWindow.open()
 
@@ -183,24 +220,26 @@ final class TextView(config: Config, gl: Glyphosat) {
     override def mousePressed(e: MouseEvent): Unit = mainWindow.requestFocus()
   })
 
-  // "hide" cursor
-  private[this] val cursorImg = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB)
-  private[this] val cursor    = mainWindow.getToolkit.createCustomCursor(cursorImg, new Point(0, 0), "blank")
-  mainWindow.setCursor(cursor)
+  if (isFullScreen) {
+    // "hide" cursor
+    val cursorImg = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB)
+    val cursor    = mainWindow.getToolkit.createCustomCursor(cursorImg, new Point(0, 0), "blank")
+    mainWindow.setCursor(cursor)
+    screen.setFullScreenWindow(mainWindow)
+  }
 
-  screen.setFullScreenWindow(mainWindow)
   mainWindow.requestFocus()
 
-  private[this] val testTimer = new javax.swing.Timer(20000, Swing.ActionListener(_ => testSwitch()))
-  testTimer.setRepeats(true)
-
-  def testSwitch(): Unit = {
-    ???
-  }
+//  private[this] val testTimer = new javax.swing.Timer(20000, Swing.ActionListener(_ => testSwitch()))
+//  testTimer.setRepeats(true)
+//
+//  def testSwitch(): Unit = {
+//      ...
+//  }
 
   def start(): Unit = {
     startAnim()
-    testTimer.restart()
+//    testTimer.restart()
   }
 
   def quit(): Unit = sys.exit()

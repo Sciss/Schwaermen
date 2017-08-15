@@ -27,4 +27,10 @@ trait MainLike {
       Seq("xset", "-dpms").!
     }
   }
+
+  var useLog = false
+
+  def log(what: => String): Unit = if (useLog) {
+    println(s"$pkgLast - $what")
+  }
 }

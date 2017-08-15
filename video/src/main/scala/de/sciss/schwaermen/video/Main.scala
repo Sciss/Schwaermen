@@ -86,6 +86,14 @@ object Main extends MainLike {
         .text ("Debug text scene")
         .action { (_, c) => c.copy(debugText = true) }
 
+      opt[Unit] ("log")
+        .text ("Enable logging")
+        .action { (_, c) => c.copy(log = true) }
+
+      opt[Unit] ("small-window")
+        .text ("Use small window instead of full-screen, for debugging purposes.")
+        .action { (_, c) => c.copy(smallWindow = true) }
+
       def parseSocket(s: String): Either[String, InetSocketAddress] = {
         val arr = s.split(':')
         if (arr.length != 2) Left(s"Must be of format <host>:<port>")
@@ -128,8 +136,8 @@ object Main extends MainLike {
         }
 
       opt[Int] ("video-id")
-        .text ("Explicit video id. Must be 1, 2, or 3.")
-        .validate { v => if (Seq(1, 2, 3).contains(v)) success else failure("Must be 1, 2, or 3") }
+        .text ("Explicit video id. Must be 0, 1, or 2.")
+        .validate { v => if (v >= 0 && v <= 2) success else failure("Must be 0, 1, or 2") }
         .action { (v, c) => c.copy(videoId = v) }
 
       opt[Int] ("dot")
@@ -151,6 +159,7 @@ object Main extends MainLike {
   }
 
   def run(localSocketAddress: InetSocketAddress, config: Config): Unit = {
+    if (config.log) Main.useLog = true
     implicit val rnd: Random = new Random(config.randomSeed)
     val meta = try {
       PathFinder.read(textId1 = 1, textId2 = 3, maxPathLen = 60)

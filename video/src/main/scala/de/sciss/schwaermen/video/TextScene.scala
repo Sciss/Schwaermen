@@ -17,6 +17,7 @@ package video
 import java.net.SocketAddress
 
 import de.sciss.equal.Implicits._
+import de.sciss.schwaermen.video.Main.log
 import de.sciss.schwaermen.video.Scene.{OscInjectAbort, OscInjectCommit, OscInjectQuery, OscInjectReply}
 
 import scala.concurrent.stm.{InTxn, Ref}
@@ -57,7 +58,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   private[this] val gl = Glyphosat(config, text)
 
 //  private[this] lazy val debugView: DebugTextView = new DebugTextView
-  private[this] lazy val view     : TextView      = new TextView(config, gl)
+  private[this] lazy val view: TextView = new TextView(config, gl, videoId = videoId)
 
   /* Pixels per second */
 //  private[this] val textSpeed         : Float = config.textVX * config.fps
@@ -80,7 +81,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
         case Success(QueryResult(_ /* dot */, true)) =>
           testInjectAndGoBackToIdle()
         case _ =>
-          debugPrint("Injection target received abortion or was not selected")
+          log("Injection target received abortion or was not selected")
           retryInitiative()
       }}
     } else {
@@ -93,15 +94,15 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     idleTask() = None
     if (stateRef() == Idle) {
       stateRef() = InjectQuery
-      debugPrint("Starting initiative")
+      log("Starting initiative")
       val Uid = c.mkTxnId()
       c.queryVideos(OscInjectQuery(Uid)) {
         case OscInjectReply(Uid, accepted) => accepted
       } { implicit tx => {
         case Success(list) =>
-          debugPrint(s"Got replies: $list")
+          log(s"Got replies: $list")
           if (list.exists(_.value === OscInjectReply.Rejected)) {
-            debugPrint("A node rejected the transaction")
+            log("A node rejected the transaction")
             c.sendVideos(OscInjectAbort(Uid))
             retryInitiative()
           } else {
@@ -109,7 +110,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
               case QueryResult(dot, OscInjectReply.Accepted) => dot
             }
             if (candidates.isEmpty) { // there is no need to 'complete' the transaction in that case
-              debugPrint("No node accepted the injection")
+              log("No node accepted the injection")
               retryInitiative()
             } else {
               val candidate = Util.choose(candidates)
@@ -119,7 +120,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
           }
 
         case Failure(ex) =>
-          debugPrint(s"Failed to ping - ${ex.getClass.getSimpleName}.")
+          log(s"Failed to ping - ${ex.getClass.getSimpleName}.")
           retryInitiative()
       }}
     }
@@ -128,11 +129,9 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   private def retryInitiative()(implicit tx: InTxn): Unit = {
     val oldState = stateRef.swap(Idle)
     assert(oldState == InjectQuery || oldState == InjectPending)
-    debugPrint("Retrying initiative in 4 seconds.")
+    log("Retrying initiative in 4 seconds.")
     scheduleInitiative(4f)
   }
-
-  private def debugPrint(what: String): Unit = if (config.debugText) println(s"DEBUG: $what")
 
   def init()(implicit tx: InTxn): Unit = {
     if (!config.debugText) Swing.onEDT(view.start())
@@ -141,7 +140,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   }
 
   private def testEjectAndGoBackToIdle()(implicit tx: InTxn): Unit = {
-    debugPrint("Test ejection")
+    log("Test ejection")
     stateRef()  = Ejecting
     val durSecs = 10f
     val delay   = (durSecs * 1000).toLong
@@ -149,7 +148,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   }
 
   private def testInjectAndGoBackToIdle()(implicit tx: InTxn): Unit = {
-    debugPrint("Test injection")
+    log("Test injection")
     stateRef()  = Injecting
     val durSecs = 10f
     val delay   = (durSecs * 1000).toLong
@@ -157,7 +156,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   }
 
   private def becomeIdle()(implicit tx: InTxn): Unit = {
-    debugPrint("Becoming idle.")
+    log("Becoming idle.")
     val now       = System.currentTimeMillis()
     val idleDur   = Util.rrand(config.textMinDur, config.textMaxDur)
     val minTime   = now + (config.textMinDur * 1000).toLong

@@ -52,6 +52,8 @@ final case class Config(
                         ownSocket           : Option[InetSocketAddress] = None,
                         videoId             : Int     = -1,
                         dot                 : Int     = -1,
-                        otherVideoSockets   : Vec[InetSocketAddress] = Vector.empty
+                        otherVideoSockets   : Vec[InetSocketAddress] = Vector.empty,
+                        log                 : Boolean = false,
+                        smallWindow         : Boolean = false
 )
   extends ConfigLike

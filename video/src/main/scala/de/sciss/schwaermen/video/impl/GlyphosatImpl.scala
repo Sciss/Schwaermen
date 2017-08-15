@@ -24,7 +24,7 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
                           charPairSpacing : Map[(Char, Char), Double  ],
                           words: Array[Word], characters: Array[CharInfo],
                           NominalVX: Float, EjectVY: Float, PairLYK: Float, PairRYK: Float,
-                          initialIndex: Int)
+                          initialIndex: Int, isSmall: Boolean)
   extends Glyphosat {
 
   //  private[this] val vertexPool =   ...
@@ -40,7 +40,7 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
 
   private[this] val spaceChar = charShapes(' ')
 
-  private[this] val NominalY    = 512f // 80f // 16f
+  private[this] val NominalY    = 512f // if (isSmall) 256f else 512f // 80f // 16f
   private[this] val NominalYK   = 0.01f
   private[this] val NominalVXK  = 0.1f
   private[this] val PairLXK     = 0.15f
@@ -51,7 +51,7 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
   private[this] val DragMX      = 1.0f - 0.2f // 0.1f
   private[this] val DragMY      = 1.0f - 0.2f // 0.1f
   //  private[this] val PairYL      = 0.0f
-  private[this] val ScreenWidth = 1024f // 400f
+  private[this] val ScreenWidth = 1024f // if (isSmall) 512f else 1024f // 400f
 
   def head    : CharVertex = _head
   def last    : CharVertex = _last
