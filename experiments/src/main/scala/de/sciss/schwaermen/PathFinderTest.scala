@@ -24,7 +24,7 @@ object PathFinderTest {
   }
 
   def run2(): Unit = {
-    val rnd       = new Random(3L)
+    implicit val rnd: Random = new Random(3L)
     val vertices  = 'A' to 'Z'
     val allEdges  = vertices.combinations(2).map {
       case Seq(a, b) => Edge(a, b)(rnd.nextInt(26))
@@ -47,7 +47,7 @@ object PathFinderTest {
 //      println(s"$start -> $end")
       (start << 16) | end
     }   .toArray
-    val finder = new PathFinder(numVertices = numVertices, allEdgesSorted = allEdgesSorted)
+    val finder = new PathFinder(numVertices = numVertices, allEdgesSorted = allEdgesSorted, maxPathLen = numVertices)
     val res0  = finder.findPath(0.toShort, (numVertices - 1).toShort)
     val res   = res0.map(vertices(_))
     println(res.mkString("\nNew:\n", "\n", ""))
@@ -86,7 +86,9 @@ object PathFinderTest {
       val end   = if (v1i < v2i) v2i else v1i
       (start << 16) | end
     }   .toArray
-    val finder = new PathFinder(numVertices = numVertices, allEdgesSorted = allEdgesSorted)
+
+    implicit val rnd: Random = new Random(0L)
+    val finder = new PathFinder(numVertices = numVertices, allEdgesSorted = allEdgesSorted, maxPathLen = numVertices)
     val res0  = finder.findPath(0.toShort, (numVertices - 1).toShort)
     val res   = res0.map(vertices(_))
     println(res.mkString)
@@ -100,20 +102,23 @@ object PathFinderTest {
     val edgesMST  = MSTKruskal[Vertex, SimEdge](edges)
     val edgeMap   = mkEdgeMap(edgesMST)
 
-    val helper = PathHelper(1, 3)
+    implicit val rnd: Random = new Random(0L)
+    val pathLen = 50
+    val helper = PathHelper(1, 3, maxPathLen = pathLen)
     println("Helper ready.")
 
     val randomised = Random.shuffle(helper.vertices)
 
     randomised.sliding(2).take(20).foreach {
       case Seq(v1, v2) =>
-//        val t1 = System.currentTimeMillis()
         val seq1 = ExplorePaths.calcPath(v1, v2, edgeMap)
-//        val t2 = System.currentTimeMillis()
-//        println(s"OLD took ${t2-t1}ms.")
         println(seq1.map(_.quote).mkString("OLD: ", " -- ", ""))
         val seq2 = helper.perform(v1, v2)
         println(seq2.map(_.quote).mkString("NEW: ", " -- ", ""))
+        val seq3 = helper.performExtended(v1, v2, pathLen = pathLen)
+        println(seq3.map(_.quote).mkString("EXT: ", " -- ", ""))
+        seq3.map(_.quote).foreach(println)
+        println()
     }
   }
 }

@@ -20,10 +20,11 @@ import de.sciss.schwaermen.BuildSimilarities.Vertex
 
 import scala.annotation.tailrec
 import scala.collection.breakOut
+import scala.util.Random
 
 /** Transition before we store the vertices more efficiently */
 object PathHelper {
-  def apply(textIdx1: Int, textIdx2: Int): PathHelper = {
+  def apply(textIdx1: Int, textIdx2: Int, maxPathLen: Int)(implicit rnd: Random): PathHelper = {
     // they'll come out sorted by similarity, so we have to reverse that
     val simEdge         = ShowSimilarities.loadAndSortGraph(textIdx1 :: textIdx2 :: Nil, mst = false)
     val simEdgeR        = simEdge.reverse
@@ -48,7 +49,7 @@ object PathHelper {
       (start << 16) | end
     } (breakOut)
 
-    val finder = new PathFinder(numVertices = numVertices, allEdgesSorted = allEdgesSorted)
+    val finder = new PathFinder(numVertices = numVertices, allEdgesSorted = allEdgesSorted, maxPathLen = maxPathLen)
     new PathHelper(finder = finder, vertices = allVertices, vertexIndexMap = vertexIndexMap,
       numText1 = numText1, numText2 = numText2)
   }
@@ -59,6 +60,15 @@ final class PathHelper(val finder: PathFinder, val vertices: Vec[Vertex], val ve
     val t1  = System.currentTimeMillis()
     val arr = finder.findPath(sourceVertex = vertexIndexMap(v1).toShort,
       targetVertex = vertexIndexMap(v2).toShort /* , pathLen = pathLen */)
+    val t2  = System.currentTimeMillis()
+    println(s"Took ${t2-t1}ms.")
+    arr.map(vertices(_))(breakOut)
+  }
+
+  def performExtended(v1: Vertex, v2: Vertex, pathLen: Int): List[Vertex] = {
+    val t1  = System.currentTimeMillis()
+    val arr = finder.findExtendedPath(sourceVertex = vertexIndexMap(v1).toShort,
+      targetVertex = vertexIndexMap(v2).toShort, pathLen = pathLen)
     val t2  = System.currentTimeMillis()
     println(s"Took ${t2-t1}ms.")
     arr.map(vertices(_))(breakOut)
@@ -78,14 +88,14 @@ final class PathHelper(val finder: PathFinder, val vertices: Vec[Vertex], val ve
   *                         Since the graph is assumed to be complete, the number of
   *                         edges must be `numVertices * (numVertices - 1) / 2`.
   */
-final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPathLen: Int */) {
+final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int], maxPathLen: Int)(implicit rnd: Random) {
   // a complete graph "has n(n − 1)/2 edges (a triangular number)"
   private[this] val numEdgesComplete  = numVertices * (numVertices - 1) / 2
   private[this] val numEdges          = allEdgesSorted.length
 
 //  if (numEdges != numEdgesComplete) {
 //    println(s"Warning: allEdgesSorted should have length $numEdgesComplete, but instead has $numEdges.")
-//    println( "This renders `findExpandedPath` unusable.")
+//    println( "This renders `findExtendedPath` unusable.")
 //  }
 
   private[this] val ufParents   = new Array[Short](numVertices)
@@ -94,8 +104,7 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
   // "If there are n vertices in the graph, then each spanning tree has n − 1 edges."
   private[this] val mst         = new Array[Int  ](numVertices - 1)
 
-  private[this] val edgeEnabled = new Array[Boolean](numEdges)
-  ju.Arrays.fill(edgeEnabled, true)
+  private[this] val edgeEnabled = new Array[Boolean](numEdgesComplete)
 
   private def ufInit(): Unit = {
     ju.Arrays.fill(ufParents  , (-1).toShort)
@@ -122,6 +131,14 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
     edgeEnabled(idx) = state
   }
 
+  @inline
+  private def setEdgeEnabled(edge: Int, state: Boolean): Unit = {
+    val start = (edge >> 16   ).toShort
+    val end   = (edge & 0xFFFF).toShort
+    val idx   = indexInEdgeEnabled(start = start, end = end)
+    edgeEnabled(idx) = state
+  }
+
   private def setVertexEnabled(vertex: Short, state: Boolean): Unit = {
     var end = vertex + 1
     while (end < numVertices) {
@@ -129,6 +146,9 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
       end += 1
     }
   }
+
+  private def setAllEdgesEnabled(): Unit =
+    ju.Arrays.fill(edgeEnabled, true)
 
   @tailrec
   private def ufRoot(vertex: Short): Int = {
@@ -166,15 +186,14 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
     var edgeIdx = 0
     var mstSize = 0
     while (edgeIdx < numEdges) {
-      if (edgeEnabled(edgeIdx)) {
-        val edge  = allEdgesSorted(edgeIdx)
-        val start = (edge >> 16   ).toShort
-        val end   = (edge & 0xFFFF).toShort
-        if (!ufIsConnected(start, end)) {
-          ufUnion(start, end)
-          mst(mstSize) = edge
-          mstSize += 1
-        }
+      val edge  = allEdgesSorted(edgeIdx)
+      val start = (edge >> 16   ).toShort
+      val end   = (edge & 0xFFFF).toShort
+      val eeIdx = indexInEdgeEnabled(start, end)
+      if (edgeEnabled(eeIdx) && !ufIsConnected(start, end)) {
+        ufUnion(start, end)
+        mst(mstSize) = edge
+        mstSize += 1
       }
       edgeIdx += 1
     }
@@ -196,6 +215,8 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
   private[this] val dfsPath           = new Array[Short](numVertices)
   private[this] val dfsPathI          = new Array[Short](numVertices) // same as dfsPath, but indices are dfs-local
 
+  private[this] val extendedPath      = new Array[Short](maxPathLen)
+
   @inline
   private[this] def reverseEdge(edge: Int): Int = {
     val start = edge >> 16
@@ -203,6 +224,13 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
     val rev   = end << 16 | start
     rev
   }
+
+  @inline
+  private[this] def mkEdge(v1: Short, v2: Short): Int =
+    if (v1 < v2)
+      (v1 << 16) | v2
+    else
+      (v2 << 16) | v1
 
   // N.B. resorts `mst`. It initialises all
   // of `dfsVertexIndices`, `dfsEdgeMap`, `dfsEdgeMapOff`, `dfsEdgeMapNum`
@@ -339,14 +367,78 @@ final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int] /* , maxPath
 
   def findPath(sourceVertex: Short, targetVertex: Short): Array[Short] = {
     require (sourceVertex != targetVertex)
+    setAllEdgesEnabled()
     val dfsLen = iterate(v1 = sourceVertex, v2 = targetVertex)
     dfsPath.take(dfsLen)
   }
 
-  def findExpandedPath(sourceVertex: Short, targetVertex: Short, pathLen: Int): Array[Short] = {
-    require (sourceVertex != targetVertex)
-    val mstLen = kruskal()
-    val dfsLen = depthFirstSearch(v1 = sourceVertex, v2 = targetVertex, mstLen = mstLen)
-    ???
+  private def shrinkPath(path: Array[Short], currentLen: Int, targetLen: Int): Unit = {
+    var lenNow = currentLen
+    while (lenNow > targetLen) {
+      val idxCut1 = rnd.nextInt(lenNow - 2) + 1
+      val idxCut2 = idxCut1 + 1
+      System.arraycopy(path, idxCut2, path, idxCut1, lenNow - idxCut2)
+      lenNow -= 1
+    }
+  }
+
+  def findExtendedPath(sourceVertex: Short, targetVertex: Short, pathLen: Int): Array[Short] = {
+    require (sourceVertex != targetVertex && pathLen <= maxPathLen)
+    setAllEdgesEnabled()
+    var dfsLen = iterate(v1 = sourceVertex, v2 = targetVertex)
+    System.arraycopy(dfsPath, 0, extendedPath, 0, dfsLen)
+    var extLen = dfsLen
+    // now repeatedly do the following:
+    // - determine a random cutting point in the current sequence `extendedPath`
+    // - this gives two vertices for the cut, `v1Cut` and `v2Cut`
+    // - disable the edge `(v1Cut, v2Cut)`.
+    // - disable all vertices so far in the `extendedPath` except `v1Cut` and `v2Cut`.
+    // - repeat Kruskal and dfs
+    // - insert the new inner part of the dfs result at the cutting point
+    // - until the extended path length `expLen` is at least as large as `pathLen`
+    if (extLen < pathLen) {
+      while (extLen < pathLen) {
+        val idxCut1 = rnd.nextInt(extLen - 1)
+        val idxCut2 = idxCut1 + 1
+        // println(s"Path still too short ($extLen < $pathLen). Extending at cut point ($idxCut1, $idxCut2)")
+        val v1Cut   = extendedPath(idxCut1)
+        val v2Cut   = extendedPath(idxCut2)
+        val edgeRem = mkEdge(v1Cut, v2Cut)
+        setEdgeEnabled(edgeRem, state = false)
+
+        var i = 0
+        while (i < dfsLen) {
+          val v3 = dfsPath(i)
+          if (v3 != v1Cut && v3 != v2Cut) {
+            setVertexEnabled(v3, state = false)
+          }
+          i += 1
+        }
+
+        dfsLen = iterate(v1 = v1Cut, v2 = v2Cut)
+        val insertLen = dfsLen - 2
+        // println(s"...insertLen $insertLen")
+        if (insertLen > 0) {
+          val testLen     = extLen + insertLen
+          val insertLenL  = if (testLen <= pathLen) insertLen else {
+            val lim = pathLen - extLen
+            shrinkPath(dfsPath, currentLen = dfsLen, targetLen = lim + 2)
+            lim
+          }
+          System.arraycopy(extendedPath, idxCut2, extendedPath, idxCut2 + insertLenL, extLen - idxCut2)
+          System.arraycopy(dfsPath     , 1      , extendedPath, idxCut1 + 1         , insertLenL      )
+          extLen += insertLenL
+        }
+      }
+    }
+    // if the extended path is now longer than
+    // the requested path length, remove random inner vertices
+    if (extLen > pathLen) {
+      // println(s"Path too long ($extLen > $pathLen). Shrinking.")
+      shrinkPath(extendedPath, currentLen = extLen, targetLen = pathLen)
+      // extLen = pathLen
+    }
+
+    extendedPath.take(pathLen)
   }
 }
