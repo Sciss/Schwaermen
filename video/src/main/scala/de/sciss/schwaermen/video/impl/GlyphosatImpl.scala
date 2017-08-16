@@ -16,6 +16,7 @@ package video
 package impl
 
 import de.sciss.schwaermen.video.Glyphosat.{CharInfo, CharVertex, Word}
+import de.sciss.schwaermen.video.Main.log
 
 import scala.collection.Map
 import scala.swing.Graphics2D
@@ -72,10 +73,8 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
   private[this] var statVX        = NominalVX * DragMX  // initial guess
   private[this] var statStretchX  = 1.29f               // initial guess
 
-  private[this] val statFpsT    = new Array[Long](11)
+  private[this] val statFpsT    = Array.fill[Long](11)(System.currentTimeMillis())
   private[this] var statFpsIdx  = 0
-  statFpsT(statFpsIdx)  = System.currentTimeMillis()
-  statFpsIdx            = (statFpsIdx + 1) % 11
 
   def fps: Float = {
     val dt  = statFpsT((statFpsIdx + 10) % 11) - statFpsT(statFpsIdx)  // millis-per-ten-frames
@@ -163,6 +162,7 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
     val delayFrames = delay * _fps
     val distance    = delayFrames * math.abs(statVX)
     val minCX       = ScreenCX + distance
+    log(f"ejectionCandidate. fps = ${_fps}%1.1f, delayFrames = $delayFrames%1.1f, distance = $distance%1.1f minCX = $minCX%1.1f")
 
     def test(left: Float, w: Word, ww: Float): Int = {
       val vertexIdx = startWordVertexIdx(w)
@@ -187,7 +187,7 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
       var wordIndex = nextWordIndex(pred)
       val spaceCharStretch = spaceCharWidth * statStretchX
       var currLeft  = if (pred == null) ScreenWidth else pred.right + spaceCharStretch
-      while (true) {
+      while (vertexIdx < 0) {
         val w     = words(wordIndex)
         val ww    = w.width * statStretchX
         vertexIdx = test(left = currLeft, w = w, ww = ww)
@@ -308,5 +308,9 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
     if (pred.x + pred.info.right < ScreenWidth) {
       popWord(nextWordIndex(pred), pred /* , setLast = true */)
     }
+
+    // update fps
+    statFpsT(statFpsIdx)  = System.currentTimeMillis()
+    statFpsIdx            = (statFpsIdx + 1) % 11
   }
 }

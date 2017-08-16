@@ -98,7 +98,8 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
       log("Starting initiative")
       val Uid           = c.mkTxnId()
       val expectedDelay = config.queryPathDelay
-      val vertex        = gl.ejectionCandidate(delay = expectedDelay)
+      // add three seconds so the word can bubble upwards in a diagonal way
+      val vertex        = gl.ejectionCandidate(delay = expectedDelay + 3f)
       log(s"EjectionCandidate is $vertex ${gl.vertices(vertex).quote}")
       c.queryVideos(OscInjectQuery(uid = Uid, videoId = videoId, vertex = vertex)) {
         case OscInjectReply(Uid, accepted) => accepted

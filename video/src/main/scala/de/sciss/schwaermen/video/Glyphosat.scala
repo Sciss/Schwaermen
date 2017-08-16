@@ -73,7 +73,7 @@ object Glyphosat {
     }
     val vWords  = vWordsB.result()
     val text    = vWords.map(_.text).mkString(" ")
-    log(s"gl.text = $text")
+    log(s"gl.text = ${text.substring(0, math.min(20, text.length))}...")
 
     import kollflitz.Ops._
 
