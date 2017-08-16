@@ -19,6 +19,7 @@ import java.{util => ju}
 
 import scala.annotation.tailrec
 import scala.util.Random
+import scala.util.control.NonFatal
 
 object PathFinder {
   private final val COOKIE = 0x45646765 // "Edge"
@@ -55,6 +56,16 @@ object PathFinder {
       fis.close()
     }
   }
+
+  def tryRead(textId1: Int, textId2: Int)(implicit rnd: Random): Meta =
+    try {
+      read(textId1 = textId1, textId2 = textId2, maxPathLen = Network.MaxPathLen)
+    } catch {
+      case NonFatal(ex) =>
+        Console.err.println(s"Error reading path finder resource ($textId1, $textId2)")
+        ex.printStackTrace()
+        null
+    }
 
   final class Meta(val textId1: Int, val textLen1: Int, val textId2: Int, val textLen2: Int,
                    val finder: PathFinder)

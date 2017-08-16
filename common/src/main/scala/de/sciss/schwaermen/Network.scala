@@ -205,4 +205,6 @@ object Network {
   final val DeathPeriodSeconds: Float = HeartPeriodSeconds * 2.5f
 
   final val DeathPeriodMillis: Long = (DeathPeriodSeconds * 1000).toLong
+
+  final val MaxPathLen: Int = 37 + 33
 }

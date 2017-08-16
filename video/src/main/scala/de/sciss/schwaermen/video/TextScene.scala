@@ -41,28 +41,9 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   private[this] val stateRef    = Ref[State](Idle)
   private[this] val idleMinTime = Ref(0L)
 
-  private[this] val videoId: Int = {
-    if (config.videoId >= 0) config.videoId else {
-      val res = Network.videoDotSeq.indexOf(c.dot)
-      if (res >= 0) res else {
-        Console.err.println(s"WARNING: No dedicated video text for ${c.dot}. Using first instead")
-        0
-      }
-    }
-  }
+  private[this] val gl = Glyphosat(config, c.videoId)
 
-//  private[this] val text: String = {
-//    Util.readTextResource(s"text${videoId + 1}.txt").replaceAll("\n", " ——— ") // XXX TODO decide here
-//  }
-
-  private[this] val gl = Glyphosat(config, videoId)
-
-//  private[this] lazy val debugView: DebugTextView = new DebugTextView
-  private[this] lazy val view: TextView = new TextView(config, gl, videoId = videoId)
-
-  /* Pixels per second */
-//  private[this] val textSpeed         : Float = config.textVX * config.fps
-//  private[this] val pixelsUntilTimeOut: Float = textSpeed * Network.TimeOutSeconds
+  private[this] lazy val view: TextView = new TextView(config, gl, videoId = c.videoId)
 
   private[this] val idleTask = Ref(Option.empty[Task])
 
@@ -73,6 +54,8 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   def queryInjection(sender: SocketAddress, Uid: Long, meta: PathFinder.Meta,
                      ejectVideoId: Int, ejectVertex: Int)(implicit tx: InTxn): Unit = {
     if (stateRef() == Idle) {
+      meta.finder.findExtendedPath(sourceVertex = ???, targetVertex = ???, pathLen = ???)
+
       stateRef() = InjectPending
       val reply = OscInjectReply(Uid, OscInjectReply.Accepted)
       c.queryTxn(sender, reply) {
@@ -101,7 +84,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
       // add three seconds so the word can bubble upwards in a diagonal way
       val ejectVertex = gl.ejectionCandidate(delay = expectedDelay + 3f)
       log(s"EjectionCandidate is $ejectVertex ${gl.vertices(ejectVertex).quote}")
-      c.queryVideos(OscInjectQuery(uid = Uid, videoId = videoId, vertex = ejectVertex)) {
+      c.queryVideos(OscInjectQuery(uid = Uid, videoId = c.videoId, vertex = ejectVertex)) {
         case OscInjectReply(Uid, accepted) => accepted
       } { implicit tx => {
         case Success(list) =>

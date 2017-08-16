@@ -19,12 +19,13 @@ import java.net.{InetSocketAddress, SocketAddress}
 import de.sciss.kollflitz.Vec
 import de.sciss.osc
 import de.sciss.osc.UDP
+import de.sciss.schwaermen.video.Scene.OscInjectReply
 
 import scala.concurrent.stm.{InTxn, Txn, atomic}
 import scala.util.{Random, Try}
 
 object OSCClient {
-  def apply(config: Config, localSocketAddress: InetSocketAddress, meta: PathFinder.Meta)
+  def apply(config: Config, localSocketAddress: InetSocketAddress)
            (implicit rnd: Random): OSCClient = {
     val c                 = UDP.Config()
     c.codec               = Network.oscCodec
@@ -40,18 +41,31 @@ object OSCClient {
     println(s"OSCClient local socket $localSocketAddress")
     val tx                = UDP.Transmitter(c)
     val rx                = UDP.Receiver(tx.channel, c)
-    new OSCClient(config, dot, tx, rx, meta = meta)
+    new OSCClient(config, dot, tx, rx)
   }
 }
 /** Undirected pair of transmitter and receiver, sharing the same datagram channel. */
 final class OSCClient(override val config: Config, val dot: Int,
                       val transmitter : UDP.Transmitter .Undirected,
                       val receiver    : UDP.Receiver    .Undirected,
-                      val meta        : PathFinder.Meta
                      )(implicit rnd: Random)
   extends OSCClientLike {
 
   override def main: Main.type = Main
+
+  val videoId: Int = {
+    if (config.videoId >= 0) config.videoId else {
+      val res = Network.videoDotSeq.indexOf(dot)
+      if (res >= 0) res else {
+        Console.err.println(s"WARNING: No dedicated video text for $dot. Using first instead")
+        0
+      }
+    }
+  }
+
+  private[this] val metaSeq = Array.tabulate(3) { thatId =>
+    if (thatId == videoId) null else PathFinder.tryRead(math.min(thatId, videoId), math.max(thatId, videoId))
+  }
 
   private[this] val otherVideos: Vec[SocketAddress] = {
     val seqRaw = if (config.otherVideoSockets.nonEmpty) config.otherVideoSockets else Network.videoSocketSeq
@@ -64,20 +78,26 @@ final class OSCClient(override val config: Config, val dot: Int,
 
   def oscReceived(p: osc.Packet, sender: SocketAddress): Unit = p match {
     case Scene.OscInjectQuery(uid, ejectVideoId, ejectVertex) =>
-      atomic { implicit tx =>
-        Scene.current().queryInjection(sender,
-          uid = uid, meta = meta, ejectVideoId = ejectVideoId, ejectVertex = ejectVertex)
-      }
+      val meta = metaSeq(ejectVideoId)
+      if (meta == null) {
+        sendNow(Scene.OscInjectReply(uid, OscInjectReply.Rejected), sender)
+      } else
+        atomic { implicit tx =>
+          Scene.current().queryInjection(sender,
+            uid = uid, meta = meta, ejectVideoId = ejectVideoId, ejectVertex = ejectVertex)
+        }
 
     case m @ osc.Message("/test-path-finder") =>
-      val t1  = System.currentTimeMillis()
-      val v1  =  rnd.nextInt(meta.textLen1)                 .toShort
-      val v2  = (rnd.nextInt(meta.textLen2) + meta.textLen1).toShort
-      meta.finder.findExtendedPath(sourceVertex = v1, targetVertex = v2, pathLen = meta.finder.maxPathLen)
-      val t2 = System.currentTimeMillis()
-      val dt = t2 - t1
-      println(s"$m -- took ${dt}ms")
-      transmitter.send(osc.Message("/test-path-reply", dt), sender)
+      metaSeq.find(_ != null).foreach { meta =>
+        val t1  = System.currentTimeMillis()
+        val v1  =  rnd.nextInt(meta.textLen1)                 .toShort
+        val v2  = (rnd.nextInt(meta.textLen2) + meta.textLen1).toShort
+        meta.finder.findExtendedPath(sourceVertex = v1, targetVertex = v2, pathLen = meta.finder.maxPathLen)
+        val t2 = System.currentTimeMillis()
+        val dt = t2 - t1
+        println(s"$m -- took ${dt}ms")
+        sendNow(osc.Message("/test-path-reply", dt), sender)
+      }
 
     case _ =>
       oscFallback(p, sender)

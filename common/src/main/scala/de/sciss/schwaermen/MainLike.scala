@@ -1,5 +1,9 @@
 package de.sciss.schwaermen
 
+import java.text.SimpleDateFormat
+import java.util.{Date, Locale}
+
+import scala.annotation.elidable
 import scala.util.control.NonFatal
 
 trait MainLike {
@@ -28,9 +32,10 @@ trait MainLike {
     }
   }
 
-  var useLog = false
+  var showLog = false
 
-  def log(what: => String): Unit = if (useLog) {
-    println(s"$pkgLast - $what")
-  }
+  private[this] lazy val logHeader = new SimpleDateFormat(s"[HH:mm''ss.SSS] '$pkgLast' - ", Locale.US)
+
+  @elidable(elidable.CONFIG) def log(what: => String): Unit =
+    if (showLog) println(logHeader.format(new Date()) + what)
 }

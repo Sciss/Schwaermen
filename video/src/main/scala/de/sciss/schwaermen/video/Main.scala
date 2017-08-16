@@ -22,7 +22,6 @@ import de.sciss.kollflitz.Vec
 import scala.collection.breakOut
 import scala.concurrent.stm.atomic
 import scala.util.{Failure, Random, Success, Try}
-import scala.util.control.NonFatal
 
 object Main extends MainLike {
   protected val pkgLast = "video"
@@ -164,18 +163,9 @@ object Main extends MainLike {
   }
 
   def run(localSocketAddress: InetSocketAddress, config: Config): Unit = {
-    if (config.log) Main.useLog = true
+    if (config.log) Main.showLog = true
     implicit val rnd: Random = new Random(config.randomSeed)
-    val meta = try {
-      PathFinder.read(textId1 = 1, textId2 = 3, maxPathLen = 60)
-    } catch {
-      case NonFatal(ex) =>
-        Console.err.println("Error reading path finder resource")
-        ex.printStackTrace()
-        null
-    }
-
-    val c = OSCClient(config, localSocketAddress, meta)
+    val c = OSCClient(config, localSocketAddress)
     // new Heartbeat(c)
     val textScene = new TextScene(c)
 
