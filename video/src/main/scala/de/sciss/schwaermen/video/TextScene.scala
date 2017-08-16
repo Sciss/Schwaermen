@@ -99,6 +99,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
       val Uid           = c.mkTxnId()
       val expectedDelay = config.queryPathDelay
       val vertex        = gl.ejectionCandidate(delay = expectedDelay)
+      log(s"EjectionCandidate is $vertex ${gl.vertices(vertex).quote}")
       c.queryVideos(OscInjectQuery(uid = Uid, videoId = videoId, vertex = vertex)) {
         case OscInjectReply(Uid, accepted) => accepted
       } { implicit tx => {

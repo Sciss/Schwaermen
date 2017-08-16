@@ -116,6 +116,10 @@ object Glyphosat {
       } (breakOut)
       val w = new Word(width = width.toFloat, charIndices = charIndices, peer = vw,
         vertexIndices = wordVertexMap(wordIdx))
+//      println(s"Word '${vw.text}' of index ${vw.index} has vertexIndices ${w.vertexIndices.mkString(", ")}")
+//      if (w.vertexIndices.length > 1) {
+//        w.vertexIndices.foreach(i => println(s"  ${vertices(i).quote}"))
+//      }
       words(wordIdx) = w
       wordIdx += 1
     }
@@ -124,6 +128,7 @@ object Glyphosat {
       charShapes      = charShapes,
       charPairSpacing = charPairSpacing,
       words           = words,
+      vertices        = vertices,
       characters      = characters,
       NominalVX       = -config.textVX,
       EjectVY         = -config.textEjectVY,
@@ -150,10 +155,11 @@ object Glyphosat {
 //  }
 
   final class CharInfo(val c: Char, val shape: Shape, val bounds: Rectangle2D) {
-    val left  : Float = bounds.getMinX.toFloat
-    val right : Float = bounds.getMaxX.toFloat
-    val top   : Float = bounds.getMinX.toFloat
-    val bottom: Float = bounds.getMaxY.toFloat
+    val left  : Float = bounds.getMinX  .toFloat
+    val right : Float = bounds.getMaxX  .toFloat
+    val top   : Float = bounds.getMinX  .toFloat
+    val bottom: Float = bounds.getMaxY  .toFloat
+    def width : Float = bounds.getWidth .toFloat
   }
 
   /*
@@ -169,6 +175,9 @@ object Glyphosat {
 
     @volatile
     var  y: Float = 0f  // position y
+
+    def left : Float = x + info.left
+    def right: Float = x + info.right
 
     @volatile
     var vx: Float = 0f  // velocity x
@@ -188,6 +197,8 @@ object Glyphosat {
   final class Word(val width: Float, val charIndices: Array[Short], val peer: Vertex.Word,
                    val vertexIndices: Array[Short]) {
     val length: Int = charIndices.length
+
+    def stretchedWidth: Float = width * 1.28f  // XXX TODO --- this is measured with current forces and only approximate
   }
 }
 trait Glyphosat {
@@ -199,8 +210,14 @@ trait Glyphosat {
   def last    : CharVertex
   def lastWord: CharVertex
 
+  /** The total number. */
   def numWords: Int
 
-  /** Returns a vertex-id */
+  /** Returns a vertex-index */
   def ejectionCandidate(delay: Float): Int
+
+  /** As currently measured. */
+  def fps: Float
+
+  def vertices: Array[Vertex]
 }

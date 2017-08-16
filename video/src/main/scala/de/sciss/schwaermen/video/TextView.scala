@@ -118,8 +118,6 @@ final class TextView(config: Config, gl: Glyphosat, videoId: Int) {
   }
 
   private[this] val tk      = mainWindow.getToolkit
-  private[this] val fpsT    = new Array[Long](11)
-  private[this] var fpsIdx  = 0
 
   private def tick(): Unit = {
     gl.step()
@@ -137,9 +135,6 @@ final class TextView(config: Config, gl: Glyphosat, videoId: Int) {
 //      mainWindow.repaint()
 //    }
     tk.sync()
-
-    fpsT(fpsIdx)  = System.currentTimeMillis()
-    fpsIdx        = (fpsIdx + 1) % 11
   }
 
   private[this] var t = Option.empty[java.util.Timer]
@@ -181,8 +176,7 @@ final class TextView(config: Config, gl: Glyphosat, videoId: Int) {
   }
 
   private[this] val ggInfo = Button("Info") {
-    val dt  = fpsT((fpsIdx + 10) % 11) - fpsT(fpsIdx)  // millis-per-ten-frames
-    val fps = 10000.0 / dt
+    val fps = gl.fps
     controlWindow.title = f"$fps%g fps"
   }
 
