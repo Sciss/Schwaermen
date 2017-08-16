@@ -56,7 +56,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
                      ejectVideoId: Int, ejectVertex: Int)(implicit tx: InTxn): Unit = {
     if (stateRef() == Idle) {
       val sourceVertex    = (ejectVertex + meta.vertexOffset(ejectVideoId)).toShort
-      val pathLen         = 60  // XXX TODO
+      val pathLen         = ??? : Int
       val anticipatedDur  = pathLen * Glyphosat.AvgVertexDur
       val targetVertex    = (rnd.nextInt(meta.textLen(videoId)) + meta.vertexOffset(videoId)).toShort
 

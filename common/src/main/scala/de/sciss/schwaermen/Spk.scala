@@ -81,8 +81,10 @@ object Spk {
     new Spk.Network(speakers, exits)
   }
 
-  /** @param exits  maps speaker _ids_ to exit codes */
-  final class Network(val speakers: Array[Spk], exits: Map[Int, Int])
+  /** @param exits  maps exit codes to speaker _indices_ */
+  final class Network(val speakers: Array[Spk], exits: Map[Int, Int]) {
+    def length: Int = speakers.length
+  }
 }
 
 /** Speaker identification
