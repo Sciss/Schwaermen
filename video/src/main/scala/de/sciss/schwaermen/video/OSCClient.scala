@@ -70,7 +70,7 @@ final class OSCClient(override val config: Config, val dot: Int,
     else {
       val id1 = math.min(thatId, videoId)
       val id2 = math.max(thatId, videoId)
-      PathFinder.tryRead(textId1 = id1, textId2 = id2, vertices1 = allVertices(id1), vertices2 = allVertices(id2))
+      TextPathFinder.tryRead(textId1 = id1, textId2 = id2, vertices1 = allVertices(id1), vertices2 = allVertices(id2))
     }
   }
 

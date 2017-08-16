@@ -52,12 +52,13 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     view
   }
 
-  def queryInjection(sender: SocketAddress, Uid: Long, meta: PathFinder.Meta,
+  def queryInjection(sender: SocketAddress, Uid: Long, meta: TextPathFinder.Meta,
                      ejectVideoId: Int, ejectVertex: Int)(implicit tx: InTxn): Unit = {
     if (stateRef() == Idle) {
-      val sourceVertex  = (ejectVertex + meta.vertexOffset(ejectVideoId)).toShort
-      val pathLen       = 60  // XXX TODO
-      val targetVertex  = (rnd.nextInt(meta.textLen(videoId)) + meta.vertexOffset(videoId)).toShort
+      val sourceVertex    = (ejectVertex + meta.vertexOffset(ejectVideoId)).toShort
+      val pathLen         = 60  // XXX TODO
+      val anticipatedDur  = pathLen * Glyphosat.AvgVertexDur
+      val targetVertex    = (rnd.nextInt(meta.textLen(videoId)) + meta.vertexOffset(videoId)).toShort
 
       val t1    = System.currentTimeMillis()
       val path  = meta.finder.findExtendedPath(sourceVertex = sourceVertex, targetVertex = targetVertex, pathLen = pathLen)
@@ -69,7 +70,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
       assert(path.length == pathLen)
       val vertices  = path.map(meta.vertex(_))
       val pathDur   = vertices.iterator.map(_.netDuration).sum
-      log(f"path length $pathLen; dur $pathDur%1.1f vs. pathLen * avgDur = ${pathLen * Glyphosat.AvgVertexDur}")
+      log(f"path length $pathLen; dur $pathDur%1.1f vs. pathLen * avgDur = $anticipatedDur")
 
       stateRef() = InjectPending
       val reply = OscInjectReply(Uid, OscInjectReply.Accepted)

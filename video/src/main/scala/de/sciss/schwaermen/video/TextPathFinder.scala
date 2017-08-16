@@ -1,5 +1,5 @@
 /*
- *  PathFinder.scala
+ *  TextPathFinder.scala
  *  (Schwaermen)
  *
  *  Copyright (c) 2017 Hanns Holger Rutz. All rights reserved.
@@ -21,7 +21,7 @@ import scala.annotation.tailrec
 import scala.util.Random
 import scala.util.control.NonFatal
 
-object PathFinder {
+object TextPathFinder {
   private final val COOKIE = 0x45646765 // "Edge"
 
   /** Ids are zero-based. */
@@ -53,7 +53,7 @@ object PathFinder {
         edgesSorted(edgeIdx) = dis.readInt()
         edgeIdx += 1
       }
-      val finder    = new PathFinder(numVertices = numVertices, allEdgesSorted = edgesSorted, maxPathLen = maxPathLen)
+      val finder    = new TextPathFinder(numVertices = numVertices, allEdgesSorted = edgesSorted, maxPathLen = maxPathLen)
 //      val vertices1 = Vertex.readVertices(textId1)
 //      assert(textLen1 == vertices1.length)
 //      val vertices2 = Vertex.readVertices(textId2)
@@ -83,7 +83,7 @@ object PathFinder {
     }
 
   final class Meta(val textId1: Int, val textLen1: Int, val textId2: Int, val textLen2: Int,
-                   val finder: PathFinder, vertices1: Array[Vertex], vertices2: Array[Vertex]) {
+                   val finder: TextPathFinder, vertices1: Array[Vertex], vertices2: Array[Vertex]) {
 
     private def require2(textId: Int): Unit =
       if (textId != textId2) throw new IllegalArgumentException(s"textId = $textId - should be one of $textId1, $textId2")
@@ -120,8 +120,8 @@ object PathFinder {
   *                         Since the graph is assumed to be complete, the number of
   *                         edges must be `numVertices * (numVertices - 1) / 2`.
   */
-final class PathFinder(numVertices: Int, allEdgesSorted: Array[Int], val maxPathLen: Int)
-                      (implicit rnd: Random) {
+final class TextPathFinder(numVertices: Int, allEdgesSorted: Array[Int], val maxPathLen: Int)
+                          (implicit rnd: Random) {
   // a complete graph "has n(n − 1)/2 edges (a triangular number)"
   private[this] val numEdgesComplete  = numVertices * (numVertices - 1) / 2
   private[this] val numEdges          = allEdgesSorted.length

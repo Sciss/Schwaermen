@@ -22,7 +22,7 @@ final class TrunkScene extends Scene.Trunk {
 
   def init()(implicit tx: InTxn): Unit = ???
 
-  def queryInjection(sender: SocketAddress, uid: Long, meta: PathFinder.Meta, ejectVideoId: Int, ejectVertex: Int)
+  def queryInjection(sender: SocketAddress, uid: Long, meta: TextPathFinder.Meta, ejectVideoId: Int, ejectVertex: Int)
                     (implicit tx: InTxn): Unit = {
     ???
   }

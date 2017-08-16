@@ -72,6 +72,6 @@ object Scene {
 sealed trait Scene {
   def init()(implicit tx: InTxn): Unit
 
-  def queryInjection(sender: SocketAddress, uid: Long, meta: PathFinder.Meta,
+  def queryInjection(sender: SocketAddress, uid: Long, meta: TextPathFinder.Meta,
                      ejectVideoId: Int, ejectVertex: Int)(implicit tx: InTxn): Unit
 }
