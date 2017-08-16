@@ -85,6 +85,9 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
     val word  = words(wordIndex)
     val ch0   = characters(word.charIndices(0))
     val v0    = new CharVertex(ch0, wordIndex = wordIndex) // XXX TODO --- could avoid allocation
+    val _ej   = ejectIndex
+    if (_ej >= 0 && startWordVertexIdx(word) == _ej) v0.eject = true
+
     var pred  = pred0
     if (pred == null) {
       v0.x      = ScreenWidth
@@ -136,6 +139,34 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
   }
 
 //  private def nextWord(cv: CharVertex): CharVertex = lastChar(cv).succ
+
+  @volatile
+  private[this] var ejectIndex = -1
+
+  @volatile
+  private[this] var ejectDone  = null : () => Unit
+
+  def eject(vertexIdx: Int)(done: => Unit): Unit = {
+    ejectDone   = () => done
+    ejectIndex  = vertexIdx
+
+    var curr  = _head
+    var found = false
+    while (curr != null && !found) {
+      val w = words(curr.wordIndex)
+      if (startWordVertexIdx(w) == vertexIdx) {
+        curr.eject = true
+        found = true
+      }
+      curr = curr.succ
+    }
+  }
+
+  private def ejected(): Unit = {
+    ejectIndex  = -1
+    val done    = ejectDone
+    if (done != null) done()
+  }
 
   /** Returns a vertex-index */
   def ejectionCandidate(delay: Float): Int = {
@@ -293,6 +324,8 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
             // println(f"Drop word (length ${predWord.length}). Nominal width was $nominal, real width was $real%1.1f, vx was ${pred.vx}%1.1f")
             statStretchX  = statStretchX * 0.9f + stretch * 0.1f
             statVX        = statVX       * 0.9f + pred.vx * 0.1f
+            val _ej       = ejectIndex
+            if (_ej >= 0 && startWordVertexIdx(predWord) == _ej) ejected()
           }
 
           _head   = curr // drop previous head

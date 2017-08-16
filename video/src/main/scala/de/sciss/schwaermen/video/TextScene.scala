@@ -20,7 +20,7 @@ import de.sciss.equal.Implicits._
 import de.sciss.schwaermen.video.Main.log
 import de.sciss.schwaermen.video.Scene.{OscInjectAbort, OscInjectCommit, OscInjectQuery, OscInjectReply}
 
-import scala.concurrent.stm.{InTxn, Ref}
+import scala.concurrent.stm.{InTxn, Ref, Txn, atomic}
 import scala.swing.Swing
 import scala.util.{Failure, Random, Success}
 
@@ -99,9 +99,9 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
       val Uid           = c.mkTxnId()
       val expectedDelay = config.queryPathDelay
       // add three seconds so the word can bubble upwards in a diagonal way
-      val vertex        = gl.ejectionCandidate(delay = expectedDelay + 3f)
-      log(s"EjectionCandidate is $vertex ${gl.vertices(vertex).quote}")
-      c.queryVideos(OscInjectQuery(uid = Uid, videoId = videoId, vertex = vertex)) {
+      val ejectVertex = gl.ejectionCandidate(delay = expectedDelay + 3f)
+      log(s"EjectionCandidate is $ejectVertex ${gl.vertices(ejectVertex).quote}")
+      c.queryVideos(OscInjectQuery(uid = Uid, videoId = videoId, vertex = ejectVertex)) {
         case OscInjectReply(Uid, accepted) => accepted
       } { implicit tx => {
         case Success(list) =>
@@ -120,7 +120,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
             } else {
               val candidate = Util.choose(candidates)
               c.sendVideos(OscInjectCommit(Uid, targetDot = candidate))
-              testEjectAndGoBackToIdle()
+              performEjection(ejectVertex = ejectVertex)
             }
           }
 
@@ -144,12 +144,26 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     becomeIdle()
   }
 
-  private def testEjectAndGoBackToIdle()(implicit tx: InTxn): Unit = {
-    log("Test ejection")
-    stateRef()  = Ejecting
-    val durSecs = 10f
-    val delay   = (durSecs * 1000).toLong
-    /* val task = */ c.scheduleTxn(delay)(tx => becomeIdle()(tx))
+  private def performEjection(ejectVertex: Int)(implicit tx: InTxn): Unit = {
+    log("performEjection")
+    stateRef()      = Ejecting
+    val timeOutSec  = 30f
+    val timeOutDly  = (timeOutSec * 1000).toLong
+    val timeOut     = c.scheduleTxn(timeOutDly) { tx =>
+      log("ejection timeout reached")
+      becomeIdle()(tx)
+    }
+    Txn.afterCommit(_ => gl.eject(ejectVertex)(ejected(timeOut)))
+  }
+
+  private def ejected(timeOut: Task): Unit = {
+    log("Gl notifies ejection done")
+    atomic { implicit tx =>
+      if (!timeOut.wasExecuted) {
+        timeOut.cancel()
+        becomeIdle()  // XXX TODO --- notify injection about beginning sound gesture
+      }
+    }
   }
 
   private def testInjectAndGoBackToIdle()(implicit tx: InTxn): Unit = {

@@ -220,4 +220,6 @@ trait Glyphosat {
   def fps: Float
 
   def vertices: Array[Vertex]
+
+  def eject(vertexIdx: Int)(done: => Unit): Unit
 }

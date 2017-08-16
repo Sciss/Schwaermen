@@ -42,10 +42,12 @@ object Task {
       }
 
     def isCancelled(implicit tx: InTxn): Boolean = cancelledRef()
+    def wasExecuted(implicit tx: InTxn): Boolean = executedRef()
   }
 }
 trait Task {
   def cancel()(implicit tx: InTxn): Unit
 
   def isCancelled(implicit tx: InTxn): Boolean
+  def wasExecuted(implicit tx: InTxn): Boolean
 }
