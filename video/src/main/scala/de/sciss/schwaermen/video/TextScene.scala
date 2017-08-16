@@ -36,14 +36,15 @@ object TextScene {
 final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   import TextScene._
 
-  private[this] val config = c.config
+  private[this] val config      = c.config
+  private[this] val videoId     = c.videoId
 
   private[this] val stateRef    = Ref[State](Idle)
   private[this] val idleMinTime = Ref(0L)
 
-  private[this] val gl = Glyphosat(config, c.videoId)
+  private[this] val gl = Glyphosat(config, c.vertices)
 
-  private[this] lazy val view: TextView = new TextView(config, gl, videoId = c.videoId)
+  private[this] lazy val view: TextView = new TextView(config, gl, videoId = videoId)
 
   private[this] val idleTask = Ref(Option.empty[Task])
 
@@ -54,7 +55,21 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   def queryInjection(sender: SocketAddress, Uid: Long, meta: PathFinder.Meta,
                      ejectVideoId: Int, ejectVertex: Int)(implicit tx: InTxn): Unit = {
     if (stateRef() == Idle) {
-      meta.finder.findExtendedPath(sourceVertex = ???, targetVertex = ???, pathLen = ???)
+      val sourceVertex  = (ejectVertex + meta.vertexOffset(ejectVideoId)).toShort
+      val pathLen       = 60  // XXX TODO
+      val targetVertex  = (rnd.nextInt(meta.textLen(videoId)) + meta.vertexOffset(videoId)).toShort
+
+      val t1    = System.currentTimeMillis()
+      val path  = meta.finder.findExtendedPath(sourceVertex = sourceVertex, targetVertex = targetVertex, pathLen = pathLen)
+      val t2    = System.currentTimeMillis()
+      if (config.isLaptop) {
+        val slow = (t2 - t1) * 10
+        Thread.sleep(slow)    // cheesy way to come closer to the Raspi experience
+      }
+      assert(path.length == pathLen)
+      val vertices  = path.map(meta.vertex(_))
+      val pathDur   = vertices.iterator.map(_.netDuration).sum
+      log(f"path length $pathLen; dur $pathDur%1.1f vs. pathLen * avgDur = ${pathLen * Glyphosat.AvgVertexDur}")
 
       stateRef() = InjectPending
       val reply = OscInjectReply(Uid, OscInjectReply.Accepted)
@@ -79,13 +94,15 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     if (stateRef() == Idle) {
       stateRef() = InjectQuery
       log("Starting initiative")
-      val Uid           = c.mkTxnId()
-      val expectedDelay = config.queryPathDelay
+      val Uid             = c.mkTxnId()
+      val expectedDelay   = config.queryPathDelay
+      val expectedDelayMS = (expectedDelay * 1000).toLong
       // add three seconds so the word can bubble upwards in a diagonal way
       val ejectVertex = gl.ejectionCandidate(delay = expectedDelay + 3f)
       log(s"EjectionCandidate is $ejectVertex ${gl.vertices(ejectVertex).quote}")
-      c.queryVideos(OscInjectQuery(uid = Uid, videoId = c.videoId, vertex = ejectVertex)) {
-        case OscInjectReply(Uid, accepted) => accepted
+      c.queryVideos(OscInjectQuery(uid = Uid, videoId = videoId, vertex = ejectVertex),
+        extraDelay = expectedDelayMS) {
+          case OscInjectReply(Uid, accepted) => accepted
       } { implicit tx => {
         case Success(list) =>
           log(s"Got replies: $list")
@@ -117,8 +134,9 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   private def retryInitiative()(implicit tx: InTxn): Unit = {
     val oldState = stateRef.swap(Idle)
     assert(oldState == InjectQuery || oldState == InjectPending)
-    log("Retrying initiative in 4 seconds.")
-    scheduleInitiative(4f)
+    val dur = Util.rrand(3.5f, 5.0f)
+    log(f"Retrying initiative in $dur%1.1f seconds.")
+    scheduleInitiative(dur)
   }
 
   def init()(implicit tx: InTxn): Unit = {

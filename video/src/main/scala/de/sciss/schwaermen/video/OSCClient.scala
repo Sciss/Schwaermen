@@ -63,14 +63,23 @@ final class OSCClient(override val config: Config, val dot: Int,
     }
   }
 
+  val allVertices: Array[Array[Vertex]] = Array.tabulate(3)(Vertex.tryReadVertices)
+
   private[this] val metaSeq = Array.tabulate(3) { thatId =>
-    if (thatId == videoId) null else PathFinder.tryRead(math.min(thatId, videoId), math.max(thatId, videoId))
+    if (thatId == videoId) null
+    else {
+      val id1 = math.min(thatId, videoId)
+      val id2 = math.max(thatId, videoId)
+      PathFinder.tryRead(textId1 = id1, textId2 = id2, vertices1 = allVertices(id1), vertices2 = allVertices(id2))
+    }
   }
 
   private[this] val otherVideos: Vec[SocketAddress] = {
     val seqRaw = if (config.otherVideoSockets.nonEmpty) config.otherVideoSockets else Network.videoSocketSeq
     seqRaw.filterNot(_ == transmitter.localSocketAddress)
   }
+
+  val vertices: Array[Vertex] = allVertices(videoId)
 
   override protected val socketSeqCtl: Vec[SocketAddress] =
     if (config.otherVideoSockets.nonEmpty) config.otherVideoSockets
@@ -105,21 +114,23 @@ final class OSCClient(override val config: Config, val dot: Int,
 
   def aliveVideos(): Vec[SocketAddress] = filterAlive(otherVideos)
 
-  def queryVideos[A](m: osc.Message)
+  def queryVideos[A](m: osc.Message, extraDelay: Long = 0L)
                     (handler: PartialFunction[osc.Packet, A])
                     (result: InTxn => Try[List[QueryResult[A]]] => Unit)
                     (implicit tx: InTxn): Unit = {
     val sq  = aliveVideos()
-    val q   = new Query[A](this, sq, m, result, handler, tx)
+    val q   = new Query[A](this, sq, m, result, handler,
+      extraDelay = extraDelay, tx0 = tx)
     addQuery(q)
   }
 
-  def queryTxn[A](target: SocketAddress, m: osc.Message)
+  def queryTxn[A](target: SocketAddress, m: osc.Message, extraDelay: Long = 0L)
                  (handler: PartialFunction[osc.Packet, A])
                  (result: InTxn => Try[QueryResult[A]] => Unit)
                  (implicit tx: InTxn): Unit = {
     val sq  = Vector(target)
-    val q   = new Query[A](this, sq, m, tx => seq => result(tx)(seq.map(_.head)), handler, tx)
+    val q   = new Query[A](this, sq, m, tx => seq => result(tx)(seq.map(_.head)), handler,
+      extraDelay = extraDelay, tx0 = tx)
     addQuery(q)
   }
 

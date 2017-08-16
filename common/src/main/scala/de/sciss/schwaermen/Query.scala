@@ -24,13 +24,13 @@ import scala.util.{Failure, Success, Try}
 
 final class Query[A](c: OSCClientLike, sq: Vec[SocketAddress], mOut: osc.Message,
                              result: InTxn => Try[List[QueryResult[A]]] => Unit,
-                             handler: PartialFunction[osc.Packet, A],
+                             handler: PartialFunction[osc.Packet, A], extraDelay: Long,
                              tx0: InTxn) {
 
   private[this] val values    = Ref(List.empty[QueryResult[A]])
   private[this] val remaining = TSet(sq: _*)
 
-  private[this] val timeOut = c.scheduleTxn(Network.TimeOutMillis) { implicit tx =>
+  private[this] val timeOut = c.scheduleTxn(Network.TimeOutMillis + extraDelay) { implicit tx =>
     c.removeQuery(this)
     result(tx)(Failure(new TimeoutException(mOut.name)))
   } (tx0)

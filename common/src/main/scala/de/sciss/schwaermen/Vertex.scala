@@ -15,8 +15,9 @@ package de.sciss.schwaermen
 
 import java.io.DataInputStream
 
-import de.sciss.kollflitz.Vec
 import de.sciss.span.Span
+
+import scala.util.control.NonFatal
 
 object Vertex {
   final val WORD_COOKIE = 0x576f7264  // "Word"
@@ -28,6 +29,15 @@ object Vertex {
       s"$productPrefix($index, $span, ${quote(text)}$fadeInS$fadeOutS)"
     }
   }
+
+  def tryReadVertices(textId: Int): Array[Vertex] =
+    try {
+      readVertices(textId)
+    } catch {
+      case NonFatal(ex) =>
+        Console.err.println(s"Error reading vertex resource ($textId) - ${ex.getClass.getSimpleName} - ${ex.getMessage}")
+        null
+    }
 
   def readVertices(textId: Int): Array[Vertex] = {
     val fin = getClass.getResourceAsStream(s"text${textId + 1}words.bin")
@@ -88,4 +98,9 @@ final case class Vertex(textIdx: Int, words: List[Vertex.Word]) {
 
   def quote: String =
     Vertex.quote(words.map(_.text).mkString(s"$textIdx-$index: ", " ", ""))
+
+  val duration: Float =
+    span.length / 44100f
+
+  val netDuration: Float = duration - (fadeIn + fadeOut) * 0.5f
 }

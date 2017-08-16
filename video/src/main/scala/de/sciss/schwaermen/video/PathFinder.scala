@@ -24,8 +24,12 @@ import scala.util.control.NonFatal
 object PathFinder {
   private final val COOKIE = 0x45646765 // "Edge"
 
-  def read(textId1: Int, textId2: Int, maxPathLen: Int)(implicit rnd: Random): Meta = {
-    val fis = getClass.getResourceAsStream(s"/edges$textId1${textId2}opt.bin")
+  /** Ids are zero-based. */
+  def read(textId1: Int, textId2: Int, vertices1: Array[Vertex], vertices2: Array[Vertex], maxPathLen: Int)
+          (implicit rnd: Random): Meta = {
+    val textId1P  = textId1 + 1
+    val textId2P  = textId2 + 1
+    val fis = getClass.getResourceAsStream(s"/edges$textId1P${textId2P}opt.bin")
     // val fis = new FileInputStream(fIn)
     try {
       val dis         = new DataInputStream(fis)
@@ -40,8 +44,8 @@ object PathFinder {
       val numVertices = textLen1 + textLen2
       val numEdges    = dis.readInt   ()
 
-      if (textId1F != textId1 || textId2F != textId2)
-        throw new IOException(s"Resource does not have expected text-ids (expected $textId1,$textId2 - found $textId1F, $textId2F)")
+      if (textId1F != textId1P || textId2F != textId2P)
+        throw new IOException(s"Resource does not have expected text-ids (expected $textId1P,$textId2P - found $textId1F, $textId2F)")
 
       val edgesSorted = new Array[Int](numEdges)
       var edgeIdx     = 0
@@ -49,26 +53,58 @@ object PathFinder {
         edgesSorted(edgeIdx) = dis.readInt()
         edgeIdx += 1
       }
-      val finder = new PathFinder(numVertices = numVertices, allEdgesSorted = edgesSorted, maxPathLen = maxPathLen)
-      new Meta(textId1 = textId1, textLen1 = textLen1, textId2 = textId2, textLen2 = textLen2, finder = finder)
+      val finder    = new PathFinder(numVertices = numVertices, allEdgesSorted = edgesSorted, maxPathLen = maxPathLen)
+//      val vertices1 = Vertex.readVertices(textId1)
+//      assert(textLen1 == vertices1.length)
+//      val vertices2 = Vertex.readVertices(textId2)
+//      assert(textLen2 == vertices2.length)
+//      val vertices  = new Array[Vertex](2)
+//      System.arraycopy(vertices1, 0, vertices,        0, textLen1)
+//      System.arraycopy(vertices2, 0, vertices, textLen1, textLen2)
+      new Meta(textId1 = textId1, textLen1 = textLen1, textId2 = textId2, textLen2 = textLen2, finder = finder,
+        vertices1 = vertices1, vertices2 = vertices2)
 
     } finally {
       fis.close()
     }
   }
 
-  def tryRead(textId1: Int, textId2: Int)(implicit rnd: Random): Meta =
+  /** Ids are zero-based. Returns `null` if resource could not be read. */
+  def tryRead(textId1: Int, textId2: Int, vertices1: Array[Vertex], vertices2: Array[Vertex])
+             (implicit rnd: Random): Meta =
     try {
-      read(textId1 = textId1, textId2 = textId2, maxPathLen = Network.MaxPathLen)
+      read(textId1 = textId1, textId2 = textId2, vertices1 = vertices1, vertices2 = vertices2,
+        maxPathLen = Network.MaxPathLen)
     } catch {
       case NonFatal(ex) =>
-        Console.err.println(s"Error reading path finder resource ($textId1, $textId2)")
-        ex.printStackTrace()
+        Console.err.println(s"Error reading path finder resource ($textId1, $textId2) - ${ex.getClass.getSimpleName} - ${ex.getMessage}")
+        // ex.printStackTrace()
         null
     }
 
   final class Meta(val textId1: Int, val textLen1: Int, val textId2: Int, val textLen2: Int,
-                   val finder: PathFinder)
+                   val finder: PathFinder, vertices1: Array[Vertex], vertices2: Array[Vertex]) {
+
+    private def require2(textId: Int): Unit =
+      if (textId != textId2) throw new IllegalArgumentException(s"textId = $textId - should be one of $textId1, $textId2")
+
+    def vertexOffset(textId: Int): Int = if (textId == textId1) 0 else {
+      require2(textId)
+      textLen1
+    }
+
+    def textLen(textId: Int): Int = if (textId == textId1) textLen1 else {
+      require2(textId)
+      textLen2
+    }
+
+    def vertices(textId: Int): Array[Vertex] = if (textId == textId1) vertices1 else {
+      require2(textId)
+      vertices2
+    }
+
+    def vertex(idx: Int): Vertex = if (idx < textLen1) vertices1(idx) else vertices2(idx - textLen1)
+  }
 }
 
 /** Optimised algorithm for iterative DFS search in MST, given a target path length.

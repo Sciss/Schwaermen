@@ -28,6 +28,9 @@ import scala.swing.Graphics2D
 import scala.util.Random
 
 object Glyphosat {
+  /** In seconds */
+  final val AvgVertexDur = 1.2f
+
   private[this] lazy val _initFont: Font = {
     val url = getClass.getResource("/OpenSans-CondLight.ttf")
     require(url != null)
@@ -44,16 +47,17 @@ object Glyphosat {
     _condensedFont.deriveFont(size)
   }
 
-  def apply(config: Config, textId: Int)(implicit rnd: Random): Glyphosat = {
+  def apply(config: Config, vertices: Array[Vertex] /* textId: Int */)(implicit rnd: Random): Glyphosat = {
     val font        = mkFont(/* if (config.smallWindow) config.fontSize/2 else */ config.fontSize)
     val tmpImg      = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB)
     val tmpG        = tmpImg.createGraphics()
     val fm          = tmpG.getFontMetrics(font)
     val frc         = fm.getFontRenderContext
 
-    val vertices    = Vertex.readVertices(textId = textId)
+//    val vertices    = Vertex.readVertices(textId = textId)
     val numVertices = vertices.length
     log(s"gl.numVertices = $numVertices")
+//    log(f"avg. duration = ${vertices.map(_.netDuration).sum / numVertices}%1.1fs")
     val vWordsB     = Array.newBuilder[Vertex.Word]
     val wordVertexMapB = mutable.Map.empty[Int, mutable.ArrayBuilder[Short]]
     var vIdx        = 0
@@ -73,7 +77,7 @@ object Glyphosat {
     }
     val vWords  = vWordsB.result()
     val text    = vWords.map(_.text).mkString(" ")
-    log(s"gl.text = ${text.substring(0, math.min(20, text.length))}...")
+    log(s"gl.text = ${text.substring(0, math.min(22, text.length))}...")
 
     import kollflitz.Ops._
 
@@ -197,6 +201,9 @@ object Glyphosat {
   final class Word(val width: Float, val charIndices: Array[Short], val peer: Vertex.Word,
                    val vertexIndices: Array[Short]) {
     val length: Int = charIndices.length
+
+//    def duration: Float =
+//      peer.span.length * 44100f
 
     def stretchedWidth: Float = width * 1.28f  // XXX TODO --- this is measured with current forces and only approximate
   }
