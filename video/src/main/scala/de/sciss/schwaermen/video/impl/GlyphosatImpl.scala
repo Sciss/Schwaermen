@@ -92,6 +92,8 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
     _last     = pred
   }
 
+  def ejectionCandidate(delay: Float): Int = ???
+
   def render(g: Graphics2D): Unit = {
     var curr = _head
     var px = 0f

@@ -33,6 +33,13 @@ import de.sciss.kollflitz.Vec
   * @param textPairRYK          text pairwise spring force constant right-hand-side
   * @param textMinDur           text state minimum 'idle' duration in seconds
   * @param textMaxDur           text state maximum 'idle' duration in seconds
+  * @param ownSocket            optional socket to bind local OSC client to (useful when debugging from laptop)
+  * @param otherVideoSockets    override list of video nodes' socket addresses (useful when debugging from laptop)
+  * @param videoId              override video id (0 to 2) (useful when debugging from laptop)
+  * @param dot                  override 'dot' transaction id (useful when debugging from laptop)
+  * @param log                  enable log message printing
+  * @param smallWindow          open only small video window instead of full-screen (useful when debugging)
+  * @param queryPathDelay       nominal delay in seconds expected for a injection query reply
   */
 final case class Config(
                         baseDir             : File    = userHome/"Documents"/"projects"/"Schwaermen",
@@ -54,6 +61,7 @@ final case class Config(
                         dot                 : Int     = -1,
                         otherVideoSockets   : Vec[InetSocketAddress] = Vector.empty,
                         log                 : Boolean = false,
-                        smallWindow         : Boolean = false
+                        smallWindow         : Boolean = false,
+                        queryPathDelay      : Float   = 2.5f
 )
   extends ConfigLike

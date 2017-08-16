@@ -72,13 +72,15 @@ object BuildSimilarities {
   def audioFileIn(textIdx: Int): File =
     file(s"/data/projects/Schwaermen/audio_work/to_copy/gertrude_text$textIdx.aif")
 
+  final val WORD_COOKIE = 0x576f7264  // "Word"
+
   def readVertices(textIdx: Int): List[Vertex] = {
     val fin = getClass.getResourceAsStream(s"/text${textIdx}words.bin")
 //    val fin = new FileInputStream(f)
     try {
       val din     = new DataInputStream(fin)
       val cookie  = din.readInt()
-      require(cookie == 0x576f7264)
+      require(cookie == WORD_COOKIE)
       val numVertices = din.readShort()
       List.fill(numVertices) {
         val numWords = din.readShort()

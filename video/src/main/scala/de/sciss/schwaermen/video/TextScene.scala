@@ -51,11 +51,11 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     }
   }
 
-  private[this] val text: String = {
-    Util.readTextResource(s"text${videoId + 1}.txt").replaceAll("\n", " ——— ") // XXX TODO decide here
-  }
+//  private[this] val text: String = {
+//    Util.readTextResource(s"text${videoId + 1}.txt").replaceAll("\n", " ——— ") // XXX TODO decide here
+//  }
 
-  private[this] val gl = Glyphosat(config, text)
+  private[this] val gl = Glyphosat(config, videoId)
 
 //  private[this] lazy val debugView: DebugTextView = new DebugTextView
   private[this] lazy val view: TextView = new TextView(config, gl, videoId = videoId)
@@ -70,7 +70,8 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     view
   }
 
-  def queryInjection(sender: SocketAddress, Uid: Long)(implicit tx: InTxn): Unit = {
+  def queryInjection(sender: SocketAddress, Uid: Long, meta: PathFinder.Meta,
+                     ejectVideoId: Int, ejectVertex: Int)(implicit tx: InTxn): Unit = {
     if (stateRef() == Idle) {
       stateRef() = InjectPending
       val reply = OscInjectReply(Uid, OscInjectReply.Accepted)
@@ -95,8 +96,10 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     if (stateRef() == Idle) {
       stateRef() = InjectQuery
       log("Starting initiative")
-      val Uid = c.mkTxnId()
-      c.queryVideos(OscInjectQuery(Uid)) {
+      val Uid           = c.mkTxnId()
+      val expectedDelay = config.queryPathDelay
+      val vertex        = gl.ejectionCandidate(delay = expectedDelay)
+      c.queryVideos(OscInjectQuery(uid = Uid, videoId = videoId, vertex = vertex)) {
         case OscInjectReply(Uid, accepted) => accepted
       } { implicit tx => {
         case Success(list) =>
@@ -156,9 +159,9 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   }
 
   private def becomeIdle()(implicit tx: InTxn): Unit = {
-    log("Becoming idle.")
     val now       = System.currentTimeMillis()
     val idleDur   = Util.rrand(config.textMinDur, config.textMaxDur)
+    log(f"Becoming idle for $idleDur%1.1f seconds.")
     val minTime   = now + (config.textMinDur * 1000).toLong
     idleMinTime() = minTime
     stateRef()    = Idle

@@ -63,9 +63,10 @@ final class OSCClient(override val config: Config, val dot: Int,
     else Network.socketSeqCtl
 
   def oscReceived(p: osc.Packet, sender: SocketAddress): Unit = p match {
-    case Scene.OscInjectQuery(uid) =>
+    case Scene.OscInjectQuery(uid, ejectVideoId, ejectVertex) =>
       atomic { implicit tx =>
-        Scene.current().queryInjection(sender, uid)
+        Scene.current().queryInjection(sender,
+          uid = uid, meta = meta, ejectVideoId = ejectVideoId, ejectVertex = ejectVertex)
       }
 
     case m @ osc.Message("/test-path-finder") =>

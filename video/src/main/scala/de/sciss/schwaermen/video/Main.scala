@@ -82,6 +82,11 @@ object Main extends MainLike {
         .text (s"Seed for the RNG or -1 to use system clock (default ${default.randomSeed})")
         .action { (v, c) => c.copy(randomSeed = v) }
 
+      opt[Double] ("query-path-delay")
+        .text (s"Nominal delay in seconds expected for a injection query reply (default ${default.queryPathDelay})")
+        .validate { v => if (v >= 0.0 && v <= 30.0) success else failure(s"Must be 0.0 <= x <= 30.0") }
+        .action { (v, c) => c.copy(queryPathDelay = v.toFloat) }
+
       opt[Unit] ("debug-text")
         .text ("Debug text scene")
         .action { (_, c) => c.copy(debugText = true) }

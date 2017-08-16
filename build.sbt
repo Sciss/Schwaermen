@@ -23,6 +23,7 @@ lazy val soundProcessesVersion  = "3.13.0"
 lazy val swingPlusVersion       = "0.2.4"
 lazy val equalVersion           = "0.1.2"
 lazy val scalaSTMVersion        = "0.8"
+lazy val spanVersion            = "1.3.2"
 
 lazy val root = Project(id = baseNameL, base = file("."))
   .aggregate(common, sound, control)
@@ -40,7 +41,8 @@ lazy val common = Project(id = s"$baseName-common", base = file("common"))
       "de.sciss"          %% "kollflitz"  % kollFlitzVersion,
       "de.sciss"          %% "equal"      % equalVersion,
       "com.github.scopt"  %% "scopt"      % scoptVersion,
-      "org.scala-stm"     %% "scala-stm"  % scalaSTMVersion
+      "org.scala-stm"     %% "scala-stm"  % scalaSTMVersion,
+      "de.sciss"          %% "span"       % spanVersion
     )
   )
 

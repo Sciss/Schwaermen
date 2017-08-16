@@ -18,10 +18,10 @@ object Scene {
   object OscInjectQuery {
     private[this] val Name = "/inject-query"
 
-    def apply(uid: Long) = osc.Message(Name, uid)
+    def apply(uid: Long, videoId: Int, vertex: Int) = osc.Message(Name, uid, videoId, vertex)
 
-    def unapply(m: osc.Message): Option[Long] = m match {
-      case osc.Message(Name, uid: Long) => Some(uid)
+    def unapply(m: osc.Message): Option[(Long, Int, Int)] = m match {
+      case osc.Message(Name, uid: Long, videoId: Int, vertex: Int) => Some((uid, videoId, vertex))
       case _ => None
     }
   }
@@ -72,5 +72,6 @@ object Scene {
 sealed trait Scene {
   def init()(implicit tx: InTxn): Unit
 
-  def queryInjection(sender: SocketAddress, uid: Long)(implicit tx: InTxn): Unit
+  def queryInjection(sender: SocketAddress, uid: Long, meta: PathFinder.Meta,
+                     ejectVideoId: Int, ejectVertex: Int)(implicit tx: InTxn): Unit
 }
