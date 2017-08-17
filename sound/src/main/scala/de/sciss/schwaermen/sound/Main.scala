@@ -110,7 +110,7 @@ object Main extends MainLike {
 
   def run(localSocketAddress: InetSocketAddress, config: Config): Unit = {
     val c = OSCClient(config, localSocketAddress).init()
-    new Heartbeat(c)
+//    new Heartbeat(c)
     if (!config.isLaptop) {
       try {
         c.relay.bothPins  // lazy, now initialises them

@@ -60,12 +60,14 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   def queryInjection(sender: SocketAddress, Uid: Long, meta: TextPathFinder.Meta,
                      ejectVideoId: Int, ejectVertex: Int)(implicit tx: InTxn): Unit = {
     if (stateRef() == Idle) {
+      log(s"queryInjection; ejectVideoId $ejectVideoId, $ejectVertex")
       val spkSrcVertex    = c.speakers.exits(ejectVideoId).toShort
       val spkTgtVertex    = c.speakers.exits(videoId     ).toShort
       val spkPath         = speakerFinder.findPath(spkSrcVertex, spkTgtVertex)
       val pathLen         = spkPath.length
       val anticipatedDur  = pathLen * Glyphosat.AvgVertexDur
       val txtSrcVertex    = (ejectVertex + meta.vertexOffset(ejectVideoId)).toShort
+      // XXX TODO:
       val txtTgtVertex    = (rnd.nextInt(meta.textLen(videoId)) + meta.vertexOffset(videoId)).toShort
 
       val t1          = System.currentTimeMillis()
@@ -89,8 +91,8 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
       } { implicit tx => {
         case Success(QueryResult(_ /* dot */, true)) =>
           performInjection(spkPath, textPath)
-        case _ =>
-          log("Injection target received abortion or was not selected")
+        case other =>
+          log(s"Injection target received abortion or was not selected - $other")
           retryInitiative()
       }}
     } else {
