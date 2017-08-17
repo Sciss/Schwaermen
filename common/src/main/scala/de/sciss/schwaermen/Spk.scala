@@ -13,21 +13,42 @@
 
 package de.sciss.schwaermen
 
+import java.io.{FileInputStream, InputStream}
+
+import de.sciss.file.File
+
 import scala.collection.mutable
 import scala.util.control.NonFatal
 
 object Spk {
+  final val DefaultMaxPathLen = 108
+
   lazy val default: Spk.Network = {
     val is = getClass.getResourceAsStream("speakers.txt")
     try {
-      val arr = new Array[Byte](is.available())
-      is.read(arr)
-      val s = new String(arr, "UTF-8")
-      parse(s)
+      read(is)
     } finally {
       is.close()
     }
   }
+
+  private def read(is: InputStream): Spk.Network = {
+    val arr = new Array[Byte](is.available())
+    is.read(arr)
+    val s = new String(arr, "UTF-8")
+    parse(s)
+  }
+
+  def read(f: File): Spk.Network = {
+    val is = new FileInputStream(f)
+    try {
+      read(is)
+    } finally {
+      is.close()
+    }
+  }
+
+  def readOrDefault(f: Option[File]): Spk.Network = f.fold(default)(read)
 
   def parse(s: String): Spk.Network = {
     var exits   = Map.empty[Int, Int]
@@ -82,7 +103,7 @@ object Spk {
   }
 
   /** @param exits  maps exit codes to speaker _indices_ */
-  final class Network(val speakers: Array[Spk], exits: Map[Int, Int]) {
+  final class Network(val speakers: Array[Spk], val exits: Map[Int, Int]) {
     def length: Int = speakers.length
   }
 }
@@ -95,4 +116,6 @@ object Spk {
   * @param exit       'exit' video-id, -1 for no exit, or 3 for cul-de-sac
   * @param neighbours neighbouring speaker _indices_ (not ids!)
   */
-final case class Spk(id: Short, dot: Byte, ch: Byte, exit: Byte, neighbours: Array[Short])
+final case class Spk(id: Short, dot: Byte, ch: Byte, exit: Byte, neighbours: Array[Short]) {
+  def canOverlap(that: Spk): Boolean = this.dot != that.dot || (this.ch / 6) != (that.ch / 6)
+}

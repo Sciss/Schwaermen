@@ -40,28 +40,33 @@ import de.sciss.kollflitz.Vec
   * @param log                  enable log message printing
   * @param smallWindow          open only small video window instead of full-screen (useful when debugging)
   * @param queryPathDelay       nominal delay in seconds expected for a injection query reply
+  * @param speakerPaths         optional text file describing speaker paths and overriding default paths
+  *                             (`speakers.txt`)
+  * @param soundSockets         override list of audio nodes' socket addresses and 'dots' (useful when debugging from laptop)
   */
 final case class Config(
-                        baseDir             : File    = userHome/"Documents"/"projects"/"Schwaermen",
-                        dumpOSC             : Boolean = false,
-                        isLaptop            : Boolean = false,
-                        disableEnergySaving : Boolean = true,
-                        randomSeed          : Long    = -1L,
-                        fps                 : Int     = 18,   /* bloody Pi can't do more than this */
-                        fontSize            : Float   = 72f,
-                        textVX              : Float   = 8f,
-                        textEjectVY         : Float   = 12f,
-                        textPairLYK         : Float   = 0.038f,
-                        textPairRYK         : Float   = 0.030f, // 0.015f
-                        textMinDur          : Float   = 30f,
-                        textMaxDur          : Float   = 60f,
-                        debugText           : Boolean = false,
-                        ownSocket           : Option[InetSocketAddress] = None,
-                        videoId             : Int     = -1,
-                        dot                 : Int     = -1,
-                        otherVideoSockets   : Vec[InetSocketAddress] = Vector.empty,
-                        log                 : Boolean = false,
-                        smallWindow         : Boolean = false,
-                        queryPathDelay      : Float   = 2.5f
+                         baseDir             : File          = userHome/"Documents"/"projects"/"Schwaermen",
+                         dumpOSC             : Boolean       = false,
+                         isLaptop            : Boolean       = false,
+                         disableEnergySaving : Boolean       = true,
+                         randomSeed          : Long          = -1L,
+                         fps                 : Int           = 18, /* bloody Pi can't do more than this */
+                         fontSize            : Float         = 72f,
+                         textVX              : Float         = 8f,
+                         textEjectVY         : Float         = 12f,
+                         textPairLYK         : Float         = 0.038f,
+                         textPairRYK         : Float         = 0.030f, // 0.015f
+                         textMinDur          : Float         = 30f,
+                         textMaxDur          : Float         = 60f,
+                         debugText           : Boolean       = false,
+                         ownSocket           : Option[InetSocketAddress] = None,
+                         videoId             : Int           = -1,
+                         dot                 : Int           = -1,
+                         otherVideoSockets   : Vec[InetSocketAddress] = Vector.empty,
+                         log                 : Boolean       = false,
+                         smallWindow         : Boolean       = false,
+                         queryPathDelay      : Float         = 2.5f,
+                         speakerPaths        : Option[File]  = None,
+                         soundSockets        : Map[Int, InetSocketAddress] = Map.empty,
 )
   extends ConfigLike

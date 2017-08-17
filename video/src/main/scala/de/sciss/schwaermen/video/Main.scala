@@ -98,15 +98,30 @@ object Main extends MainLike {
         .text ("Use small window instead of full-screen, for debugging purposes.")
         .action { (_, c) => c.copy(smallWindow = true) }
 
-      def parseSocket(s: String): Either[String, InetSocketAddress] = {
+      private def parseSocket(s: String): Either[String, InetSocketAddress] = {
         val arr = s.split(':')
         if (arr.length != 2) Left(s"Must be of format <host>:<port>")
+        else parseSocket(arr)
+      }
+
+      private def parseSocket(arr: Array[String]): Either[String, InetSocketAddress] = {
+        val host = arr(0)
+        val port = arr(1)
+        Try(new InetSocketAddress(host, port.toInt)) match {
+          case Success(addr)  => Right(addr)
+          case Failure(ex)    => Left(s"Invalid socket address: $host:$port - ${ex.getClass.getSimpleName}")
+        }
+      }
+
+      private def parseSocketDot(s: String): Either[String, (InetSocketAddress, Int)] = {
+        val arr = s.split(':')
+        if (arr.length != 3) Left(s"Must be of format <host>:<port>:<dot>")
         else {
-          val host = arr(0)
-          val port = arr(1)
-          Try(new InetSocketAddress(host, port.toInt)) match {
-            case Success(addr)  => Right(addr)
-            case Failure(ex)    => Left(s"Invalid socket address: $s - ${ex.getClass.getSimpleName}")
+          val dotS = arr(2)
+          Try(dotS.toInt) match {
+            case Success(dot) =>
+              parseSocket(arr).map(socket => (socket,dot))
+            case Failure(_) => Left(s"Invalid dot: $dotS - must be an integer")
           }
         }
       }
@@ -114,29 +129,32 @@ object Main extends MainLike {
       opt[String] ("own-socket")
         .text (s"Override own IP address and port; must be <host>:<port> ")
         .validate { v =>
-          parseSocket(v) match {
-            case Left(msg)  => failure(msg)
-            case Right(_)   => success
-          }
+          parseSocket(v).map(_ => ())
         }
         .action { (v, c) =>
           val addr = parseSocket(v).right.get
           c.copy(ownSocket = Some(addr))
         }
 
-      opt[Seq[String]] ("video-sockets")
-        .text (s"Override other video nodes' IP addresses and ports; must be a list of <host>:<port> ")
-        .validate { vs =>
-          ((Right(()): Either[String, Unit]) /: vs) { case (e, v) =>
-            e.flatMap { _ => parseSocket(v).map(_ => ()) }
-          } match {
-            case Left(msg)  => failure(msg)
-            case Right(_)   => success
-          }
+      private def validateSockets(vs: Seq[String], useDot: Boolean): Either[String, Unit] =
+        ((Right(()): Either[String, Unit]) /: vs) { case (e, v) =>
+          e.flatMap { _ => parseSocket(v).map(_ => ()) }
         }
+
+      opt[Seq[String]] ("video-sockets")
+        .text (s"Override other video nodes' IP addresses and ports; must be a list of <host>:<port>")
+        .validate(validateSockets(_, useDot = false))
         .action { (v, c) =>
           val addr: Vec[InetSocketAddress] = v.map(parseSocket(_).right.get)(breakOut)
           c.copy(otherVideoSockets = addr)
+        }
+
+      opt[Seq[String]] ("sound-sockets")
+        .text (s"Override sound nodes' IP addresses and ports; must be a list of <host>:<port>:<dot>")
+        .validate(validateSockets(_, useDot = true))
+        .action { (v, c) =>
+          val addr: Map[Int, InetSocketAddress] = v.map(parseSocketDot(_).right.get.swap)(breakOut)
+          c.copy(soundSockets = addr)
         }
 
       opt[Int] ("video-id")
@@ -148,6 +166,10 @@ object Main extends MainLike {
         .text ("Explicit 'dot' (normally the last element of the IP address). Used for transaction ids.")
         .validate { v => if (v >= -1 && v <= 255) success else failure("Must be -1, or 0 to 255") }
         .action { (v, c) => c.copy(dot = v) }
+
+      opt[File]("speakers")
+        .text (s"Override default speaker path description. Text file to network description.")
+        .action { (f, c) => c.copy(speakerPaths = Some(f)) }
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
       val localSocketAddress = config.ownSocket.getOrElse {

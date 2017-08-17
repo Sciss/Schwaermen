@@ -65,6 +65,8 @@ final class OSCClient(override val config: Config, val dot: Int,
 
   val allVertices: Array[Array[Vertex]] = Array.tabulate(3)(Vertex.tryReadVertices)
 
+  val speakers: Spk.Network = Spk.readOrDefault(config.speakerPaths)
+
   private[this] val metaSeq = Array.tabulate(3) { thatId =>
     if (thatId == videoId) null
     else {
@@ -74,10 +76,18 @@ final class OSCClient(override val config: Config, val dot: Int,
     }
   }
 
-  private[this] val otherVideos: Vec[SocketAddress] = {
+  private[this] val otherVideoNodes: Vec[SocketAddress] = {
     val seqRaw = if (config.otherVideoSockets.nonEmpty) config.otherVideoSockets else Network.videoSocketSeq
     seqRaw.filterNot(_ == transmitter.localSocketAddress)
   }
+
+  private[this] val soundNodeMap: Map[Int, SocketAddress] = {
+    if (config.soundSockets.nonEmpty) config.soundSockets else {
+      (Network.soundDotSeq zip Network.soundSocketSeq).toMap
+    }
+  }
+
+  def soundNode(dot: Int): Option[SocketAddress] = soundNodeMap.get(dot)
 
   val vertices: Array[Vertex] = allVertices(videoId)
 
@@ -112,7 +122,7 @@ final class OSCClient(override val config: Config, val dot: Int,
       oscFallback(p, sender)
   }
 
-  def aliveVideos(): Vec[SocketAddress] = filterAlive(otherVideos)
+  def aliveVideos(): Vec[SocketAddress] = filterAlive(otherVideoNodes)
 
   def queryVideos[A](m: osc.Message, extraDelay: Long = 0L)
                     (handler: PartialFunction[osc.Packet, A])

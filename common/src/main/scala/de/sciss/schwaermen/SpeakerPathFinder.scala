@@ -20,7 +20,7 @@ import scala.util.Random
 //object SpeakerPathFinder {
 //
 //}
-final class SpeakerPathFinder(network: Spk.Network, maxPathLen: Int) {
+final class SpeakerPathFinder(network: Spk.Network, maxPathLen: Int = Spk.DefaultMaxPathLen) {
   private[this] val path    = new Array[Short](maxPathLen)
   private[this] val visited = new Array[Short](network.length)
 
@@ -34,27 +34,31 @@ final class SpeakerPathFinder(network: Spk.Network, maxPathLen: Int) {
     res
   }
 
-  /** @param v1   speaker _index_ of starting point
-    * @param v2   speaker _index_ of end point
+  /** @param sourceVertex   speaker _index_ of starting point
+    * @param targetVertex   speaker _index_ of end point
     */
-  def perform(v1: Short, v2: Short)(implicit rnd: Random): Array[Spk] = {
+  def findPath(sourceVertex: Short, targetVertex: Short)(implicit rnd: Random): Array[Spk] = {
     ju.Arrays.fill(visited, 0.toShort)
 
     import network.speakers
 
     var pathIdx     = 0
-    var currVertexI = v1
-    var currVertex  = speakers(v1)
-    path(0)         = v1
+    var currVertexI = sourceVertex
+    var currVertex  = speakers(sourceVertex)
+    path(0)         = sourceVertex
+    val maxPathLenM = maxPathLen - 1
 
     while (true) {
       val vi                = visited(currVertexI)
       val numVisited        = java.lang.Integer.bitCount(vi)
       val numUnseen         = currVertex.neighbours.length - numVisited
 
-      if (numUnseen == 0) {
+      if (numUnseen == 0 || pathIdx == maxPathLenM) {
         // backtrack
-        assert(pathIdx > 0)
+        if (pathIdx == 0) {
+          Console.err.println(s"Warning: cannot find speaker path from $sourceVertex to $targetVertex with maxPathLen = $maxPathLen")
+          return Array.empty
+        }
         pathIdx -= 1
         currVertexI   = path(pathIdx)
         currVertex    = speakers(currVertexI)
@@ -81,7 +85,7 @@ final class SpeakerPathFinder(network: Spk.Network, maxPathLen: Int) {
         currVertex  = speakers(targetI)
         pathIdx    += 1
         path(pathIdx) = currVertexI
-        if (targetI == v2) {
+        if (targetI == targetVertex) {
           pathIdx += 1
           val res = new Array[Spk](pathIdx)
           var i = 0

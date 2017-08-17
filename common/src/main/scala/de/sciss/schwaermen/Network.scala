@@ -67,7 +67,7 @@ object Network {
   final val dotToSocketMap  : Map[Int, SocketAddress] = (dotSeqCtl zip socketSeqCtl).toMap
   final val socketToDotMap  : Map[SocketAddress, Int] = dotToSocketMap.map(_.swap)
 
-  final val dotToSeqMap: Map[Int, Int] = soundDotSeq.zipWithIndex.toMap
+//  final val dotToSeqMap: Map[Int, Int] = soundDotSeq.zipWithIndex.toMap
 
   def thisIP(): String = {
     import sys.process._
@@ -186,6 +186,24 @@ object Network {
 
     def unapply(p: osc.Packet): Option[Int] = p match {
       case osc.Message("/update-done", uid: Int) => Some(uid)
+      case _ => None
+    }
+  }
+
+  object OscPlayText {
+    /** @param textId   which text file to use (0 to 2)
+      * @param ch       the channel to use with respect to the audio node (0 until 12)
+      * @param start    the start frame into the audio file
+      * @param stop     the stop frame into the audio file
+      * @param fadeIn   the fade-in in seconds
+      * @param fadeOut  the fade-out in seconds
+      */
+    def apply(textId: Int, ch: Int, start: Long, stop: Long, fadeIn: Float, fadeOut: Float): osc.Message =
+      osc.Message("/play-text", textId, ch, start, stop, fadeIn, fadeOut)
+
+    def unapply(p: osc.Packet): Option[(Int, Int, Long, Long, Float, Float)] = p match {
+      case osc.Message("/play-text", textId: Int, ch: Int, start: Long, stop: Long, fadeIn: Float, fadeOut: Float) =>
+        Some((textId, ch, start, stop, fadeIn, fadeOut))
       case _ => None
     }
   }

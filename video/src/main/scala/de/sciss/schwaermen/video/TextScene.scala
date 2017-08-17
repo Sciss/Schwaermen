@@ -48,6 +48,11 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
 
   private[this] val idleTask = Ref(Option.empty[Task])
 
+  // XXX TODO --- this could go into OSCClient, so we don't need two
+  // instances, one per Scene; this requires that access is single threaded,
+  // i.e. guaranteed to come only from the OSC thread
+  private[this] val speakerFinder = new SpeakerPathFinder(c.speakers)
+
   if (!config.debugText) Swing.onEDT {
     view
   }
@@ -55,21 +60,25 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   def queryInjection(sender: SocketAddress, Uid: Long, meta: TextPathFinder.Meta,
                      ejectVideoId: Int, ejectVertex: Int)(implicit tx: InTxn): Unit = {
     if (stateRef() == Idle) {
-      val sourceVertex    = (ejectVertex + meta.vertexOffset(ejectVideoId)).toShort
-      val pathLen         = ??? : Int
+      val spkSrcVertex    = c.speakers.exits(ejectVideoId).toShort
+      val spkTgtVertex    = c.speakers.exits(videoId     ).toShort
+      val spkPath         = speakerFinder.findPath(spkSrcVertex, spkTgtVertex)
+      val pathLen         = spkPath.length
       val anticipatedDur  = pathLen * Glyphosat.AvgVertexDur
-      val targetVertex    = (rnd.nextInt(meta.textLen(videoId)) + meta.vertexOffset(videoId)).toShort
+      val txtSrcVertex    = (ejectVertex + meta.vertexOffset(ejectVideoId)).toShort
+      val txtTgtVertex    = (rnd.nextInt(meta.textLen(videoId)) + meta.vertexOffset(videoId)).toShort
 
-      val t1    = System.currentTimeMillis()
-      val path  = meta.finder.findExtendedPath(sourceVertex = sourceVertex, targetVertex = targetVertex, pathLen = pathLen)
-      val t2    = System.currentTimeMillis()
+      val t1          = System.currentTimeMillis()
+      val textIdxPath = meta.finder
+        .findExtendedPath(sourceVertex = txtSrcVertex, targetVertex = txtTgtVertex, pathLen = pathLen)
+      val t2        = System.currentTimeMillis()
       if (config.isLaptop) {
         val slow = (t2 - t1) * 10
         Thread.sleep(slow)    // cheesy way to come closer to the Raspi experience
       }
-      assert(path.length == pathLen)
-      val vertices  = path.map(meta.vertex(_))
-      val pathDur   = vertices.iterator.map(_.netDuration).sum
+      assert(textIdxPath.length == pathLen)
+      val textPath  = textIdxPath.map(meta.vertex(_))
+      val pathDur   = textPath.iterator.map(_.netDuration).sum
       log(f"path length $pathLen; dur $pathDur%1.1f vs. pathLen * avgDur = $anticipatedDur")
 
       stateRef() = InjectPending
@@ -79,7 +88,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
         case OscInjectAbort (Uid)             => false
       } { implicit tx => {
         case Success(QueryResult(_ /* dot */, true)) =>
-          testInjectAndGoBackToIdle()
+          performInjection(spkPath, textPath)
         case _ =>
           log("Injection target received abortion or was not selected")
           retryInitiative()
@@ -168,12 +177,46 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     }
   }
 
-  private def testInjectAndGoBackToIdle()(implicit tx: InTxn): Unit = {
-    log("Test injection")
-    stateRef()  = Injecting
-    val durSecs = 10f
-    val delay   = (durSecs * 1000).toLong
-    /* val task = */ c.scheduleTxn(delay)(tx => becomeIdle()(tx))
+  private[this] val injSpkPath    = Ref(Array.empty[Spk   ])
+  private[this] val injTextPath   = Ref(Array.empty[Vertex])
+  private[this] val injSpkPathIdx = Ref(0)
+
+  private def injectStep()(implicit tx: InTxn): Unit = {
+    val spkPath   = injSpkPath()
+    val textPath  = injTextPath()
+    val idx       = injSpkPathIdx.getAndTransform(_ + 1)
+    log(s"injectStep $idx")
+    val isLast    = idx + 1 >= spkPath.length
+    if (idx < spkPath.length) {  // this guard is needed for the case where the path is empty
+      val spk = spkPath(idx)
+      val txt = textPath(idx)
+      c.soundNode(spk.dot).foreach { target =>
+        val fadeIn0   = txt.fadeInSec
+        val fadeIn    =
+          if (fadeIn0  == 0 || idx == 0 || spkPath(idx - 1).canOverlap(spk)) fadeIn0
+          else math.min(fadeIn0, 0.1f)
+        val fadeOut0  = txt.fadeOutSec
+        val fadeOut   =
+          if (fadeOut0 == 0 || isLast   || spkPath(idx + 1).canOverlap(spk)) fadeOut0
+          else math.min(fadeIn0, 0.1f)
+        val start     = txt.span.start + ((fadeIn0  - fadeIn ) * Vertex.SampleRate).toLong
+        val stop      = txt.span.stop  - ((fadeOut0 - fadeOut) * Vertex.SampleRate).toLong
+        c.sendTxn(target, Network.OscPlayText(
+          textId = txt.textId, ch = spk.ch, start = start, stop = stop, fadeIn = fadeIn, fadeOut = fadeOut))
+      }
+    }
+    if (isLast) {
+      becomeIdle()
+    }
+  }
+
+  private def performInjection(spkPath: Array[Spk], textPath: Array[Vertex])(implicit tx: InTxn): Unit = {
+    log("performInjection")
+    stateRef()      = Injecting
+    injSpkPath()    = spkPath
+    injTextPath()   = textPath
+    injSpkPathIdx() = 0
+    injectStep()
   }
 
   private def becomeIdle()(implicit tx: InTxn): Unit = {

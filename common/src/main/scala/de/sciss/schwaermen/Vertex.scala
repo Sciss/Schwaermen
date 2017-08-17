@@ -22,6 +22,8 @@ import scala.util.control.NonFatal
 object Vertex {
   final val WORD_COOKIE = 0x576f7264  // "Word"
 
+  final val SampleRate = 44100.0f
+
   final case class Word(index: Int, span: Span, text: String, fadeIn: Int = 0, fadeOut: Int = 0) {
     override def toString: String = {
       val fadeInS  = if (fadeIn  == 0) "" else s", fadeIn = $fadeIn"
@@ -57,7 +59,7 @@ object Vertex {
           val fadeOut   = din.readByte
           Word(index = index, span = Span(spanStart, spanStop), text = text, fadeIn = fadeIn, fadeOut = fadeOut)
         }
-        Vertex(textIdx = textId, words = words)
+        Vertex(textId = textId, words = words)
       }
 
     } finally {
@@ -85,7 +87,7 @@ object Vertex {
     */
   def quote (s: String): String = "\"" + escape(s) + "\""
 }
-final case class Vertex(textIdx: Int, words: List[Vertex.Word]) {
+final case class Vertex(textId: Int, words: List[Vertex.Word]) {
   val span        : Span    = Span(words.head.span.start, words.last.span.stop)
 
   val index       : Int     = words.head.index
@@ -94,13 +96,16 @@ final case class Vertex(textIdx: Int, words: List[Vertex.Word]) {
   val fadeIn      : Int     = words.head.fadeIn
   val fadeOut     : Int     = words.last.fadeOut
 
+  def fadeInSec   : Float   = fadeIn  * 0.5f
+  def fadeOutSec  : Float   = fadeOut * 0.5f
+
   def wordsString : String  = words.map(_.text).mkString(" ")
 
   def quote: String =
-    Vertex.quote(words.map(_.text).mkString(s"$textIdx-$index: ", " ", ""))
+    Vertex.quote(words.map(_.text).mkString(s"$textId-$index: ", " ", ""))
 
   val duration: Float =
-    span.length / 44100f
+    span.length / Vertex.SampleRate
 
   val netDuration: Float = duration - (fadeIn + fadeOut) * 0.5f
 }
