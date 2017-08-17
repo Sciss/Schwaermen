@@ -12,10 +12,10 @@
  */
 
 package de.sciss.schwaermen
-package video
+
+import java.{util => ju}
 
 import scala.util.Random
-import java.{util => ju}
 
 //object SpeakerPathFinder {
 //
@@ -27,7 +27,7 @@ final class SpeakerPathFinder(network: Spk.Network, maxPathLen: Int) {
   private def zeroPos(vi: Short, n: Int): Int = {
     var res = 0
     var sh  = vi & 0xFFFF
-    while ((sh & 1) == 0) {
+    while ((sh & 1) == 1) {
       res += 1
       sh >>>= 1
     }
