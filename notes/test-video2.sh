@@ -1,2 +1,2 @@
 #!/bin/sh
-schwaermen-video --own-socket 127.0.1.1:55001 --small-window --video-id 2 --video-sockets 127.0.1.1:55000 --laptop --dot 3 --log
+schwaermen-video --laptop --own-socket 127.0.1.1:55001 --dot 3 --video-id 2 --small-window --video-sockets 127.0.1.1:55000 --sound-sockets 127.0.1.1:55002:66 --speakers notes/test-speakers.txt --log

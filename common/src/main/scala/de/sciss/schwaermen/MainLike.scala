@@ -56,11 +56,13 @@ trait MainLike {
 
   final protected def validateSockets(vs: Seq[String], useDot: Boolean): Either[String, Unit] =
     ((Right(()): Either[String, Unit]) /: vs) { case (e, v) =>
-      e.flatMap { _ => parseSocket(v).map(_ => ()) }
+      e.flatMap { _ =>
+        val eth = if (useDot) parseSocketDot(v)
+                  else        parseSocket   (v)
+        eth.map(_ => ()) }
     }
 
-
-  var showLog = false
+  final var showLog = false
 
   private[this] lazy val logHeader = new SimpleDateFormat(s"[HH:mm''ss.SSS] '$pkgLast' - ", Locale.US)
 

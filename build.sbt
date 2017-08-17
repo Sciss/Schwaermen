@@ -32,7 +32,7 @@ lazy val root = Project(id = baseNameL, base = file("."))
 lazy val common = Project(id = s"$baseName-common", base = file("common"))
   .settings(commonSettings)
   .settings(
-    version     := "0.1.6-SNAPSHOT",
+    version     := "0.1.9-SNAPSHOT",
     description := s"$baseDescr - common structure",
     libraryDependencies ++= Seq(
       "de.sciss"          %% "fileutil"   % fileUtilVersion,
@@ -55,7 +55,7 @@ lazy val sound = Project(id = soundNameL, base = file("sound"))
   .enablePlugins(JavaAppPackaging, DebianPlugin)
   .settings(commonSettings)
   .settings(
-    version     := "0.1.7-SNAPSHOT",
+    version     := "0.1.9-SNAPSHOT",
     description := s"$baseDescr - rpi sound",
     libraryDependencies ++= Seq(
       "de.sciss" %% "soundprocesses" % soundProcessesVersion,
@@ -79,7 +79,7 @@ lazy val video = Project(id = videoNameL, base = file("video"))
   .enablePlugins(JavaAppPackaging, DebianPlugin)
   .settings(commonSettings)
   .settings(
-    version     := "0.1.8-SNAPSHOT",
+    version     := "0.1.9-SNAPSHOT",
     description := s"$baseDescr - rpi video",
     libraryDependencies ++= Seq(
       "de.sciss" %% "swingplus" % swingPlusVersion
@@ -98,7 +98,7 @@ lazy val control = Project(id = s"$baseNameL-control", base = file("control"))
   .enablePlugins(BuildInfoPlugin)
   .settings(commonSettings)
   .settings(
-    version     := "0.1.6-SNAPSHOT",
+    version     := "0.1.9-SNAPSHOT",
     description := s"$baseDescr - laptop control",
     libraryDependencies ++= Seq(
       "de.sciss" %% "swingplus"  % swingPlusVersion,

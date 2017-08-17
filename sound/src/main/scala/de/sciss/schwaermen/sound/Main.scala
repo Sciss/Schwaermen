@@ -57,6 +57,10 @@ object Main extends MainLike {
         .text (s"QJackCtl patchbay path (default: ${default.qjPatchBay})")
         .action { (f, c) => c.copy(qjPatchBay = f) }
 
+      opt[Unit] ("log")
+        .text ("Enable logging")
+        .action { (_, c) => c.copy(log = true) }
+
       opt[String] ("own-socket")
         .text (s"Override own IP address and port; must be <host>:<port> ")
         .validate { v =>
