@@ -21,7 +21,7 @@ import de.sciss.kollflitz.Vec
 
 import scala.collection.breakOut
 import scala.concurrent.stm.atomic
-import scala.util.{Failure, Random, Success, Try}
+import scala.util.Random
 
 object Main extends MainLike {
   protected val pkgLast = "video"
@@ -98,49 +98,6 @@ object Main extends MainLike {
         .text ("Use small window instead of full-screen, for debugging purposes.")
         .action { (_, c) => c.copy(smallWindow = true) }
 
-      private def parseSocket(s: String): Either[String, InetSocketAddress] = {
-        val arr = s.split(':')
-        if (arr.length != 2) Left(s"Must be of format <host>:<port>")
-        else parseSocket(arr)
-      }
-
-      private def parseSocket(arr: Array[String]): Either[String, InetSocketAddress] = {
-        val host = arr(0)
-        val port = arr(1)
-        Try(new InetSocketAddress(host, port.toInt)) match {
-          case Success(addr)  => Right(addr)
-          case Failure(ex)    => Left(s"Invalid socket address: $host:$port - ${ex.getClass.getSimpleName}")
-        }
-      }
-
-      private def parseSocketDot(s: String): Either[String, (InetSocketAddress, Int)] = {
-        val arr = s.split(':')
-        if (arr.length != 3) Left(s"Must be of format <host>:<port>:<dot>")
-        else {
-          val dotS = arr(2)
-          Try(dotS.toInt) match {
-            case Success(dot) =>
-              parseSocket(arr).map(socket => (socket,dot))
-            case Failure(_) => Left(s"Invalid dot: $dotS - must be an integer")
-          }
-        }
-      }
-
-      opt[String] ("own-socket")
-        .text (s"Override own IP address and port; must be <host>:<port> ")
-        .validate { v =>
-          parseSocket(v).map(_ => ())
-        }
-        .action { (v, c) =>
-          val addr = parseSocket(v).right.get
-          c.copy(ownSocket = Some(addr))
-        }
-
-      private def validateSockets(vs: Seq[String], useDot: Boolean): Either[String, Unit] =
-        ((Right(()): Either[String, Unit]) /: vs) { case (e, v) =>
-          e.flatMap { _ => parseSocket(v).map(_ => ()) }
-        }
-
       opt[Seq[String]] ("video-sockets")
         .text (s"Override other video nodes' IP addresses and ports; must be a list of <host>:<port>")
         .validate(validateSockets(_, useDot = false))
@@ -162,6 +119,16 @@ object Main extends MainLike {
         .validate { v => if (v >= 0 && v <= 2) success else failure("Must be 0, 1, or 2") }
         .action { (v, c) => c.copy(videoId = v) }
 
+      opt[String] ("own-socket")
+        .text (s"Override own IP address and port; must be <host>:<port> ")
+        .validate { v =>
+          parseSocket(v).map(_ => ())
+        }
+        .action { (v, c) =>
+          val addr = parseSocket(v).right.get
+          c.copy(ownSocket = Some(addr))
+        }
+
       opt[Int] ("dot")
         .text ("Explicit 'dot' (normally the last element of the IP address). Used for transaction ids.")
         .validate { v => if (v >= -1 && v <= 255) success else failure("Must be -1, or 0 to 255") }
@@ -172,20 +139,12 @@ object Main extends MainLike {
         .action { (f, c) => c.copy(speakerPaths = Some(f)) }
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
-      val localSocketAddress = config.ownSocket.getOrElse {
-        val host = Network.thisIP()
-        if (!config.isLaptop) {
-          Network.compareIP(host)
-        }
-        new InetSocketAddress(host, Network.ClientPort)
-      }
-      checkConfig(config)
+      val localSocketAddress = Network.initConfig(config, this)
       run(localSocketAddress, config)
     }
   }
 
   def run(localSocketAddress: InetSocketAddress, config: Config): Unit = {
-    if (config.log) Main.showLog = true
     implicit val rnd: Random = new Random(config.randomSeed)
     val c = OSCClient(config, localSocketAddress)
     // new Heartbeat(c)

@@ -29,14 +29,7 @@ object OSCClient {
            (implicit rnd: Random): OSCClient = {
     val c                 = UDP.Config()
     c.codec               = Network.oscCodec
-    val dot = if (config.dot >= 0) config.dot else {
-      val dot0 = Network.socketToDotMap.getOrElse(localSocketAddress, -1)
-      val res = if (dot0 >= 0) dot0 else {
-        localSocketAddress.getAddress.getAddress.last.toInt
-      }
-      if (dot0 < 0) println(s"Warning - could not determine 'dot' for host $localSocketAddress - assuming $res")
-      res
-    }
+    val dot               = Network.resolveDot(config, localSocketAddress)
     c.localSocketAddress  = localSocketAddress
     println(s"OSCClient local socket $localSocketAddress")
     val tx                = UDP.Transmitter(c)

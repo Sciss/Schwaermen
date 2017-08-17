@@ -1,9 +1,11 @@
 package de.sciss.schwaermen
 
+import java.net.InetSocketAddress
 import java.text.SimpleDateFormat
 import java.util.{Date, Locale}
 
 import scala.annotation.elidable
+import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
 trait MainLike {
@@ -24,13 +26,39 @@ trait MainLike {
   final def builtAt     : String = buildInfString("builtAtString")
   final def fullVersion : String = s"$pkgLast v$version, built $builtAt"
 
-  protected def checkConfig(config: ConfigLike): Unit = {
-    if (config.disableEnergySaving && !config.isLaptop) {
-      import sys.process._
-      Seq("xset", "s", "off").!
-      Seq("xset", "-dpms").!
+  final protected def parseSocket(s: String): Either[String, InetSocketAddress] = {
+    val arr = s.split(':')
+    if (arr.length != 2) Left(s"Must be of format <host>:<port>")
+    else parseSocket(arr)
+  }
+
+  final protected def parseSocketDot(s: String): Either[String, (InetSocketAddress, Int)] = {
+    val arr = s.split(':')
+    if (arr.length != 3) Left(s"Must be of format <host>:<port>:<dot>")
+    else {
+      val dotS = arr(2)
+      Try(dotS.toInt) match {
+        case Success(dot) =>
+          parseSocket(arr).map(socket => (socket,dot))
+        case Failure(_) => Left(s"Invalid dot: $dotS - must be an integer")
+      }
     }
   }
+
+  private def parseSocket(arr: Array[String]): Either[String, InetSocketAddress] = {
+    val host = arr(0)
+    val port = arr(1)
+    Try(new InetSocketAddress(host, port.toInt)) match {
+      case Success(addr)  => Right(addr)
+      case Failure(ex)    => Left(s"Invalid socket address: $host:$port - ${ex.getClass.getSimpleName}")
+    }
+  }
+
+  final protected def validateSockets(vs: Seq[String], useDot: Boolean): Either[String, Unit] =
+    ((Right(()): Either[String, Unit]) /: vs) { case (e, v) =>
+      e.flatMap { _ => parseSocket(v).map(_ => ()) }
+    }
+
 
   var showLog = false
 

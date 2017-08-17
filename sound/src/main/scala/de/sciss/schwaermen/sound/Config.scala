@@ -14,15 +14,20 @@
 package de.sciss.schwaermen
 package sound
 
+import java.net.InetSocketAddress
+
 import de.sciss.file._
 
 final case class Config(
-                        baseDir             : File    = userHome/"Documents"/"projects"/"Schwaermen",
-                        dumpOSC             : Boolean = false,
-                        isLaptop            : Boolean = false,
-                        disableEnergySaving : Boolean = true,
-                        qjLaunch            : Boolean = true,
-                        qjPreset            : String  = "Goobay",
-                        qjPatchBay          : File    = userHome/"Documents"/"jack-defaults.xml"
+                        baseDir             : File          = userHome/"Documents"/"projects"/"Schwaermen",
+                        dumpOSC             : Boolean       = false,
+                        isLaptop            : Boolean       = false,
+                        disableEnergySaving : Boolean       = true,
+                        qjLaunch            : Boolean       = true,
+                        qjPreset            : String        = "Goobay",
+                        qjPatchBay          : File          = userHome/"Documents"/"jack-defaults.xml",
+                        ownSocket           : Option[InetSocketAddress] = None,
+                        dot                 : Int           = -1,
+                        log                 : Boolean       = false,
                        )
   extends ConfigLike

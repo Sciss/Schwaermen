@@ -69,6 +69,38 @@ object Network {
 
 //  final val dotToSeqMap: Map[Int, Int] = soundDotSeq.zipWithIndex.toMap
 
+  def initConfig(config: ConfigLike, main: MainLike): InetSocketAddress = {
+    val res = config.ownSocket.getOrElse {
+      val host = Network.thisIP()
+      if (!config.isLaptop) {
+        Network.compareIP(host)
+      }
+      new InetSocketAddress(host, Network.ClientPort)
+    }
+    checkConfig(config)
+    if (config.log) main.showLog = true
+    res
+  }
+
+  def resolveDot(config: ConfigLike, localSocketAddress: InetSocketAddress): Int = {
+    if (config.dot >= 0) config.dot else {
+      val dot0 = Network.socketToDotMap.getOrElse(localSocketAddress, -1)
+      val res = if (dot0 >= 0) dot0 else {
+        localSocketAddress.getAddress.getAddress.last.toInt
+      }
+      if (dot0 < 0) println(s"Warning - could not determine 'dot' for host $localSocketAddress - assuming $res")
+      res
+    }
+  }
+
+  def checkConfig(config: ConfigLike): Unit = {
+    if (config.disableEnergySaving && !config.isLaptop) {
+      import sys.process._
+      Seq("xset", "s", "off").!
+      Seq("xset", "-dpms").!
+    }
+  }
+
   def thisIP(): String = {
     import sys.process._
     // cf. https://unix.stackexchange.com/questions/384135/

@@ -14,6 +14,8 @@
 package de.sciss.schwaermen
 package sound
 
+import java.net.InetSocketAddress
+
 import com.pi4j.wiringpi.GpioUtil
 import de.sciss.file._
 
@@ -54,12 +56,26 @@ object Main extends MainLike {
       opt[File]("qjackctl-patchbay")
         .text (s"QJackCtl patchbay path (default: ${default.qjPatchBay})")
         .action { (f, c) => c.copy(qjPatchBay = f) }
+
+      opt[String] ("own-socket")
+        .text (s"Override own IP address and port; must be <host>:<port> ")
+        .validate { v =>
+          parseSocket(v).map(_ => ())
+        }
+        .action { (v, c) =>
+          val addr = parseSocket(v).right.get
+          c.copy(ownSocket = Some(addr))
+        }
+
+      opt[Int] ("dot")
+        .text ("Explicit 'dot' (normally the last element of the IP address). Used for transaction ids.")
+        .validate { v => if (v >= -1 && v <= 255) success else failure("Must be -1, or 0 to 255") }
+        .action { (v, c) => c.copy(dot = v) }
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
-      val host = Network.thisIP()
+      val localSocketAddress = Network.initConfig(config, this)
 
       if (!config.isLaptop) {
-        Network.compareIP(host)
         // cf. https://github.com/Pi4J/pi4j/issues/238
         println("Setting up GPIO...")
         try {
@@ -84,13 +100,12 @@ object Main extends MainLike {
         }
       }
 
-      checkConfig(config)
-      run(host, config)
+      run(localSocketAddress, config)
     }
   }
 
-  def run(host: String, config: Config): Unit = {
-    val c = OSCClient(config, host).init()
+  def run(localSocketAddress: InetSocketAddress, config: Config): Unit = {
+    val c = OSCClient(config, localSocketAddress).init()
     new Heartbeat(c)
     if (!config.isLaptop) {
       try {

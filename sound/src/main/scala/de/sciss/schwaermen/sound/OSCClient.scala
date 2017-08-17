@@ -22,14 +22,12 @@ import de.sciss.osc.UDP
 import scala.util.control.NonFatal
 
 object OSCClient {
-  def apply(config: Config, host: String): OSCClient = {
+  def apply(config: Config, localSocketAddress: InetSocketAddress): OSCClient = {
     val c                 = UDP.Config()
     c.codec               = Network.oscCodec
-    val localSocket       = new InetSocketAddress(host, Network.ClientPort)
-    val dot               = Network.socketToDotMap.getOrElse(localSocket, -1)
-    if (dot < 0) println(s"Warning - could not determine 'dot' for host $host")
-    c.localSocketAddress  = localSocket
-    println(s"OSCClient local socket $localSocket")
+    val dot               = Network.resolveDot(config, localSocketAddress)
+    c.localSocketAddress  = localSocketAddress
+    println(s"OSCClient local socket $localSocketAddress")
     val tx                = UDP.Transmitter(c)
     val rx                = UDP.Receiver(tx.channel, c)
     new OSCClient(config, dot, tx, rx)
