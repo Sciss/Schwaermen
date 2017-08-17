@@ -40,11 +40,14 @@ object OSCClient {
 final class OSCClient(override val config: Config, val dot: Int, val transmitter: UDP.Transmitter.Undirected,
                       val receiver: UDP.Receiver.Undirected) extends OSCClientLike {
   val relay: RelayPins  = RelayPins.map(dot)
-  val test : TestPaths  = new TestPaths
+  val scene: SoundScene = new SoundScene(config, relay)
 
   override def main: Main.type = Main
 
   def oscReceived(p: osc.Packet, sender: SocketAddress): Unit = p match {
+    case Network.OscPlayText(textId, ch, start, stop, fadeIn, fadeOut) =>
+      scene.play(textId = textId, ch = ch, start = start, stop = stop, fadeIn = fadeIn, fadeOut = fadeOut)
+
     case osc.Message("/test-pin-mode") =>
       try {
         relay.bothPins
@@ -57,7 +60,7 @@ final class OSCClient(override val config: Config, val dot: Int, val transmitter
     case osc.Message("/test-channel", ch: Int, sound: Boolean) =>
       try {
         relay.selectChannel(ch)
-        if (sound) test.ping(ch / 6)
+        if (sound) scene.testPing(ch / 6)
         transmitter.send(osc.Message("/done", "test-channel", ch), sender)
       } catch {
         case NonFatal(ex) =>
@@ -70,7 +73,7 @@ final class OSCClient(override val config: Config, val dot: Int, val transmitter
 
   override def init(): this.type = {
     super.init()
-    test.run()
+    scene.run()
     this
   }
 }
