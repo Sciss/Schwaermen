@@ -104,8 +104,11 @@ final class SoundScene(config: Config, relay: RelayPins) {
         val path    = (soundDir / pathFmt.format(textId + 1)).path
         val buf     = Buffer.diskIn(s)(path = path, startFrame = start, numChannels = 2)
         val dur     = math.max(0L, stop - start) / Vertex.SampleRate
+        // avoid clicking
+        val fdIn1   = if (fadeIn  > 0) fadeIn  else 0.01f
+        val fdOut1  = if (fadeOut > 0) fadeOut else 0.01f
         val syn     = Synth.play(diskGraph, nameHint = Some("disk"))(target = target,
-          args = List("bus" -> bus, "buf" -> buf.id, "dur" -> dur, "fadeIn" -> fadeIn, "fadeOut" -> fadeOut),
+          args = List("bus" -> bus, "buf" -> buf.id, "dur" -> dur, "fadeIn" -> fdIn1, "fadeOut" -> fdOut1),
           dependencies = buf :: Nil)
         syn.onEndTxn { implicit tx =>
           buf.dispose()

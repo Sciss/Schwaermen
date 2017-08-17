@@ -27,7 +27,7 @@ object OSCClient {
     c.codec               = Network.oscCodec
     val dot               = Network.resolveDot(config, localSocketAddress)
     c.localSocketAddress  = localSocketAddress
-    println(s"OSCClient local socket $localSocketAddress")
+    println(s"OSCClient local socket $localSocketAddress - dot $dot")
     val tx                = UDP.Transmitter(c)
     val rx                = UDP.Receiver(tx.channel, c)
     new OSCClient(config, dot, tx, rx)

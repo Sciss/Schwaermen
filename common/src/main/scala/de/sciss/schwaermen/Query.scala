@@ -38,7 +38,7 @@ final class Query[A](c: OSCClientLike, sq: Vec[SocketAddress], mOut: osc.Message
   def handle(sender: SocketAddress, pIn: osc.Packet)(implicit tx: InTxn): Boolean = {
     remaining.remove(sender) && handler.isDefinedAt(pIn) && {
       val value = handler(pIn)
-      val dot   = Network.socketToDotMap.getOrElse(sender, -1)
+      val dot   = c.socketToDotMap.getOrElse(sender, -1)
       val res   = QueryResult(dot, value)
       val vs    = values.transformAndGet(res :: _)
       remaining.isEmpty && {

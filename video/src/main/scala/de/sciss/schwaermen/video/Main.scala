@@ -17,7 +17,6 @@ package video
 import java.net.InetSocketAddress
 
 import de.sciss.file.File
-import de.sciss.kollflitz.Vec
 
 import scala.collection.breakOut
 import scala.concurrent.stm.atomic
@@ -99,10 +98,10 @@ object Main extends MainLike {
         .action { (_, c) => c.copy(smallWindow = true) }
 
       opt[Seq[String]] ("video-sockets")
-        .text (s"Override other video nodes' IP addresses and ports; must be a list of <host>:<port>")
-        .validate(validateSockets(_, useDot = false))
+        .text (s"Override other video nodes' IP addresses and ports; must be a list of <host>:<port>:<dot>")
+        .validate(validateSockets(_, useDot = true))
         .action { (v, c) =>
-          val addr: Vec[InetSocketAddress] = v.map(parseSocket(_).right.get)(breakOut)
+          val addr: Map[Int, InetSocketAddress] = v.map(parseSocketDot(_).right.get.swap)(breakOut)
           c.copy(otherVideoSockets = addr)
         }
 

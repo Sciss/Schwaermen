@@ -17,7 +17,6 @@ package video
 import java.net.InetSocketAddress
 
 import de.sciss.file._
-import de.sciss.kollflitz.Vec
 
 /**
   * @param baseDir              base directory within which resources such as the video files will be found
@@ -62,7 +61,7 @@ final case class Config(
                          ownSocket           : Option[InetSocketAddress] = None,
                          videoId             : Int           = -1,
                          dot                 : Int           = -1,
-                         otherVideoSockets   : Vec[InetSocketAddress] = Vector.empty,
+                         otherVideoSockets   : Map[Int, InetSocketAddress] = Map.empty,
                          log                 : Boolean       = false,
                          smallWindow         : Boolean       = false,
                          queryPathDelay      : Float         = 2.5f,

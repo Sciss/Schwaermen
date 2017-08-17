@@ -31,7 +31,7 @@ object OSCClient {
     c.codec               = Network.oscCodec
     val dot               = Network.resolveDot(config, localSocketAddress)
     c.localSocketAddress  = localSocketAddress
-    println(s"OSCClient local socket $localSocketAddress")
+    println(s"OSCClient local socket $localSocketAddress - dot $dot")
     val tx                = UDP.Transmitter(c)
     val rx                = UDP.Receiver(tx.channel, c)
     new OSCClient(config, dot, tx, rx)
@@ -70,7 +70,11 @@ final class OSCClient(override val config: Config, val dot: Int,
   }
 
   private[this] val otherVideoNodes: Vec[SocketAddress] = {
-    val seqRaw = if (config.otherVideoSockets.nonEmpty) config.otherVideoSockets else Network.videoSocketSeq
+    val seqRaw = if (config.otherVideoSockets.nonEmpty)
+      config.otherVideoSockets.valuesIterator.toVector
+    else
+      Network.videoSocketSeq
+
     seqRaw.filterNot(_ == transmitter.localSocketAddress)
   }
 
@@ -85,8 +89,16 @@ final class OSCClient(override val config: Config, val dot: Int,
   val vertices: Array[Vertex] = allVertices(videoId)
 
   override protected val socketSeqCtl: Vec[SocketAddress] =
-    if (config.otherVideoSockets.nonEmpty) config.otherVideoSockets
-    else Network.socketSeqCtl
+    if (config.otherVideoSockets.nonEmpty)
+      config.otherVideoSockets.valuesIterator.toVector
+    else
+      Network.socketSeqCtl
+
+  override val socketToDotMap: Map[SocketAddress, Int] =
+    if (config.otherVideoSockets.nonEmpty)
+      config.otherVideoSockets.map(_.swap)
+    else
+      Network.socketToDotMap
 
   def oscReceived(p: osc.Packet, sender: SocketAddress): Unit = p match {
     case Scene.OscInjectQuery(uid, ejectVideoId, ejectVertex) =>

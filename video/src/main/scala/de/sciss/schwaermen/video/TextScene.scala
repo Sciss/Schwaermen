@@ -131,6 +131,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
               retryInitiative()
             } else {
               val candidate = Util.choose(candidates)
+              log(s"Commit ejection - candidate $candidate")
               c.sendVideos(OscInjectCommit(Uid, targetDot = candidate))
               performEjection(ejectVertex = ejectVertex)
             }
@@ -192,19 +193,23 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     if (idx < spkPath.length) {  // this guard is needed for the case where the path is empty
       val spk = spkPath(idx)
       val txt = textPath(idx)
+      val fadeIn0   = txt.fadeInSec
+      val fadeIn    =
+        if (fadeIn0  == 0 || idx == 0 || spkPath(idx - 1).canOverlap(spk)) fadeIn0
+        else math.min(fadeIn0, 0.1f)
+      val fadeOut0  = txt.fadeOutSec
+      val fadeOut   =
+        if (fadeOut0 == 0 || isLast   || spkPath(idx + 1).canOverlap(spk)) fadeOut0
+        else math.min(fadeIn0, 0.1f)
+      val start     = txt.span.start + ((fadeIn0  - fadeIn ) * Vertex.SampleRate).toLong
+      val stop      = txt.span.stop  - ((fadeOut0 - fadeOut) * Vertex.SampleRate).toLong
       c.soundNode(spk.dot).foreach { target =>
-        val fadeIn0   = txt.fadeInSec
-        val fadeIn    =
-          if (fadeIn0  == 0 || idx == 0 || spkPath(idx - 1).canOverlap(spk)) fadeIn0
-          else math.min(fadeIn0, 0.1f)
-        val fadeOut0  = txt.fadeOutSec
-        val fadeOut   =
-          if (fadeOut0 == 0 || isLast   || spkPath(idx + 1).canOverlap(spk)) fadeOut0
-          else math.min(fadeIn0, 0.1f)
-        val start     = txt.span.start + ((fadeIn0  - fadeIn ) * Vertex.SampleRate).toLong
-        val stop      = txt.span.stop  - ((fadeOut0 - fadeOut) * Vertex.SampleRate).toLong
         c.sendTxn(target, Network.OscPlayText(
           textId = txt.textId, ch = spk.ch, start = start, stop = stop, fadeIn = fadeIn, fadeOut = fadeOut))
+      }
+      if (!isLast) {
+        val delay = ((stop - start) / Vertex.SampleRate * 1000).toLong
+        c.scheduleTxn(delay)(tx => injectStep()(tx))
       }
     }
     if (isLast) {

@@ -126,6 +126,9 @@ abstract class OSCClientLike {
   /** Sub-classes may override this */
   protected def socketSeqCtl: Vec[SocketAddress] = Network.socketSeqCtl
 
+  /** Sub-classes may override this */
+  def socketToDotMap: Map[SocketAddress, Int] = Network.socketToDotMap
+
   final def sendNow(p: osc.Packet, target: SocketAddress): Unit =
     try {
       transmitter.send(p, target)
