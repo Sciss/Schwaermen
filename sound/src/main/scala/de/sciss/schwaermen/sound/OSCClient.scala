@@ -27,6 +27,7 @@ object OSCClient {
     c.codec               = Network.oscCodec
     val dot               = Network.resolveDot(config, localSocketAddress)
     c.localSocketAddress  = localSocketAddress
+    c.bufferSize          = 32768   // only higher for sending SynthDefs
     println(s"OSCClient local socket $localSocketAddress - dot $dot")
     val tx                = UDP.Transmitter(c)
     val rx                = UDP.Receiver(tx.channel, c)
@@ -55,14 +56,15 @@ final class OSCClient(override val config: Config, val dot: Int, val transmitter
           transmitter.send(osc.Message("/fail", "test-pin-mode", ex.toString), sender)
       }
 
-    case osc.Message("/test-channel", ch: Int, sound: Boolean) =>
+    case osc.Message("/test-channel", ch: Int, sound: Int, rest @ _*) =>
       try {
         relay.selectChannel(ch)
-        if (sound) scene.testPing(ch / 6)
-        transmitter.send(osc.Message("/done", "test-channel", ch), sender)
+        val ok = (sound >= 0) && scene.testSound(ch / 6, tpe = sound, rest = rest)
+        transmitter.send(osc.Message("/done", "test-channel", ch, ok), sender)
       } catch {
         case NonFatal(ex) =>
-          transmitter.send(osc.Message("/fail", "test-channel", ch, ex.toString), sender)
+          val msg = Util.formatException(ex)
+          transmitter.send(osc.Message("/fail", "test-channel", ch, msg), sender)
       }
 
     case _ =>

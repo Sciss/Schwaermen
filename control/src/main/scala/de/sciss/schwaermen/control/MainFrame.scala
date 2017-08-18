@@ -16,17 +16,18 @@ package control
 
 import java.util.Comparator
 import javax.swing.table.{AbstractTableModel, DefaultTableCellRenderer, TableCellRenderer, TableRowSorter}
-import javax.swing.{Icon, JTable, SwingConstants}
+import javax.swing.{ButtonGroup, Icon, JTable, SwingConstants}
 
 import de.sciss.desktop.FileDialog
 import de.sciss.file._
 import de.sciss.osc
 import de.sciss.swingplus.Table
+import de.sciss.synth.SynthDef
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Table.AutoResizeMode
-import scala.swing.event.{ButtonClicked, TableRowsSelected}
-import scala.swing.{BorderPanel, BoxPanel, Button, Component, FlowPanel, Frame, Orientation, ScrollPane, Swing, ToggleButton}
+import scala.swing.event.TableRowsSelected
+import scala.swing.{BorderPanel, BoxPanel, Button, Component, FlowPanel, Frame, Label, Orientation, ScrollPane, Slider, Swing, ToggleButton}
 
 class MainFrame(c: OSCClient) {
   private case class Column(idx: Int, name: String, minWidth: Int, prefWidth: Int, maxWidth: Int,
@@ -221,15 +222,23 @@ class MainFrame(c: OSCClient) {
     }
   }
 
-  private def ToggleButton(title: String)(fun: Boolean => Unit): ToggleButton =
-    new ToggleButton(title) {
-      listenTo(this)
-      reactions += {
-        case ButtonClicked(_) => fun(selected)
-      }
-    }
+//  private def ToggleButton(title: String)(fun: Boolean => Unit): ToggleButton =
+//    new ToggleButton(title) {
+//      listenTo(this)
+//      reactions += {
+//        case ButtonClicked(_) => fun(selected)
+//      }
+//    }
 
-  private[this] val ggTestSound = ToggleButton("Sound")(_ => ())
+  private[this] val ggSoundOff    = new ToggleButton("Off"  )
+  private[this] val ggSoundPing   = new ToggleButton("Ping" )
+  private[this] val ggSoundNoise  = new ToggleButton("Noise")
+  private[this] val ggSoundNegatum= new ToggleButton("Negatum")
+  private[this] val gSound = new ButtonGroup
+  gSound.add(ggSoundOff     .peer)
+  gSound.add(ggSoundPing    .peer)
+  gSound.add(ggSoundNoise   .peer)
+  gSound.add(ggSoundNegatum .peer)
 
   private def selectedChanged(): Unit = {
     val hasSelection    = selection.nonEmpty
@@ -240,11 +249,42 @@ class MainFrame(c: OSCClient) {
 
   selectedChanged()
 
-  private[this] val pButtons  = new FlowPanel(ggRefresh, ggUpdate, ggReboot, ggShutdown, ggTestPins, ggTestPath, ggTestSound)
+//  private def graphBubbles(): Unit = {
+//    import de.sciss.synth._
+//    import Ops.stringToControl
+//    import ugen._
+//    val o   = LFSaw.kr(Seq(8, 7.23)).madd(3, 80)
+//    val f   = LFSaw.kr(0.4).madd(24, o)
+//    val s   = SinOsc.ar(f.midicps) * 0.24
+//    val sig = Limiter.ar(CombN.ar(s, 0.2, 0.2, 4))
+//    Out.ar("bus".kr, Mix.mono(sig))
+//  }
+
+  private[this] val ggAmp = new Slider {
+    min   = -60
+    max   =   0
+    value = -12
+  }
+
+  private[this] val pButtons  = new FlowPanel(ggRefresh, ggUpdate, ggReboot, ggShutdown, ggTestPins, ggTestPath,
+    new Label("Sound:"), ggSoundOff, ggSoundPing, ggSoundNoise, ggSoundNegatum)
   private[this] val pChannels = new FlowPanel(Seq.tabulate(12) { ch =>
     Button((ch + 1).toString) {
       selection.foreach { instance =>
-        c.tx.send(osc.Message("/test-channel", ch, ggTestSound.selected), instance.socketAddress)
+        if (ggSoundNegatum.selected) {
+          val tpe = 2
+          import de.sciss.numbers.Implicits._
+          val amp  = ggAmp.value.dbamp
+          val df = SynthDef("test") {
+//            NegatumGraphs.g1_51_4456(amp) // graphBubbles()
+            NegatumGraphs.g1_51_4533(amp) // graphBubbles()
+          }
+          val rest = df.recvMsg.bytes
+          c.tx.send(osc.Message("/test-channel", ch, tpe, rest), instance.socketAddress)
+        } else {
+          val tpe = if (ggSoundPing.selected) 0 else if (ggSoundNoise.selected) 1 else -1
+          c.tx.send(osc.Message("/test-channel", ch, tpe), instance.socketAddress)
+        }
       }
     }
   }: _*)
@@ -252,6 +292,7 @@ class MainFrame(c: OSCClient) {
   private[this] val pBottom = new BoxPanel(Orientation.Vertical) {
     contents += pButtons
     contents += pChannels
+    contents += new FlowPanel(new Label("Negatum Vol."), ggAmp)
   }
 
   private[this] val component: Component = {

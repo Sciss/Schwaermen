@@ -48,7 +48,7 @@ object Network {
     * back wall, middle, entrance wall
     */
   final val videoDotSeq: Vec[Int] =
-    Vector(15, 16, 19)
+    Vector(15, 19, 16)
 
   final val dotSeqCtl: Vec[Int] = (soundDotSeq ++ videoDotSeq) :+ 77
 

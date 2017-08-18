@@ -66,7 +66,7 @@ object Spk {
         val node  = arr(1).split(",")
         if (node.length != 2) sys.error(s"Could not parse node '$node' in line '$ln'")
         val dot   = node(0).trim().toByte
-        val ch    = node(1).trim().toByte
+        val ch    = (node(1).trim().toByte - 1).toByte // 1-based in the text, 0-based in the API
         val neigh = arr(2).split(",")
         try {
           neigh.foreach { nIdS =>
@@ -112,7 +112,7 @@ object Spk {
   *
   * @param id         logical id, unique among all speakers
   * @param dot        dot of the audio node
-  * @param ch         channel within the audio node
+  * @param ch         channel within the audio node (zero-based)
   * @param exit       'exit' video-id, -1 for no exit, or 3 for cul-de-sac
   * @param neighbours neighbouring speaker _indices_ (not ids!)
   */

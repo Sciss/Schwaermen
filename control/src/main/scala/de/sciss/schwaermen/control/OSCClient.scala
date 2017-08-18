@@ -31,6 +31,7 @@ object OSCClient {
     c.codec               = Network.oscCodec
     val localSocket       = new InetSocketAddress(host, Port)
     c.localSocketAddress  = localSocket
+    c.bufferSize          = 32768   // only higher for sending SynthDefs
     println(s"OSCClient local socket $localSocket")
     val tx                = UDP.Transmitter(c)
     val rx                = UDP.Receiver(tx.channel, c)
@@ -148,6 +149,9 @@ final class OSCClient(config: Config, val tx: UDP.Transmitter.Undirected, val rx
       }
 
     case Network.OscHeart =>
+
+    case osc.Message("/done", "test-channel", _, success: Boolean) =>
+      if (!success) println("Failed to test channel!")
 
     case _ =>
       Console.err.println(s"Ignoring unknown OSC packet $p")

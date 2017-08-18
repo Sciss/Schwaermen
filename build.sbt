@@ -24,6 +24,8 @@ lazy val swingPlusVersion       = "0.2.4"
 lazy val equalVersion           = "0.1.2"
 lazy val scalaSTMVersion        = "0.8"
 lazy val spanVersion            = "1.3.2"
+lazy val desktopVersion         = "0.8.0"
+lazy val modelVersion           = "0.3.4"
 
 lazy val root = Project(id = baseNameL, base = file("."))
   .aggregate(common, sound, control)
@@ -101,9 +103,10 @@ lazy val control = Project(id = s"$baseNameL-control", base = file("control"))
     version     := "0.1.9-SNAPSHOT",
     description := s"$baseDescr - laptop control",
     libraryDependencies ++= Seq(
-      "de.sciss" %% "swingplus"  % swingPlusVersion,
-      "de.sciss" %% "desktop"    % "0.8.0",
-      "de.sciss" %% "model"      % "0.3.4"
+      "de.sciss" %% "swingplus"      % swingPlusVersion,
+      "de.sciss" %% "desktop"        % desktopVersion,
+      "de.sciss" %% "model"          % modelVersion,
+      "de.sciss" %% "soundprocesses" % soundProcessesVersion
     ),
     buildInfoPackage := "de.sciss.schwaermen.control",
     buildInfoKeys := Seq(name, organization, version, scalaVersion, description,

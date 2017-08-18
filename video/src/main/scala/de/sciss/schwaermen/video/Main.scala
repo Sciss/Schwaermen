@@ -147,13 +147,17 @@ object Main extends MainLike {
     implicit val rnd: Random = new Random(config.randomSeed)
     val c = OSCClient(config, localSocketAddress)
     // new Heartbeat(c)
-    val textScene = new TextScene(c)
+    try {
+      val textScene = new TextScene(c)
 
-    atomic { implicit tx =>
-      Scene.current() = textScene
-      textScene.init()
+      atomic { implicit tx =>
+        Scene.current() = textScene
+        textScene.init()
+      }
+    } finally {
+      c.init()    // make sure we always have an OSC client for software updates
     }
-    c.init()
+
     new Heartbeat(c)
   }
 }

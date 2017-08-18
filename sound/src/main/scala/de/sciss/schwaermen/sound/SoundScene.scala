@@ -14,11 +14,14 @@
 package de.sciss.schwaermen
 package sound
 
+import java.io.{BufferedInputStream, DataInputStream, InputStream}
+import java.nio.ByteBuffer
+
 import de.sciss.file._
 import de.sciss.lucre.synth.{Buffer, InMemory, Server, Synth, Txn}
 import de.sciss.schwaermen.sound.Main.log
 import de.sciss.synth.proc.AuralSystem
-import de.sciss.synth.{Curve, SynthGraph, freeSelf}
+import de.sciss.synth.{Curve, SynthDef, SynthGraph, UGenGraph, addToHead, freeSelf}
 
 import scala.Predef.{any2stringadd => _, _}
 
@@ -42,13 +45,22 @@ final class SoundScene(config: Config, relay: RelayPins) {
     this
   }
 
-  private[this] lazy val testGraph: SynthGraph = SynthGraph {
+  private[this] lazy val pingGraph: SynthGraph = SynthGraph {
     import de.sciss.synth.Ops.stringToControl
     import de.sciss.synth.ugen._
     val freq  = LFNoise0.ar(10).linexp(-1, 1, 200, 6000)
     val osc   = SinOsc.ar(freq) * 0.33
     val line  = Line.ar(1, 0, 2, doneAction = freeSelf)
     val sig   = osc * line
+    Out.ar("bus".kr, sig)
+  }
+
+  private[this] lazy val noisePulseGraph: SynthGraph = SynthGraph {
+    import de.sciss.synth.Ops.stringToControl
+    import de.sciss.synth.ugen._
+    val noise = PinkNoise.ar(0.5)
+    val hpf   = HPF.ar(noise, 80)
+    val sig   = hpf * LFPulse.ar(2)
     Out.ar("bus".kr, sig)
   }
 
@@ -76,10 +88,79 @@ final class SoundScene(config: Config, relay: RelayPins) {
     Out.ar(bus, sig)
   }
 
-  def testPing(ch: Int): Unit = {
+  private def playTestGraph(s: Server, graph: SynthGraph, ch: Int)(implicit tx: S#Tx): Boolean = {
+    Synth.play(graph, nameHint = Some("test"))(target = s.defaultGroup, args = "bus" -> ch :: Nil)
+    true
+  }
+
+  // bloody JDK doesn't have shit
+  // cf. https://stackoverflow.com/questions/4332264/wrapping-a-bytebuffer-with-an-inputstream
+  private final class ByteBufferInputStream(buf: ByteBuffer) extends InputStream {
+    def read: Int =
+      if (!buf.hasRemaining) -1
+      else buf.get & 0xFF
+
+    override def read(bytes: Array[Byte], off: Int, len0: Int): Int =
+      if (!buf.hasRemaining) -1
+      else {
+        val len = math.min(len0, buf.remaining)
+        buf.get(bytes, off, len)
+        len
+      }
+  }
+
+  @inline private[this] def readPascalString(dis: DataInputStream): String = {
+    val len   = dis.readUnsignedByte()
+    val arr   = new Array[Byte](len)
+    dis.read(arr)
+    new String(arr)
+  }
+
+  private def readSynthDef(b: ByteBuffer): List[SynthDef] = {
+    val COOKIE  = 0x53436766  // 'SCgf'
+    val is  = new ByteBufferInputStream(b)
+    val dis = new DataInputStream(new BufferedInputStream(is))
+    try {
+      val cookie  = dis.readInt()
+      require (cookie == COOKIE, s"Buffer must begin with cookie word 0x${COOKIE.toHexString}")
+      val version = dis.readInt()
+      require (version == 1 || version == 2, s"Buffer has unsupported version $version, required 1 or 2")
+      val numDefs = dis.readShort()
+      List.fill(numDefs) {
+        val name  = readPascalString(dis)
+        val graph = UGenGraph.read(dis, version = version)
+        new SynthDef(name, graph)
+      }
+
+    } finally {
+      dis.close()
+    }
+  }
+
+  def testSound(ch: Int, tpe: Int, rest: Seq[Any]): Boolean = {
     system.step { implicit tx =>
-      aural.serverOption.foreach { s =>
-        Synth.play(testGraph, nameHint = Some("test"))(s, args = "bus" -> ch :: Nil)
+      aural.serverOption.fold(true) { s =>
+        val target  = s.defaultGroup
+        target.freeAll()
+        tpe match {
+          case 0 => playTestGraph(s, pingGraph      , ch = ch)
+          case 1 => playTestGraph(s, noisePulseGraph, ch = ch)
+          case 2 => rest match {
+            case Seq(b: ByteBuffer) =>
+              readSynthDef(b).headOption.fold(false) { df =>
+                val syn = Synth.expanded(s, df.graph)
+                syn.play(target = target, args = "bus" -> ch :: Nil, addAction = addToHead, dependencies = Nil)
+                true
+              }
+
+            case other =>
+              Console.err.println(s" test sound tpe $other")
+              false
+          }
+          case other =>
+            Console.err.println(s"Unsupported test sound tpe $other")
+            false
+        }
       }
     }
   }
