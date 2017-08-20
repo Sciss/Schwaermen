@@ -24,9 +24,15 @@ import de.sciss.synth.proc.AuralSystem
 import de.sciss.synth.{Curve, SynthDef, SynthGraph, UGenGraph, addToHead, freeSelf}
 
 import scala.Predef.{any2stringadd => _, _}
+import scala.util.Random
+import scala.util.control.NonFatal
 
-final class SoundScene(config: Config, relay: RelayPins) {
+final class SoundScene(c: OSCClient) {
   type S = InMemory
+
+  import c.relay
+
+  private[this] val config = c.config
 
   private[this] val system  = InMemory()
   private[this] val aural   = AuralSystem()
@@ -77,12 +83,12 @@ final class SoundScene(config: Config, relay: RelayPins) {
     val chan    = Select.ar(bus, disk)
     val hpf     = HPF.ar(chan, 80f)
     val env     = Env.linen(attack = fdIn, sustain = dur - (fdIn + fdOut), release = fdOut, curve = Curve.sine)
-    val gain    = 9.dbamp
+    val gain    = 12.dbamp
     val eg      = EnvGen.ar(env, levelScale = gain /* , doneAction = freeSelf */)
     val done    = Done.kr(eg)
     val limDur  = 0.01f
     val limIn   = hpf * eg
-    val lim     = Limiter.ar(limIn * gain, level = -0.2.dbamp, dur = limDur)
+    val lim     = Limiter.ar(limIn /* * gain */, level = -0.2.dbamp, dur = limDur)
     FreeSelf.kr(TDelay.kr(done, limDur * 2))
     val sig     = lim
     Out.ar(bus, sig)
@@ -167,8 +173,8 @@ final class SoundScene(config: Config, relay: RelayPins) {
 
   private[this] val soundDir  = config.baseDir / "sound"
   private[this] val pathFmt   = "gertrude_text%d.aif"
-
-//  private[this] val synthRef  = Ref(Option.empty[Synth])
+  private[this] val beeDir    = soundDir / "loops"
+  private[this] val beeFmt    = "%d_beesLoop.aif"
 
   def play(textId: Int, ch: Int, start: Long, stop: Long, fadeIn: Float, fadeOut: Float): Unit = {
 //    system.step { implicit tx =>
@@ -200,8 +206,130 @@ final class SoundScene(config: Config, relay: RelayPins) {
     }
   }
 
+  // ---- BEES  ----
+
+  final val BEE_COOKIE = 0x42656573 // "Bees"
+
+  private[this] lazy val oneBee = Bee(id = 7292, numChannels = 2, numFrames = 981797, amp = -23.0f)
+
+  private def readBees(): Array[Bee] = {
+    val is = getClass.getResourceAsStream("/bees.bin")
+    if (is == null) {
+      Console.err.println("Cannot read 'bees.bin' resource!")
+      Array(oneBee)
+  
+    } else {
+      try {
+        val dis = new DataInputStream(is)
+        val cookie = dis.readInt()
+        require (cookie == BEE_COOKIE, s"Unexpected cookie ${cookie.toHexString} -- expected ${BEE_COOKIE.toHexString}")
+        val num = dis.readShort()
+        Array.fill(num) {
+          val id          = dis.readShort()
+          val numChannels = dis.readShort()
+          val numFrames   = dis.readInt()
+          val gain        = dis.readFloat()
+          import de.sciss.numbers.Implicits._
+          val amp         = math.min(1f, gain.dbamp)
+          Bee(id = id, numChannels = numChannels, numFrames = numFrames, amp = amp)
+        }
+      } catch {
+        case NonFatal(ex) =>
+          Console.err.println("Error reading 'bees.bin' resource:")
+          ex.printStackTrace()
+          Array(oneBee)
+
+      } finally {
+        is.close()
+      }
+    }
+  }
+
+  private final class Bee(val id: Int, val numChannels: Int, val numFrames: Int, val amp: Float)
+
+  private def Bee(id: Int, numChannels: Int, numFrames: Int, amp: Float) =
+    new Bee(id = id, numChannels = numChannels, numFrames = numFrames, amp = amp)
+
+  private def mkBeeGraph(numCh: Int): SynthGraph = SynthGraph {
+    import de.sciss.synth._
+    import Ops.stringToControl
+    import ugen._
+    val bus     = "bus"     .ir
+    val buf     = "buf"     .ir
+    val dur     = "dur"     .ir
+    val fdIn    = "fadeIn"  .ir
+    val fdOut   = "fadeOut" .ir
+    val disk    = VDiskIn.ar(numChannels = numCh, buf = buf, speed = BufRateScale.ir(buf), loop = 1)
+    disk.poll(1, "disk")
+    val chan    = if (numCh == 1) disk else {
+      val pan   = LFNoise1.kr(1.0 / 45)
+      LinXFade2.ar(disk \ 0, disk \ 1, pan)
+    }
+    val hpf     = HPF.ar(chan, 80f)
+    val env     = Env.linen(attack = fdIn, sustain = dur - (fdIn + fdOut), release = fdOut, curve = Curve.sine)
+    val gain    = "amp".ir(-20.dbamp)
+    val eg      = EnvGen.ar(env, levelScale = gain)
+    val done    = Done.kr(eg)
+//    val limDur  = 0.01f
+    val limIn   = hpf * eg
+    val lim     = limIn // Limiter.ar(limIn, level = -0.2.dbamp, dur = limDur)
+    FreeSelf.kr(done) // TDelay.kr(done, limDur * 2))
+    val sig     = lim
+    Out.ar(bus, sig)
+  }
+
+  private[this] val beeGraphs = Array.tabulate(2)(i => mkBeeGraph(numCh = i + 1))
+
+  private[this] val bees = readBees()
+
+  private[this] val dotIdx = {
+    val dotIdx0 = Network.soundDotSeq.indexOf(c.dot)
+    if (dotIdx0 < 0) 0 else dotIdx0
+  }
+
   def booted(aural: AuralSystem, s: Server)
             (implicit tx: S#Tx): Unit = {
-    tx.afterCommit(log("scsynth booted"))
+    log("scsynth booted")
+
+    implicit val rnd: Random = new Random
+    tx.afterCommit {
+      launchBee(left = true )
+      launchBee(left = false)
+    }
+  }
+
+  private def launchBee(left: Boolean)(implicit rnd: Random): Unit = {
+    val ch = rnd.nextInt(6) + (if (left) 0 else 6)
+    if (!config.isLaptop) {
+      relay.selectChannel(ch)
+    }
+    val bus     = ch / 6
+    val beeIdx  = dotIdx * 12 + ch
+    val bee     = bees(beeIdx % bees.length)
+    val fadeIn  = Util.rrand(10f, 15f)
+    val fadeOut = Util.rrand(10f, 15f)
+    val dur     = fadeIn + fadeOut + Util.rrand(30f, 60f)
+    val start   = Util.rrand(0, bee.numFrames - 44100)
+    val amp     = bee.amp
+
+    system.step { implicit tx =>
+      aural.serverOption.foreach { s =>
+        val target  = s.defaultGroup
+        val path    = (beeDir / beeFmt.format(bee.id)).path
+        val buf     = Buffer.diskIn(s)(path = path, startFrame = start, numChannels = bee.numChannels)
+//        val dur     = math.max(0L, stop - start) / Vertex.SampleRate
+        // avoid clicking
+        val fdIn1   = if (fadeIn  > 0) fadeIn  else 0.01f
+        val fdOut1  = if (fadeOut > 0) fadeOut else 0.01f
+        val gr      = beeGraphs(bee.numChannels - 1)
+        val syn     = Synth.play(gr, nameHint = Some("bee"))(target = target,
+          args = List("bus" -> bus, "buf" -> buf.id, "dur" -> dur, "fadeIn" -> fdIn1, "fadeOut" -> fdOut1, "amp" -> amp),
+          dependencies = buf :: Nil)
+        syn.onEndTxn { implicit tx =>
+          buf.dispose()
+          tx.afterCommit(launchBee(left = left))
+        }
+      }
+    }
   }
 }

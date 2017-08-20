@@ -39,7 +39,7 @@ object OSCClient {
 final class OSCClient(override val config: Config, val dot: Int, val transmitter: UDP.Transmitter.Undirected,
                       val receiver: UDP.Receiver.Undirected) extends OSCClientLike {
   val relay: RelayPins  = RelayPins.map(dot)
-  val scene: SoundScene = new SoundScene(config, relay)
+  val scene: SoundScene = new SoundScene(this)
 
   override def main: Main.type = Main
 
