@@ -101,47 +101,58 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     }
   }
 
+  /*
+
+    (3) attempts to start an ejection initiative.
+    Goes into mode 'inject-query':
+    - chooses an ejection candidate
+    - queries the network for injection candidates.
+      if aborted or none found, retries the initiative shortly after
+
+
+   */
   private def startInitiative()(implicit tx: InTxn): Unit = {
     idleTask() = None
-    if (stateRef() == Idle) {
-      stateRef() = InjectQuery
-      log("Starting initiative")
-      val Uid             = c.mkTxnId()
-      val expectedDelay   = config.queryPathDelay
-      val expectedDelayMS = (expectedDelay * 1000).toLong
-      // add three seconds so the word can bubble upwards in a diagonal way
-      val ejectVertex = gl.ejectionCandidate(delay = expectedDelay + 3f)
-      log(s"EjectionCandidate is $ejectVertex ${gl.vertices(ejectVertex).quote}")
-      c.queryVideos(OscInjectQuery(uid = Uid, videoId = videoId, vertex = ejectVertex),
-        extraDelay = expectedDelayMS) {
-          case OscInjectReply(Uid, accepted) => accepted
-      } { implicit tx => {
-        case Success(list) =>
-          log(s"Got replies: $list")
-          if (list.exists(_.value === OscInjectReply.Rejected)) {
-            log("A node rejected the transaction")
-            c.sendVideos(OscInjectAbort(Uid))
+    if (stateRef() != Idle) return
+
+    stateRef() = InjectQuery
+    log("Starting initiative")
+    val Uid             = c.mkTxnId()
+    val expectedDelay   = config.queryPathDelay
+    val expectedDelayMS = (expectedDelay * 1000).toLong
+    // add three seconds so the word can bubble upwards in a diagonal way
+    val ejectCandidate = gl.ejectionCandidate(delay = expectedDelay + 3f)
+    val ejectVertex = ejectCandidate.vertexId
+    log(s"EjectionCandidate is $ejectVertex ${gl.vertices(ejectVertex).quote}")
+    c.queryVideos(OscInjectQuery(uid = Uid, videoId = videoId, vertex = ejectVertex),
+      extraDelay = expectedDelayMS) {
+        case OscInjectReply(Uid, accepted) => accepted
+    } { implicit tx => {
+      case Success(list) =>
+        log(s"Got replies: $list")
+        if (list.exists(_.value === OscInjectReply.Rejected)) {
+          log("A node rejected the transaction")
+          c.sendVideos(OscInjectAbort(Uid))
+          retryInitiative()
+        } else {
+          val candidates = list.collect {
+            case QueryResult(dot, OscInjectReply.Accepted) => dot
+          }
+          if (candidates.isEmpty) { // there is no need to 'complete' the transaction in that case
+            log("No node accepted the injection")
             retryInitiative()
           } else {
-            val candidates = list.collect {
-              case QueryResult(dot, OscInjectReply.Accepted) => dot
-            }
-            if (candidates.isEmpty) { // there is no need to 'complete' the transaction in that case
-              log("No node accepted the injection")
-              retryInitiative()
-            } else {
-              val candidate = Util.choose(candidates)
-              log(s"Commit ejection - candidate $candidate")
-              c.sendVideos(OscInjectCommit(Uid, targetDot = candidate))
-              performEjection(ejectVertex = ejectVertex)
-            }
+            val candidate = Util.choose(candidates)
+            log(s"Commit ejection - candidate $candidate")
+            c.sendVideos(OscInjectCommit(Uid, targetDot = candidate))
+            performEjection(ejectVertex = ejectVertex)
           }
+        }
 
-        case Failure(ex) =>
-          log(s"Failed to ping - ${ex.getClass.getSimpleName}.")
-          retryInitiative()
-      }}
-    }
+      case Failure(ex) =>
+        log(s"Failed to ping - ${ex.getClass.getSimpleName}.")
+        retryInitiative()
+    }}
   }
 
   private def retryInitiative()(implicit tx: InTxn): Unit = {
@@ -152,10 +163,43 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     scheduleInitiative(dur)
   }
 
+  /*
+
+   (1) Moves into state 'idle'.
+
+   */
   def init()(implicit tx: InTxn): Unit = {
     if (!config.debugText) Swing.onEDT(view.start())
 
     becomeIdle()
+  }
+
+  private final class Ejector(timeOut: Task)
+    extends Glyphosat.Ejector {
+
+    /** Called when the ejecting word moves above vertical threshold. */
+    def ejectWordThresh(): Unit = {
+      log("ejectWordThresh")
+      log("TODO --- ONLY HERE SHOULD SOUND BEGIN")
+//      atomic { implicit tx =>
+//        if (!timeOut.wasExecuted) {
+//          timeOut.cancel()
+//        }
+//      }
+    }
+
+    /** Called when all words have moved out after ejection. */
+    def ejectAllClear(): Unit = {
+      log("ejectAllClear")
+      atomic { implicit tx =>
+        if (!timeOut.wasExecuted) {
+          timeOut.cancel()
+          log("TODO --- GO TO TRUNK STATE")
+          Txn.afterCommit(_ => gl.reset())
+          becomeIdle()  // XXX TODO --- notify injection about beginning sound gesture
+        }
+      }
+    }
   }
 
   private def performEjection(ejectVertex: Int)(implicit tx: InTxn): Unit = {
@@ -167,17 +211,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
       log("ejection timeout reached")
       becomeIdle()(tx)
     }
-    Txn.afterCommit(_ => gl.eject(ejectVertex)(ejected(timeOut)))
-  }
-
-  private def ejected(timeOut: Task): Unit = {
-    log("Gl notifies ejection done")
-    atomic { implicit tx =>
-      if (!timeOut.wasExecuted) {
-        timeOut.cancel()
-        becomeIdle()  // XXX TODO --- notify injection about beginning sound gesture
-      }
-    }
+    Txn.afterCommit(_ => gl.eject(ejectVertex, new Ejector(timeOut)))
   }
 
   private[this] val injSpkPath    = Ref(Array.empty[Spk   ])
@@ -226,6 +260,12 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     injectStep()
   }
 
+  /*
+
+    (2) let's the text flow for a random period between `textMinDur` and `textMaxDur`.
+    then starts an initiative.
+
+   */
   private def becomeIdle()(implicit tx: InTxn): Unit = {
     val now       = System.currentTimeMillis()
     val idleDur   = Util.rrand(config.textMinDur, config.textMaxDur)

@@ -20,7 +20,7 @@ import java.awt.{Font, Shape}
 
 import de.sciss.kollflitz
 import de.sciss.kollflitz.Vec
-import de.sciss.schwaermen.video.Glyphosat.CharVertex
+import de.sciss.schwaermen.video.Glyphosat.{CharVertex, EjectionCandidate, Ejector}
 import de.sciss.schwaermen.video.Main.log
 
 import scala.collection.{Map, Set, breakOut, mutable}
@@ -188,14 +188,15 @@ object Glyphosat {
 
     @volatile
     var vy: Float = 0f  // velocity y
-//    var ax: Float = 0f  // acceleration x
-//    var ay: Float = 0f  // acceleration y
 
     @volatile
     var succ: CharVertex = _
 
     @volatile
     var eject: Boolean = false
+
+    @volatile
+    var ejectNotifiedThresh: Boolean = false
   }
 
   final class Word(val width: Float, val charIndices: Array[Short], val peer: Vertex.Word,
@@ -207,6 +208,16 @@ object Glyphosat {
 
     def stretchedWidth: Float = width * 1.28f  // XXX TODO --- this is measured with current forces and only approximate
   }
+
+  final case class EjectionCandidate(vertexId: Int, expectedDelay: Float)
+
+  trait Ejector {
+    /** Called when the ejecting word moves above vertical threshold. */
+    def ejectWordThresh(): Unit
+
+    /** Called when all words have moved out after ejection. */
+    def ejectAllClear(): Unit
+  }
 }
 trait Glyphosat {
   def step(): Unit
@@ -214,19 +225,22 @@ trait Glyphosat {
   def render(g: Graphics2D): Unit
 
   def head    : CharVertex
-  def last    : CharVertex
-  def lastWord: CharVertex
+
+//  def last    : CharVertex
+//  def lastWord: CharVertex
 
   /** The total number. */
   def numWords: Int
 
   /** Returns a vertex-index */
-  def ejectionCandidate(delay: Float): Int
+  def ejectionCandidate(delay: Float): EjectionCandidate
 
   /** As currently measured. */
   def fps: Float
 
   def vertices: Array[Vertex]
 
-  def eject(vertexIdx: Int)(done: => Unit): Unit
+  def eject(vertexIdx: Int, callBack: Ejector): Unit
+
+  def reset(): Unit
 }

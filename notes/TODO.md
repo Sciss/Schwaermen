@@ -1,2 +1,4 @@
 - SoundScene -- maintain _two_ synths, so we don't free opposite channels (and allow overlap)
-    
+- use urn for sound bees
+- video node -- use polar distortion
+- sound: calibrate speaker volumes

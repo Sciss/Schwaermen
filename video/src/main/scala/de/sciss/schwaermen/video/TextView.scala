@@ -97,14 +97,10 @@ final class TextView(config: Config, gl: Glyphosat, videoId: Int) {
   mainWindow.setVisible(true)
 
   private[this] val strategy = {
-    //    if (isFullScreen) {
     Thread.sleep(50)
     mainWindow.createBufferStrategy(2)
     Thread.sleep(50)
     mainWindow.getBufferStrategy
-    //    } else {
-    //      null
-    //    }
   }
 
   private[this] val OffScreenImg  =
@@ -117,23 +113,19 @@ final class TextView(config: Config, gl: Glyphosat, videoId: Int) {
     res
   }
 
-  private[this] val tk      = mainWindow.getToolkit
+  private[this] val tk = mainWindow.getToolkit
 
   private def tick(): Unit = {
     gl.step()
 
-//    if (isFullScreen) {
-      paintFun(OffScreenG)
+    paintFun(OffScreenG)
+    do {
       do {
-        do {
-          val g = strategy.getDrawGraphics
-          g.drawImage(OffScreenImg, 0, 0, OffScreenW, OffScreenH, 0, 0, OffScreenW, OffScreenH, null)
-        } while (strategy.contentsRestored())
-        strategy.show()
-      } while (strategy.contentsLost())
-//    } else {
-//      mainWindow.repaint()
-//    }
+        val g = strategy.getDrawGraphics
+        g.drawImage(OffScreenImg, 0, 0, OffScreenW, OffScreenH, 0, 0, OffScreenW, OffScreenH, null)
+      } while (strategy.contentsRestored())
+      strategy.show()
+    } while (strategy.contentsLost())
     tk.sync()
   }
 
@@ -180,14 +172,14 @@ final class TextView(config: Config, gl: Glyphosat, videoId: Int) {
     controlWindow.title = f"$fps%g fps"
   }
 
-  private def eject(): Unit = {
-    val v = gl.lastWord
-    if (v != null) v.eject = true
-  }
+//  private def testEject(): Unit = {
+//    val v = gl.lastWord
+//    if (v != null) v.eject = true
+//  }
 
-  private[this] val ggEject = Button("Eject")(eject())
+//  private[this] val ggEject = Button("Eject")(testEject())
 
-  private[this] val pBottom = new FlowPanel(ggAnim, ggTick, ggEject, ggClip, ggInfo)
+  private[this] val pBottom = new FlowPanel(ggAnim, ggTick, /* ggEject, */ ggClip, ggInfo)
 
   {
     import controlWindow._
@@ -203,7 +195,7 @@ final class TextView(config: Config, gl: Glyphosat, videoId: Int) {
     override def keyPressed(e: KeyEvent): Unit = {
       e.getKeyCode match {
         case KeyEvent.VK_ESCAPE => if (isFullScreen) quit()
-        case KeyEvent.VK_E      => eject()
+//        case KeyEvent.VK_E      => testEject()
         case KeyEvent.VK_C      => controlWindow.open()
 
         case _ =>
@@ -224,16 +216,8 @@ final class TextView(config: Config, gl: Glyphosat, videoId: Int) {
 
   mainWindow.requestFocus()
 
-//  private[this] val testTimer = new javax.swing.Timer(20000, Swing.ActionListener(_ => testSwitch()))
-//  testTimer.setRepeats(true)
-//
-//  def testSwitch(): Unit = {
-//      ...
-//  }
-
   def start(): Unit = {
     startAnim()
-//    testTimer.restart()
   }
 
   def quit(): Unit = sys.exit()
