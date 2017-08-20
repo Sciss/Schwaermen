@@ -17,6 +17,7 @@ package video
 import java.net.SocketAddress
 
 import de.sciss.equal.Implicits._
+import de.sciss.schwaermen.video.Glyphosat.EjectionCandidate
 import de.sciss.schwaermen.video.Main.log
 import de.sciss.schwaermen.video.Scene.{OscInjectAbort, OscInjectCommit, OscInjectQuery, OscInjectReply}
 
@@ -122,7 +123,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     val expectedDelayMS = (expectedDelay * 1000).toLong
     // add three seconds so the word can bubble upwards in a diagonal way
     val ejectCandidate = gl.ejectionCandidate(delay = expectedDelay + 3f)
-    val ejectVertex = ejectCandidate.vertexId
+    val ejectVertex = ejectCandidate.vertexIdx
     log(s"EjectionCandidate is $ejectVertex ${gl.vertices(ejectVertex).quote}")
     c.queryVideos(OscInjectQuery(uid = Uid, videoId = videoId, vertex = ejectVertex),
       extraDelay = expectedDelayMS) {
@@ -145,7 +146,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
             val candidate = Util.choose(candidates)
             log(s"Commit ejection - candidate $candidate")
             c.sendVideos(OscInjectCommit(Uid, targetDot = candidate))
-            performEjection(ejectVertex = ejectVertex)
+            performEjection(ejectCandidate)
           }
         }
 
@@ -202,16 +203,16 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     }
   }
 
-  private def performEjection(ejectVertex: Int)(implicit tx: InTxn): Unit = {
+  private def performEjection(ec: EjectionCandidate)(implicit tx: InTxn): Unit = {
     log("performEjection")
     stateRef()      = Ejecting
-    val timeOutSec  = 30f
+    val timeOutSec  = ec.expectedDelay + 60f
     val timeOutDly  = (timeOutSec * 1000).toLong
     val timeOut     = c.scheduleTxn(timeOutDly) { tx =>
-      log("ejection timeout reached")
+      log("performEjection - timeout reached")
       becomeIdle()(tx)
     }
-    Txn.afterCommit(_ => gl.eject(ejectVertex, new Ejector(timeOut)))
+    Txn.afterCommit(_ => gl.eject(ec, new Ejector(timeOut)))
   }
 
   private[this] val injSpkPath    = Ref(Array.empty[Spk   ])

@@ -209,7 +209,7 @@ object Glyphosat {
     def stretchedWidth: Float = width * 1.28f  // XXX TODO --- this is measured with current forces and only approximate
   }
 
-  final case class EjectionCandidate(vertexId: Int, expectedDelay: Float)
+  final case class EjectionCandidate(vertexIdx: Int, numWords: Int, expectedDelay: Float)
 
   trait Ejector {
     /** Called when the ejecting word moves above vertical threshold. */
@@ -240,7 +240,9 @@ trait Glyphosat {
 
   def vertices: Array[Vertex]
 
-  def eject(vertexIdx: Int, callBack: Ejector): Unit
+  def eject(ec: EjectionCandidate, callBack: Ejector): Unit
 
   def reset(): Unit
+
+  def printInfo(): Unit
 }

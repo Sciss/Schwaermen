@@ -170,6 +170,7 @@ final class TextView(config: Config, gl: Glyphosat, videoId: Int) {
   private[this] val ggInfo = Button("Info") {
     val fps = gl.fps
     controlWindow.title = f"$fps%g fps"
+    gl.printInfo()
   }
 
 //  private def testEject(): Unit = {

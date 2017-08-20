@@ -92,6 +92,7 @@ final case class Vertex(textId: Int, words: List[Vertex.Word]) {
 
   val index       : Int     = words.head.index
   val lastIndex   : Int     = words.last.index
+  val numWords    : Int     = lastIndex - index + 1
 
   val fadeIn      : Int     = words.head.fadeIn
   val fadeOut     : Int     = words.last.fadeOut

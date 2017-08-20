@@ -70,6 +70,8 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
 //  def last    : CharVertex = _last
 //  def lastWord: CharVertex = _lastWord
 
+  private[this] val numWordsH = words.length / 2
+
   def numWords: Int = words.length
 
   // we measure these with a lag
@@ -94,6 +96,7 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
     val wordIndex = popWordIndex
     popWordIndex = incWordIndex(wordIndex)
     val word  = words(wordIndex)
+//    println(s"POPPING $wordIndex - '${word.peer.text}'")
     val ch0   = characters(word.charIndices(0))
     val v0    = new CharVertex(ch0, wordIndex = wordIndex) // XXX TODO --- could avoid allocation
     val _ej   = ejectIndex
@@ -154,6 +157,12 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
   @volatile
   private[this] var ejectIndex = -1
 
+//  @volatile
+//  private[this] var ejectNumWords = 0
+
+  @volatile
+  private[this] var ejectStopWord = -1
+
   @volatile
   private[this] var ejectVisible = false
 
@@ -163,15 +172,17 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
   @volatile
   private[this] var ejectDone  = null : Ejector
 
-  def eject(vertexIdx: Int, callBack: Ejector): Unit = {
-    ejectDone   = callBack
-    ejectIndex  = vertexIdx
+  def eject(ec: EjectionCandidate, callBack: Ejector): Unit = {
+    ejectDone     = callBack
+    ejectIndex    = ec.vertexIdx
+    ejectStopWord = (vertices(ec.vertexIdx).lastIndex + 1) % words.length
+//    println(s"BLOODY ejectStopWord = $ejectStopWord")
 
     var curr  = _head
     var found = false
     while (curr != null && !found) {
       val w = words(curr.wordIndex)
-      if (startWordVertexIdx(w) == vertexIdx) {
+      if (startWordVertexIdx(w) == ec.vertexIdx) {
         curr.eject  = true
         found       = true
       }
@@ -180,9 +191,10 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
   }
 
   def reset(): Unit = {
-    ejectDone   = null
-    ejectIndex  = -1
-    _head       = null
+    ejectDone     = null
+    ejectIndex    = -1
+    ejectStopWord = -1
+    _head         = null
   }
 
 //  private def ejected(): Unit = {
@@ -190,6 +202,16 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
 //    val done      = ejectDone
 //    if (done != null) done()
 //  }
+
+  def printInfo(): Unit = {
+    var curr = _head
+    var lc = 0
+    while (curr != null) {
+      lc += 1
+      curr = curr.succ
+    }
+    println(s"There are currently $lc letters.")
+  }
 
   /** Returns a vertex-index */
   def ejectionCandidate(delay: Float): EjectionCandidate = {
@@ -229,7 +251,8 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
           val wDlyFrames  = wDist / absVX
           val wDly        = wDlyFrames / _fps
           ejectWordWidth  = ww
-          EjectionCandidate(vertexIdx, wDly)
+          val numWords    = vertices(vertexIdx).numWords
+          EjectionCandidate(vertexIdx = vertexIdx, numWords = numWords, expectedDelay = wDly)
         }
       }
     }
@@ -297,18 +320,12 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
 
     // ---- updates velocities ----
 
-    curr.vx += (NominalVX - curr.vx) * NominalVXK
-    curr.vy += (NominalY  - curr. y) * NominalYK
-    curr.vx *= DragMX
-    curr.vy *= DragMY
-    var pred = curr
-    curr = curr.succ
-
-    var isSym = false
+    var pred  = null: CharVertex // curr
+    var isSym = false // is symmetrical, i.e. current puts horizontal force on predecessor
 
     while (curr != null) {
       val y2 = curr.y
-      val x2 = curr.x + pred.info.left
+      val x2 = curr.left // x + pred.info.left
       curr.vx *= DragMX
       curr.vy *= DragMY
       if (curr.eject && x2 < MinEjectX) {
@@ -319,17 +336,25 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
         isSym         = true
 
       } else {
-        val x1 = pred.x + pred.info.right
-        val y1 = pred.y
-        val dx = x1 - x2
-        val dy = y1 - y2
-        curr.vx += dx * PairLXK
-        curr.vy += dy * PairLYK
-        if (isSym) {
-          pred.vx -= dx * PairRXK
-          pred.vy -= dy * PairRYK
+        if (pred == null) {
+          curr.vx += (NominalVX - curr.vx) * NominalVXK
+          curr.vy += (NominalY  - curr. y) * NominalYK
+          curr.vx *= DragMX
+          curr.vy *= DragMY
+
         } else {
-          isSym = true
+          val x1 = pred.right
+          val y1 = pred.y
+          val dx = x1 - x2
+          val dy = y1 - y2
+          curr.vx += dx * PairLXK
+          curr.vy += dy * PairLYK
+          if (isSym) {
+            pred.vx -= dx * PairRXK
+            pred.vy -= dy * PairRYK
+          } else {
+            isSym = true
+          }
         }
       }
       pred = curr
@@ -361,42 +386,55 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
       curr.x += curr.vx
       curr.y += curr.vy
 
-      if (curr.eject && !curr.ejectNotifiedThresh && curr.y <= MinEjectY) {
+      val isEjectAndUp = curr.eject && curr.y <= MinEjectY
+
+      if (isEjectAndUp && !curr.ejectNotifiedThresh) {
         curr.ejectNotifiedThresh = true
         val done = ejectDone
         if (done != null) done.ejectWordThresh()
       }
 
-      if (allOut) {
-        if (curr.wordIndex != predIdx) {  // i.e. previous word is all out
-          // XXX TODO: what was the following guard about?
-          // if (_head != curr) {
-            updateStretchStat(pred)
-          // }
+      val beginsWord = curr.wordIndex != predIdx
 
+      if (allOut) {
+        if (beginsWord && predIdx >= 0) {  // i.e. previous word is all out
+          updateStretchStat(pred)
           val wasEject = _head.eject
-          _head   = curr // drop previous head
+          println("DROP ONE")
+          _head = curr // drop previous head
           if (wasEject) {
             curr.eject                = true
             curr.ejectNotifiedThresh  = true
           }
-          predIdx = curr.wordIndex
         }
         val currOut = curr.x + curr.info.right <= 0 || curr.y + curr.info.bottom <= 0
         allOut &= currOut
+      }
+
+      if (beginsWord) {
+        predIdx = curr.wordIndex
+        // if (isEjectAndUp) allOut = true
       }
       pred = curr
       curr = curr.succ
     }
 
-    if (pred.x + pred.info.right < ScreenWidth && !ejectVisible) {
+    if (pred.right < ScreenWidth && {
+      ejectStopWord < 0 || {
+        val df = ejectStopWord - popWordIndex
+        df > 0 && df < numWordsH // bloody fucking hell, I'm not made for this
+      }
+    }) {
       popWord(pred)
 
     } else if (allOut && pred != null) {
       updateStretchStat(pred)
+      println("DROP LAST")
       _head = null
       val done = ejectDone
-      if (done != null) done.ejectAllClear()
+      if (done != null) {
+        done.ejectAllClear()
+      }
     }
 
     // update fps
