@@ -18,12 +18,14 @@ import java.io.{BufferedInputStream, DataInputStream, InputStream}
 import java.nio.ByteBuffer
 
 import de.sciss.file._
+import de.sciss.lucre.stm.TxnLike.peer
 import de.sciss.lucre.synth.{Buffer, InMemory, Server, Synth, Txn}
 import de.sciss.schwaermen.sound.Main.log
 import de.sciss.synth.proc.AuralSystem
-import de.sciss.synth.{Curve, SynthDef, SynthGraph, UGenGraph, addToHead, freeSelf}
+import de.sciss.synth.{Curve, SynthDef, SynthGraph, UGenGraph, addAfter, addToHead, freeSelf}
 
 import scala.Predef.{any2stringadd => _, _}
+import scala.concurrent.stm.Ref
 import scala.util.Random
 import scala.util.control.NonFatal
 
@@ -86,12 +88,33 @@ final class SoundScene(c: OSCClient) {
     val gain    = 12.dbamp
     val eg      = EnvGen.ar(env, levelScale = gain /* , doneAction = freeSelf */)
     val done    = Done.kr(eg)
-    val limDur  = 0.01f
+//    val limDur  = 0.01f
     val limIn   = hpf * eg
-    val lim     = Limiter.ar(limIn /* * gain */, level = -0.2.dbamp, dur = limDur)
-    FreeSelf.kr(TDelay.kr(done, limDur * 2))
-    val sig     = lim
+//    val lim     = Limiter.ar(limIn /* * gain */, level = -0.2.dbamp, dur = limDur)
+    FreeSelf.kr(done) // TDelay.kr(done, limDur * 2))
+    val sig     = limIn // lim
     Out.ar(bus, sig)
+  }
+
+  private[this] val masterGraph: SynthGraph = SynthGraph {
+    import de.sciss.numbers.Implicits._
+    import de.sciss.synth.Ops.stringToControl
+    import de.sciss.synth.ugen._
+    val in      = In.ar(0, 2)
+    val amp     = "amp".kr(1f)
+    val limDur  = 0.01f
+    val limIn   = in * amp
+    val lim     = Limiter.ar(limIn, level = -0.2.dbamp, dur = limDur)
+    val sig     = lim
+    ReplaceOut.ar(0 /* bus */, sig)
+  }
+
+  private[this] val masterSynth = Ref(Option.empty[Synth])
+
+  def setMasterVolume(amp: Float): Unit = {
+    system.step { implicit tx =>
+      masterSynth().foreach(_.set("amp" -> amp))
+    }
   }
 
   private def playTestGraph(s: Server, graph: SynthGraph, ch: Int)(implicit tx: S#Tx): Boolean = {
@@ -225,9 +248,9 @@ final class SoundScene(c: OSCClient) {
         require (cookie == BEE_COOKIE, s"Unexpected cookie ${cookie.toHexString} -- expected ${BEE_COOKIE.toHexString}")
         val num = dis.readShort()
         Array.fill(num) {
-          val id          = dis.readShort()
+          val id          = dis.readInt  ()
           val numChannels = dis.readShort()
-          val numFrames   = dis.readInt()
+          val numFrames   = dis.readInt  ()
           val gain        = dis.readFloat()
           import de.sciss.numbers.Implicits._
           val amp         = math.min(1f, gain.dbamp)
@@ -291,6 +314,9 @@ final class SoundScene(c: OSCClient) {
             (implicit tx: S#Tx): Unit = {
     log("scsynth booted")
 
+    val ms = Synth.play(masterGraph, nameHint = Some("master"))(target = s.defaultGroup, addAction = addAfter)
+    masterSynth() = Some(ms)
+
     implicit val rnd: Random = new Random
     tx.afterCommit {
       launchBee(left = true )
@@ -310,7 +336,7 @@ final class SoundScene(c: OSCClient) {
     val fadeOut = Util.rrand(10f, 15f)
     val dur     = fadeIn + fadeOut + Util.rrand(30f, 60f)
     val start   = Util.rrand(0, bee.numFrames - 44100)
-    val amp     = bee.amp
+    val amp     = bee.amp * config.beeAmp
 
     system.step { implicit tx =>
       aural.serverOption.foreach { s =>

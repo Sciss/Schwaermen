@@ -47,6 +47,9 @@ final class OSCClient(override val config: Config, val dot: Int, val transmitter
     case Network.OscPlayText(textId, ch, start, stop, fadeIn, fadeOut) =>
       scene.play(textId = textId, ch = ch, start = start, stop = stop, fadeIn = fadeIn, fadeOut = fadeOut)
 
+    case Network.OscSetVolume(amp) =>
+      scene.setMasterVolume(amp)
+
     case osc.Message("/test-pin-mode") =>
       try {
         relay.bothPins

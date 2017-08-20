@@ -240,6 +240,14 @@ object Network {
     }
   }
 
+  object OscSetVolume {
+    def apply(amp: Float): osc.Message = osc.Message("/set-volume", amp)
+
+    def unapply(p: osc.Packet): Option[Float] = p match {
+      case osc.Message("/set-volume", amp: Float) => Some(amp)
+      case _ => None
+    }
+  }
   final val OscShutdown : osc.Message = osc.Message("/shutdown" )
   final val OscReboot   : osc.Message = osc.Message("/reboot"   )
   final val OscHeart    : osc.Message = osc.Message("/heart"    )

@@ -29,5 +29,6 @@ final case class Config(
                         ownSocket           : Option[InetSocketAddress] = None,
                         dot                 : Int           = -1,
                         log                 : Boolean       = false,
+                        beeAmp              : Float         = 3f
                        )
   extends ConfigLike

@@ -75,6 +75,11 @@ object Main extends MainLike {
         .text ("Explicit 'dot' (normally the last element of the IP address). Used for transaction ids.")
         .validate { v => if (v >= -1 && v <= 255) success else failure("Must be -1, or 0 to 255") }
         .action { (v, c) => c.copy(dot = v) }
+
+      opt[Double] ("bee-amp")
+        .text (s"Amplitude factor (linear) for bees (default ${default.beeAmp}")
+        .validate { v => if (v > 0 && v < 30) success else failure("Must be > 0 and < 30") }
+        .action { (v, c) => c.copy(beeAmp = v.toFloat) }
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
       val localSocketAddress = Network.initConfig(config, this)

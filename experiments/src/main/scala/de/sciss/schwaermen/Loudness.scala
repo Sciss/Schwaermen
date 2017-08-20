@@ -115,7 +115,7 @@ object Loudness {
           val spec  = AudioFile.readSpec(inF)
           val n     = inF.name
           val id    = n.substring(0, n.indexOf('_')).toInt
-          dos.writeShort(id)
+          dos.writeInt  (id)
           dos.writeShort(spec.numChannels)
           dos.writeInt  (spec.numFrames.toInt)
           dos.writeFloat(gain.toFloat)
