@@ -101,14 +101,15 @@ final class OSCClient(override val config: Config, val dot: Int,
       Network.socketToDotMap
 
   def oscReceived(p: osc.Packet, sender: SocketAddress): Unit = p match {
-    case Scene.OscInjectQuery(uid, ejectVideoId, ejectVertex) =>
+    case Scene.OscInjectQuery(uid, ejectVideoId, ejectVertex, expectedDelay) =>
       val meta = metaSeq(ejectVideoId)
       if (meta == null) {
         sendNow(Scene.OscInjectReply(uid, OscInjectReply.Rejected), sender)
       } else
         atomic { implicit tx =>
           Scene.current().queryInjection(sender,
-            uid = uid, meta = meta, ejectVideoId = ejectVideoId, ejectVertex = ejectVertex)
+            uid = uid, meta = meta, ejectVideoId = ejectVideoId, ejectVertex = ejectVertex,
+            expectedDelay = expectedDelay)
         }
 
     case m @ osc.Message("/test-path-finder") =>

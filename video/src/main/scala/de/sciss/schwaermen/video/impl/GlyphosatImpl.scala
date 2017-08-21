@@ -241,15 +241,16 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
     val minCX       = ScreenCX + distance
     log(f"ejectionCandidate. fps = ${_fps}%1.1f, delayFrames = $delayFrames%1.1f, distance = $distance%1.1f minCX = $minCX%1.1f")
 
-
     def test(left: Float, w: Word, ww: Float): EjectionCandidate = {
       val vertexIdx = startWordVertexIdx(w)
       if (vertexIdx < 0) null else {
         val wcx = left + ww * 0.5f
         if (wcx < minCX) null else {
-          val wDist       = wcx - ScreenCX
-          val wDlyFrames  = wDist / absVX
-          val wDly        = wDlyFrames / _fps
+          val wxDist      = wcx - ScreenCX
+          val wxDlyFrames = wxDist / absVX
+          val wyDlyFrames = NominalY / math.abs(EjectVY)
+          val wDly        = (wxDlyFrames + wyDlyFrames) / _fps    // dit stimmt nit janz (summieren), aber egal
+          log(f"gl.expectedDelay: $wcx%1.1f - $ScreenCX = $wxDist%1.1f px; which is $wxDlyFrames%1.1f frames or $wDly%1.1f seconds at ${_fps}%1.1f fps and $absVX%1.1f px/frame")
           ejectWordWidth  = ww
           val numWords    = vertices(vertexIdx).numWords
           EjectionCandidate(vertexIdx = vertexIdx, numWords = numWords, expectedDelay = wDly)

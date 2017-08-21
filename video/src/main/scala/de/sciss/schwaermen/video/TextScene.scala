@@ -59,9 +59,9 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   }
 
   def queryInjection(sender: SocketAddress, Uid: Long, meta: TextPathFinder.Meta,
-                     ejectVideoId: Int, ejectVertex: Int)(implicit tx: InTxn): Unit = {
+                     ejectVideoId: Int, ejectVertex: Int, expectedDelay: Float)(implicit tx: InTxn): Unit = {
     if (stateRef() == Idle) {
-      log(s"queryInjection; ejectVideoId $ejectVideoId, $ejectVertex")
+      log(f"queryInjection; ejectVideoId $ejectVideoId, $ejectVertex, expectedDelay = $expectedDelay%1.1f")
       val spkSrcVertex    = c.speakers.exits(ejectVideoId).toShort
       val spkTgtVertex    = c.speakers.exits(videoId     ).toShort
       val spkPath         = speakerFinder.findPath(spkSrcVertex, spkTgtVertex)
@@ -74,20 +74,22 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
       val t1          = System.currentTimeMillis()
       val textIdxPath = meta.finder
         .findExtendedPath(sourceVertex = txtSrcVertex, targetVertex = txtTgtVertex, pathLen = pathLen)
-      val t2        = System.currentTimeMillis()
+      val t2          = System.currentTimeMillis()
       if (config.isLaptop) {
         val slow = (t2 - t1) * 10
         Thread.sleep(slow)    // cheesy way to come closer to the Raspi experience
       }
       assert(textIdxPath.length == pathLen)
-      val textPath  = textIdxPath.map(meta.vertex(_))
-      val pathDur   = textPath.iterator.map(_.netDuration).sum
+      val textPath    = textIdxPath.map(meta.vertex(_))
+      val pathDur     = textPath.iterator.map(_.netDuration).sum
       log(f"path length $pathLen; dur $pathDur%1.1f vs. pathLen * avgDur = $anticipatedDur")
 
-      stateRef() = InjectPending
-      val reply = OscInjectReply(Uid, OscInjectReply.Accepted)
-      c.queryTxn(sender, reply) {
-        case OscInjectCommit(Uid, targetDot)  => targetDot === c.dot
+      stateRef()      = InjectPending
+      val reply       = OscInjectReply(Uid, OscInjectReply.Accepted)
+      val extraDelay  = ((expectedDelay + 30f) * 1000).toLong
+      println(s"BLOODY FUCKING $Uid, ${c.dot}")
+      c.queryTxn(sender, reply, extraDelay = extraDelay) {
+        case OscInjectCommit(Uid, targetDot)  => println("FUCK YOU"); targetDot === c.dot
         case OscInjectAbort (Uid)             => false
       } { implicit tx => {
         case Success(QueryResult(_ /* dot */, true)) =>
@@ -119,14 +121,15 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     stateRef() = InjectQuery
     log("Starting initiative")
     val Uid             = c.mkTxnId()
-    val expectedDelay   = config.queryPathDelay
-    val expectedDelayMS = (expectedDelay * 1000).toLong
+    val expQueryDly     = config.queryPathDelay
+    val expDelayMS      = (expQueryDly * 1000).toLong
     // add three seconds so the word can bubble upwards in a diagonal way
-    val ejectCandidate = gl.ejectionCandidate(delay = expectedDelay + 3f)
+    val ejectCandidate = gl.ejectionCandidate(delay = expQueryDly + 3f)
     val ejectVertex = ejectCandidate.vertexIdx
     log(s"EjectionCandidate is $ejectVertex ${gl.vertices(ejectVertex).quote}")
-    c.queryVideos(OscInjectQuery(uid = Uid, videoId = videoId, vertex = ejectVertex),
-      extraDelay = expectedDelayMS) {
+    c.queryVideos(OscInjectQuery(uid = Uid, videoId = videoId, vertex = ejectVertex,
+      expectedDelay = ejectCandidate.expectedDelay),
+      extraDelay = expDelayMS) {
         case OscInjectReply(Uid, accepted) => accepted
     } { implicit tx => {
       case Success(list) =>
@@ -143,10 +146,10 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
             log("No node accepted the injection")
             retryInitiative()
           } else {
-            val candidate = Util.choose(candidates)
-            log(s"Commit ejection - candidate $candidate")
-            c.sendVideos(OscInjectCommit(Uid, targetDot = candidate))
-            performEjection(ejectCandidate)
+            val targetDot = Util.choose(candidates)
+            log(s"Commit ejection - candidate $targetDot")
+//            c.sendVideos(OscInjectCommit(Uid, targetDot = candidate))
+            performEjection(ejectCandidate, uid = Uid, targetDot = targetDot)
           }
         }
 
@@ -175,18 +178,21 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     becomeIdle()
   }
 
-  private final class Ejector(timeOut: Task)
+  private final class Ejector(timeOut: Task, uid: Long, targetDot: Int, expected: Long)
     extends Glyphosat.Ejector {
 
     /** Called when the ejecting word moves above vertical threshold. */
     def ejectWordThresh(): Unit = {
-      log("ejectWordThresh")
-      log("TODO --- ONLY HERE SHOULD SOUND BEGIN")
-//      atomic { implicit tx =>
-//        if (!timeOut.wasExecuted) {
-//          timeOut.cancel()
-//        }
-//      }
+      val now = System.currentTimeMillis()
+      log(s"ejectWordThresh - actual-expected = ${now - expected}ms")
+      atomic { implicit tx =>
+        if (!timeOut.wasExecuted) {
+          timeOut.cancel()
+          c.sendVideos(OscInjectCommit(uid = uid, targetDot = targetDot))
+        } else {
+          log("(time out was already executed)")
+        }
+      }
     }
 
     /** Called when all words have moved out after ejection. */
@@ -203,16 +209,18 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     }
   }
 
-  private def performEjection(ec: EjectionCandidate)(implicit tx: InTxn): Unit = {
+  private def performEjection(ec: EjectionCandidate, uid: Long, targetDot: Int)(implicit tx: InTxn): Unit = {
     log("performEjection")
     stateRef()      = Ejecting
     val timeOutSec  = ec.expectedDelay + 60f
+    val expected    = System.currentTimeMillis() + (ec.expectedDelay * 1000).toLong
     val timeOutDly  = (timeOutSec * 1000).toLong
-    val timeOut     = c.scheduleTxn(timeOutDly) { tx =>
+    val timeOut     = c.scheduleTxn(timeOutDly) { implicit tx =>
       log("performEjection - timeout reached")
-      becomeIdle()(tx)
+      c.sendVideos(OscInjectAbort(uid = uid))
+      becomeIdle()
     }
-    Txn.afterCommit(_ => gl.eject(ec, new Ejector(timeOut)))
+    Txn.afterCommit(_ => gl.eject(ec, new Ejector(timeOut, uid = uid, targetDot = targetDot, expected = expected)))
   }
 
   private[this] val injSpkPath    = Ref(Array.empty[Spk   ])
