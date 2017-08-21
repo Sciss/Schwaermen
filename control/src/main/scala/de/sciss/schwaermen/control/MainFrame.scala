@@ -26,7 +26,7 @@ import de.sciss.synth.SynthDef
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Table.AutoResizeMode
-import scala.swing.event.TableRowsSelected
+import scala.swing.event.{ButtonClicked, TableRowsSelected}
 import scala.swing.{BorderPanel, BoxPanel, Button, Component, FlowPanel, Frame, Label, Orientation, ScrollPane, Slider, Swing, ToggleButton}
 
 class MainFrame(c: OSCClient) {
@@ -222,13 +222,14 @@ class MainFrame(c: OSCClient) {
     }
   }
 
-//  private def ToggleButton(title: String)(fun: Boolean => Unit): ToggleButton =
-//    new ToggleButton(title) {
-//      listenTo(this)
-//      reactions += {
-//        case ButtonClicked(_) => fun(selected)
-//      }
-//    }
+  private def ToggleButton(title: String, init: Boolean)(fun: Boolean => Unit): ToggleButton =
+    new ToggleButton(title) {
+      if (init) selected = true
+      listenTo(this)
+      reactions += {
+        case ButtonClicked(_) => fun(selected)
+      }
+    }
 
   private[this] val ggSoundOff    = new ToggleButton("Off"  )
   private[this] val ggSoundPing   = new ToggleButton("Ping" )
@@ -239,6 +240,12 @@ class MainFrame(c: OSCClient) {
   gSound.add(ggSoundPing    .peer)
   gSound.add(ggSoundNoise   .peer)
   gSound.add(ggSoundNegatum .peer)
+
+  private[this] val ggBees = ToggleButton("Bees", init = true) { onOff =>
+    selection.foreach { instance =>
+      c.tx.send(osc.Message("/bees", onOff), instance.socketAddress)
+    }
+  }
 
   private def selectedChanged(): Unit = {
     val hasSelection    = selection.nonEmpty
@@ -266,7 +273,8 @@ class MainFrame(c: OSCClient) {
     value = -12
   }
 
-  private[this] val pButtons  = new FlowPanel(ggRefresh, ggUpdate, ggReboot, ggShutdown, ggTestPins, ggTestPath,
+  private[this] val pButtons1 = new FlowPanel(ggRefresh, ggUpdate, ggReboot, ggShutdown, ggTestPins, ggTestPath, ggBees)
+  private[this] val pButtons2 = new FlowPanel(
     new Label("Sound:"), ggSoundOff, ggSoundPing, ggSoundNoise, ggSoundNegatum)
   private[this] val pChannels = new FlowPanel(Seq.tabulate(12) { ch =>
     Button((ch + 1).toString) {
@@ -290,7 +298,8 @@ class MainFrame(c: OSCClient) {
   }: _*)
 
   private[this] val pBottom = new BoxPanel(Orientation.Vertical) {
-    contents += pButtons
+    contents += pButtons1
+    contents += pButtons2
     contents += pChannels
     contents += new FlowPanel(new Label("Negatum Vol."), ggAmp)
   }

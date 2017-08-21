@@ -70,6 +70,9 @@ final class OSCClient(override val config: Config, val dot: Int, val transmitter
           transmitter.send(osc.Message("/fail", "test-channel", ch, msg), sender)
       }
 
+    case osc.Message("/bees", onOff: Boolean) =>
+      if (onOff) scene.launchBees() else scene.stopBees()
+
     case _ =>
       oscFallback(p, sender)
   }

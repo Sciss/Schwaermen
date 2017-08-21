@@ -310,6 +310,8 @@ final class SoundScene(c: OSCClient) {
     if (dotIdx0 < 0) 0 else dotIdx0
   }
 
+  implicit private[this] val rnd: Random = new Random
+
   def booted(aural: AuralSystem, s: Server)
             (implicit tx: S#Tx): Unit = {
     log("scsynth booted")
@@ -317,11 +319,22 @@ final class SoundScene(c: OSCClient) {
     val ms = Synth.play(masterGraph, nameHint = Some("master"))(target = s.defaultGroup, addAction = addAfter)
     masterSynth() = Some(ms)
 
-    implicit val rnd: Random = new Random
     tx.afterCommit {
-      launchBee(left = true )
-      launchBee(left = false)
+      launchBees()
     }
+  }
+
+  @volatile
+  private[this] var useBees = false
+
+  def launchBees(): Unit = {
+    useBees = true
+    launchBee(left = true )
+    launchBee(left = false)
+  }
+
+  def stopBees(): Unit = {
+    useBees = false
   }
 
   private def launchBee(left: Boolean)(implicit rnd: Random): Unit = {
@@ -353,7 +366,7 @@ final class SoundScene(c: OSCClient) {
           dependencies = buf :: Nil)
         syn.onEndTxn { implicit tx =>
           buf.dispose()
-          tx.afterCommit(launchBee(left = left))
+          tx.afterCommit(if (useBees) launchBee(left = left))
         }
       }
     }
