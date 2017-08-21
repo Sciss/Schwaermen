@@ -96,7 +96,11 @@ object Spk {
 
     val idMap     = speakers0.iterator.map(_.id).zipWithIndex.toMap
     val speakers  = speakers0.map { spk =>
-      spk.copy(neighbours = nMap(spk.id).result().map(nId => idMap(nId).toShort))
+      val n = nMap(spk.id).result().map { nId =>
+        require (nId != spk.id, s"Self cycle for $nId")
+        idMap(nId).toShort
+      }
+      spk.copy(neighbours = n)
     }
 
     new Spk.Network(speakers, exits)

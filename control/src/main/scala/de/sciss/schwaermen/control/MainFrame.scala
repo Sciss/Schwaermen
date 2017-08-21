@@ -26,7 +26,7 @@ import de.sciss.synth.SynthDef
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Table.AutoResizeMode
-import scala.swing.event.{ButtonClicked, TableRowsSelected}
+import scala.swing.event.{ButtonClicked, TableRowsSelected, ValueChanged}
 import scala.swing.{BorderPanel, BoxPanel, Button, Component, FlowPanel, Frame, Label, Orientation, ScrollPane, Slider, Swing, ToggleButton}
 
 class MainFrame(c: OSCClient) {
@@ -234,12 +234,12 @@ class MainFrame(c: OSCClient) {
   private[this] val ggSoundOff    = new ToggleButton("Off"  )
   private[this] val ggSoundPing   = new ToggleButton("Ping" )
   private[this] val ggSoundNoise  = new ToggleButton("Noise")
-  private[this] val ggSoundNegatum= new ToggleButton("Negatum")
+//  private[this] val ggSoundNegatum= new ToggleButton("Negatum")
   private[this] val gSound = new ButtonGroup
   gSound.add(ggSoundOff     .peer)
   gSound.add(ggSoundPing    .peer)
   gSound.add(ggSoundNoise   .peer)
-  gSound.add(ggSoundNegatum .peer)
+//  gSound.add(ggSoundNegatum .peer)
 
   private[this] val ggBees = ToggleButton("Bees", init = true) { onOff =>
     selection.foreach { instance =>
@@ -271,28 +271,33 @@ class MainFrame(c: OSCClient) {
     min   = -60
     max   =   0
     value = -12
+    listenTo(this)
+    reactions += {
+      case ValueChanged(_) =>
+        println("TODO - set master volume")
+    }
   }
 
   private[this] val pButtons1 = new FlowPanel(ggRefresh, ggUpdate, ggReboot, ggShutdown, ggTestPins, ggTestPath, ggBees)
   private[this] val pButtons2 = new FlowPanel(
-    new Label("Sound:"), ggSoundOff, ggSoundPing, ggSoundNoise, ggSoundNegatum)
+    new Label("Sound:"), ggSoundOff, ggSoundPing, ggSoundNoise /* , ggSoundNegatum */)
   private[this] val pChannels = new FlowPanel(Seq.tabulate(12) { ch =>
     Button((ch + 1).toString) {
       selection.foreach { instance =>
-        if (ggSoundNegatum.selected) {
-          val tpe = 2
-          import de.sciss.numbers.Implicits._
-          val amp  = ggAmp.value.dbamp
-          val df = SynthDef("test") {
-//            NegatumGraphs.g1_51_4456(amp) // graphBubbles()
-            NegatumGraphs.g1_51_4533(amp) // graphBubbles()
-          }
-          val rest = df.recvMsg.bytes
-          c.tx.send(osc.Message("/test-channel", ch, tpe, rest), instance.socketAddress)
-        } else {
+//        if (ggSoundNegatum.selected) {
+//          val tpe = 2
+//          import de.sciss.numbers.Implicits._
+//          val amp  = ggAmp.value.dbamp
+//          val df = SynthDef("test") {
+////            NegatumGraphs.g1_51_4456(amp) // graphBubbles()
+//            NegatumGraphs.g1_51_4533(amp) // graphBubbles()
+//          }
+//          val rest = df.recvMsg.bytes
+//          c.tx.send(osc.Message("/test-channel", ch, tpe, rest), instance.socketAddress)
+//        } else {
           val tpe = if (ggSoundPing.selected) 0 else if (ggSoundNoise.selected) 1 else -1
           c.tx.send(osc.Message("/test-channel", ch, tpe), instance.socketAddress)
-        }
+//        }
       }
     }
   }: _*)
@@ -301,7 +306,7 @@ class MainFrame(c: OSCClient) {
     contents += pButtons1
     contents += pButtons2
     contents += pChannels
-    contents += new FlowPanel(new Label("Negatum Vol."), ggAmp)
+    contents += new FlowPanel(new Label("Main Vol."), ggAmp)
   }
 
   private[this] val component: Component = {
