@@ -87,15 +87,14 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
       stateRef()      = InjectPending
       val reply       = OscInjectReply(Uid, OscInjectReply.Accepted)
       val extraDelay  = ((expectedDelay + 30f) * 1000).toLong
-      println(s"BLOODY FUCKING $Uid, ${c.dot}")
       c.queryTxn(sender, reply, extraDelay = extraDelay) {
-        case OscInjectCommit(Uid, targetDot)  => println("FUCK YOU"); targetDot === c.dot
+        case OscInjectCommit(Uid, targetDot)  => targetDot === c.dot
         case OscInjectAbort (Uid)             => false
       } { implicit tx => {
         case Success(QueryResult(_ /* dot */, true)) =>
           performInjection(spkPath, textPath)
         case other =>
-          log(s"Injection target received abortion or was not selected - $other")
+          log(s"Injection target for $Uid received abortion or was not selected - $other")
           retryInitiative()
       }}
     } else {

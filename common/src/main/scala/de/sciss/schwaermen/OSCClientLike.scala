@@ -63,6 +63,7 @@ abstract class OSCClientLike {
       val qsIn      = queries()
       val qOpt      = qsIn.find(_.handle(sender, p))
       val _handled  = qOpt.isDefined
+      // println(s"for $p looked through ${qsIn.size} queries - handled? ${_handled}")
       qOpt.foreach(removeQuery(_))
       _handled
     }

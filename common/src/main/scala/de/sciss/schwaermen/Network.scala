@@ -167,62 +167,78 @@ object Network {
     osc.Message("/query", "version")
 
   object OscReplyVersion {
-    def apply(s: String): osc.Message = osc.Message("/info", "version", s)
+    private[this] val Name = "/info"
+    private[this] val Tpe  = "version"
+
+    def apply(s: String): osc.Message = osc.Message(Name, Tpe, s)
 
     def unapply(p: osc.Packet): Option[String] = p match {
-      case osc.Message("/info", "version", s: String) => Some(s)
+      case osc.Message(Name, Tpe, s: String) => Some(s)
       case _ => None
     }
   }
 
   object OscUpdateInit {
-    def apply(uid: Int, size: Long): osc.Message = osc.Message("/update-init", uid, size)
+    private[this] val Name = "/update-init"
+
+    def apply(uid: Int, size: Long): osc.Message = osc.Message(Name, uid, size)
 
     def unapply(p: osc.Packet): Option[(Int, Long)] = p match {
-      case osc.Message("/update-init", uid: Int, size: Long) => Some((uid, size))
+      case osc.Message(Name, uid: Int, size: Long) => Some((uid, size))
       case _ => None
     }
   }
 
   object OscUpdateGet {
-    def apply(uid: Int, offset: Long): osc.Message = osc.Message("/update-get", uid, offset)
+    private[this] val Name = "/update-get"
+
+    def apply(uid: Int, offset: Long): osc.Message = osc.Message(Name, uid, offset)
 
     def unapply(p: osc.Packet): Option[(Int, Long)] = p match {
-      case osc.Message("/update-get", uid: Int, offset: Long) => Some((uid, offset))
+      case osc.Message(Name, uid: Int, offset: Long) => Some((uid, offset))
       case _ => None
     }
   }
 
   object OscUpdateSet {
+    private[this] val Name = "/update-set"
+
     def apply(uid: Int, offset: Long, bytes: ByteBuffer): osc.Message =
-      osc.Message("/update-set", uid,offset, bytes)
+      osc.Message(Name, uid,offset, bytes)
 
     def unapply(p: osc.Packet): Option[(Int, Long, ByteBuffer)] = p match {
-      case osc.Message("/update-set", uid: Int, offset: Long, bytes: ByteBuffer) => Some((uid, offset, bytes))
+      case osc.Message(Name, uid: Int, offset: Long, bytes: ByteBuffer) => Some((uid, offset, bytes))
       case _ => None
     }
   }
 
   object OscUpdateError {
-    def apply(uid: Int, s: String): osc.Message = osc.Message("/error", "update", uid, s)
+    private[this] val Name = "/error"
+    private[this] val Tpe  = "update"
+
+    def apply(uid: Int, s: String): osc.Message = osc.Message(Name, Tpe, uid, s)
 
     def unapply(p: osc.Packet): Option[(Int, String)] = p match {
-      case osc.Message("/error", "update", uid: Int, s: String) => Some((uid, s))
+      case osc.Message(Name, Tpe, uid: Int, s: String) => Some((uid, s))
       case _ => None
     }
   }
 
   object OscUpdateSuccess {
+    private[this] val Name = "/update-done"
+
     def apply(uid: Int): osc.Message =
-      osc.Message("/update-done", uid)
+      osc.Message(Name, uid)
 
     def unapply(p: osc.Packet): Option[Int] = p match {
-      case osc.Message("/update-done", uid: Int) => Some(uid)
+      case osc.Message(Name, uid: Int) => Some(uid)
       case _ => None
     }
   }
 
   object OscPlayText {
+    private[this] val Name = "/play-text"
+
     /** @param textId   which text file to use (0 to 2)
       * @param ch       the channel to use with respect to the audio node (0 until 12)
       * @param start    the start frame into the audio file
@@ -231,20 +247,22 @@ object Network {
       * @param fadeOut  the fade-out in seconds
       */
     def apply(textId: Int, ch: Int, start: Long, stop: Long, fadeIn: Float, fadeOut: Float): osc.Message =
-      osc.Message("/play-text", textId, ch, start, stop, fadeIn, fadeOut)
+      osc.Message(Name, textId, ch, start, stop, fadeIn, fadeOut)
 
     def unapply(p: osc.Packet): Option[(Int, Int, Long, Long, Float, Float)] = p match {
-      case osc.Message("/play-text", textId: Int, ch: Int, start: Long, stop: Long, fadeIn: Float, fadeOut: Float) =>
+      case osc.Message(Name, textId: Int, ch: Int, start: Long, stop: Long, fadeIn: Float, fadeOut: Float) =>
         Some((textId, ch, start, stop, fadeIn, fadeOut))
       case _ => None
     }
   }
 
   object OscSetVolume {
-    def apply(amp: Float): osc.Message = osc.Message("/set-volume", amp)
+    private[this] val Name = "/set-volume"
+
+    def apply(amp: Float): osc.Message = osc.Message(Name, amp)
 
     def unapply(p: osc.Packet): Option[Float] = p match {
-      case osc.Message("/set-volume", amp: Float) => Some(amp)
+      case osc.Message(Name, amp: Float) => Some(amp)
       case _ => None
     }
   }

@@ -20,6 +20,7 @@ import de.sciss.schwaermen.video.Main.log
 
 import scala.collection.Map
 import scala.swing.Graphics2D
+import math.{abs, max, pow}
 
 final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
                           charPairSpacing : Map[(Char, Char), Double  ],
@@ -65,6 +66,8 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
   private[this] val MinEjectX   = ScreenWidth * 0.75f
   private[this] val MinEjectY   = 48f // 0f
 
+  private[this] val EjectVYEst  = abs(EjectVY) * DragMY
+
   def head    : CharVertex = _head
 
 //  def last    : CharVertex = _last
@@ -75,8 +78,8 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
   def numWords: Int = words.length
 
   // we measure these with a lag
-  private[this] var statVX        = NominalVX * DragMX  // initial guess
-  private[this] var statStretchX  = 1.29f               // initial guess
+  private[this] var statVX        = NominalVX * pow(DragMX, 4.6).toFloat // initial guess
+  private[this] var statStretchX  = 1.3f               // initial guess
 
   private[this] val statFpsT    = Array.fill[Long](11)(System.currentTimeMillis())
   private[this] var statFpsIdx  = 0
@@ -111,7 +114,7 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
       _head     = v0
     } else {
       pred.succ = v0
-      v0.x      = math.max(ScreenWidth, pred.x + pred.info.right)
+      v0.x      = max(ScreenWidth, pred.x + pred.info.right)
       v0.y      = pred.y
       v0.vy     = pred.vy
     }
@@ -121,7 +124,7 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
       val ch    = if (wi < word.length) characters(word.charIndices(wi)) else spaceChar
       val v     = new CharVertex(ch, wordIndex = wordIndex)
       v.x       = pred.right
-      // v.x    = math.max(-100, math.min(v.x))
+      // v.x    = max(-100, min(v.x))
       v.y       = pred.y
       v.vy      = pred.vy
       pred.succ = v
@@ -236,7 +239,7 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
 
     val _fps        = fps
     val delayFrames = delay * _fps
-    val absVX       = math.abs(statVX)
+    val absVX       = abs(statVX)
     val distance    = delayFrames * absVX
     val minCX       = ScreenCX + distance
     log(f"ejectionCandidate. fps = ${_fps}%1.1f, delayFrames = $delayFrames%1.1f, distance = $distance%1.1f minCX = $minCX%1.1f")
@@ -248,9 +251,9 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
         if (wcx < minCX) null else {
           val wxDist      = wcx - ScreenCX
           val wxDlyFrames = wxDist / absVX
-          val wyDlyFrames = NominalY / math.abs(EjectVY)
+          val wyDlyFrames = NominalY / EjectVYEst
           val wDly        = (wxDlyFrames + wyDlyFrames) / _fps    // dit stimmt nit janz (summieren), aber egal
-          log(f"gl.expectedDelay: $wcx%1.1f - $ScreenCX = $wxDist%1.1f px; which is $wxDlyFrames%1.1f frames or $wDly%1.1f seconds at ${_fps}%1.1f fps and $absVX%1.1f px/frame")
+          log(f"gl.expectedDelay: $wcx%1.1f - $ScreenCX = $wxDist%1.1f px; which is $wxDlyFrames%1.1f + $wyDlyFrames%1.1f frames or $wDly%1.1f seconds at ${_fps}%1.1f fps and $absVX%1.1f px/frame")
           ejectWordWidth  = ww
           val numWords    = vertices(vertexIdx).numWords
           EjectionCandidate(vertexIdx = vertexIdx, numWords = numWords, expectedDelay = wDly)
@@ -340,8 +343,6 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
         if (pred == null) {
           curr.vx += (NominalVX - curr.vx) * NominalVXK
           curr.vy += (NominalY  - curr. y) * NominalYK
-          curr.vx *= DragMX
-          curr.vy *= DragMY
 
         } else {
           val x1 = pred.right
@@ -364,13 +365,14 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
 
     // ---- update positions ----
 
-    def updateStretchStat(v: CharVertex): Unit = {
-      val w         = words(v.wordIndex)
+    def updateStretchStat(vHead: CharVertex, vLast: CharVertex): Unit = {
+      val w         = words(vLast.wordIndex)
       val nominal   = w.width
-      val real      = v.right - v.left
+      val real      = vLast.right - vHead.left
       val stretch   = real / nominal
-      statStretchX  = statStretchX * 0.9f + stretch * 0.1f
-      statVX        = statVX       * 0.9f + v.vx * 0.1f
+//      println(f"STRETCH $stretch%1.2f STAT VX ${vHead.vx}%1.2f")
+      statStretchX  = statStretchX * 0.9f + stretch  * 0.1f
+      statVX        = statVX       * 0.9f + vHead.vx * 0.1f
     }
 
     curr = _head
@@ -399,9 +401,9 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
 
       if (allOut) {
         if (beginsWord && predIdx >= 0) {  // i.e. previous word is all out
-          updateStretchStat(pred)
           val wasEject = _head.eject
-          println("DROP ONE")
+          if (!wasEject) updateStretchStat(_head, pred)
+//          println("DROP ONE")
           _head = curr // drop previous head
           if (wasEject) {
             curr.eject                = true
@@ -429,8 +431,8 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
       popWord(pred)
 
     } else if (allOut && pred != null) {
-      updateStretchStat(pred)
-      println("DROP LAST")
+//      updateStretchStat(pred)
+//      println("DROP LAST")
       _head = null
       val done = ejectDone
       if (done != null) {
