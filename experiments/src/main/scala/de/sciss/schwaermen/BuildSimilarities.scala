@@ -54,16 +54,30 @@ object BuildSimilarities {
       BuildSimilarities.quote(words.map(_.text).mkString(s"$textIdx-$index: ", " ", ""))
   }
 
+  final case class Config(idxA: Int, idxB: Int)
+
   def main(args: Array[String]): Unit = {
-    val vertices1 = readVertices(1)
-    val vertices3 = readVertices(3)
-    println(s"No. vertices1 = ${vertices1.size}; No. vertices3 = ${vertices3.size}")
-    // run(vertices)
-    val fOut = file("/data/temp/edges13.bin")
-    if (fOut.exists()) {
-      println(s"File $fOut already exists. Not overwriting.")
-    } else {
-      run(vertices1 ++ vertices3, fOut = fOut)
+    val default = Config(-1, -1)
+    val p = new scopt.OptionParser[Config]("BuildSimilarities") {
+      opt[Int] ('a', "first-index")
+        .required()
+        .action { (v, c) => c.copy(idxA = v) }
+
+      opt[Int] ('b', "second-index")
+        .required()
+        .action { (v, c) => c.copy(idxB = v) }
+    }
+    p.parse(args, default).fold(sys.exit(1)) { config =>
+      import config._
+      val verticesA = readVertices(idxA)
+      val verticesB = readVertices(idxB)
+      println(s"No. vertices$idxA = ${verticesA.size}; No. vertices$idxB = ${verticesB.size}")
+      val fOut = file(s"/data/temp/edges$idxA$idxB.bin")
+      if (fOut.exists()) {
+        println(s"File $fOut already exists. Not overwriting.")
+      } else {
+        run(verticesA ++ verticesB, fOut = fOut)
+      }
     }
   }
 

@@ -23,20 +23,29 @@ import scala.collection.breakOut
 import scala.util.Random
 
 object BinarySimilarities {
-//  def triangularIndex(numVertices: Int, start: Short, end: Short): Int = {
-//    val numM              = numVertices - start
-//    val numEdgesComplete  = (numVertices * (numVertices  - 1)) / 2
-//    numEdgesComplete - (numM * (numM - 1)) / 2 - start + (end - 1)
-//  }
-
   private final val COOKIE = 0x45646765 // "Edge"
 
+  final case class Config(idxA: Int, idxB: Int, fOut: File)
+
   def main(args: Array[String]): Unit = {
-    require(args.length == 3)
-    val textId1 = args(0).toInt
-    val textId2 = args(1).toInt
-    val fOut    = file(args(2))
-    convert(textId1 = textId1, textId2 = textId2, fOut = fOut)
+    val default = Config(-1, -1, file("out"))
+    val p = new scopt.OptionParser[Config]("BuildSimilarities") {
+      opt[Int] ('a', "first-index")
+        .required()
+        .action { (v, c) => c.copy(idxA = v) }
+
+      opt[Int] ('b', "second-index")
+        .required()
+        .action { (v, c) => c.copy(idxB = v) }
+
+      opt[File] ('f', "output")
+        .required()
+        .action { (v, c) => c.copy(fOut = v) }
+    }
+    p.parse(args, default).fold(sys.exit(1)) { config =>
+      import config._
+      convert(textId1 = idxA, textId2 = idxB, fOut = fOut)
+    }
   }
 
   /** Converts the output from `BuildSimilarities` into a reduced and

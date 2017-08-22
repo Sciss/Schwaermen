@@ -14,10 +14,21 @@
 package de.sciss.schwaermen
 
 object YieldText {
+  final case class Config(idx: Int)
+
   def main(args: Array[String]): Unit = {
-    val words = BuildSimilarities.readVertices(1).flatMap(_.words).distinct
-    words.foreach(println)
-    println(words.size)
-    println(words.map(_.text).mkString(" "))
+    val default = Config(-1)
+    val p = new scopt.OptionParser[Config]("YieldText") {
+      opt[Int] ('i', "index")
+        .required()
+        .action { (v, c) => c.copy(idx = v) }
+    }
+    p.parse(args, default).fold(sys.exit(1)) { config =>
+      import config._
+      val words = BuildSimilarities.readVertices(idx).flatMap(_.words).distinct
+      words.foreach(println)
+      println(words.size)
+      println(words.map(_.text).mkString(" "))
+    }
   }
 }
