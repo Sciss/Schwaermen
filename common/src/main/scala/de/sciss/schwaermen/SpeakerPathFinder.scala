@@ -72,6 +72,10 @@ final class SpeakerPathFinder(network: Spk.Network, maxPathLen: Int = Spk.Defaul
         val nIdx      = zeroPos(vi, rnd.nextInt(numUnseen))
         val targetI   = currVertex.neighbours(nIdx)
         visited(currVertexI) = (vi | (1 << nIdx)).toShort
+
+  // TEST: never return to seen vertex; can this cause the search to fail?
+  if (visited(targetI) == 0) {
+
         val target    = speakers(targetI)
         val nIdxT     = {
           var i = 0
@@ -100,6 +104,7 @@ final class SpeakerPathFinder(network: Spk.Network, maxPathLen: Int = Spk.Defaul
           }
           return res
         }
+  }
       }
     }
 
