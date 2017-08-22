@@ -28,6 +28,7 @@ import scala.Predef.{any2stringadd => _, _}
 import scala.concurrent.stm.Ref
 import scala.util.Random
 import scala.util.control.NonFatal
+import de.sciss.numbers.Implicits._
 
 final class SoundScene(c: OSCClient) {
   type S = InMemory
@@ -38,6 +39,9 @@ final class SoundScene(c: OSCClient) {
 
   private[this] val system  = InMemory()
   private[this] val aural   = AuralSystem()
+
+  private[this] val textAmpLin  = config.textAmp.dbamp
+  private[this] val beeAmpLin   = config.beeAmp .dbamp
 
   def run(): this.type = {
     system.step { implicit tx =>
@@ -73,7 +77,6 @@ final class SoundScene(c: OSCClient) {
   }
 
   private[this] val diskGraph: SynthGraph = SynthGraph {
-    import de.sciss.numbers.Implicits._
     import de.sciss.synth.Ops.stringToControl
     import de.sciss.synth.ugen._
     val bus     = "bus"     .ir
@@ -85,8 +88,8 @@ final class SoundScene(c: OSCClient) {
     val chan    = Select.ar(bus, disk)
     val hpf     = HPF.ar(chan, 80f)
     val env     = Env.linen(attack = fdIn, sustain = dur - (fdIn + fdOut), release = fdOut, curve = Curve.sine)
-    val gain    = 12.dbamp
-    val eg      = EnvGen.ar(env, levelScale = gain /* , doneAction = freeSelf */)
+    val amp     = "amp".kr(1f)
+    val eg      = EnvGen.ar(env, levelScale = amp /* , doneAction = freeSelf */)
     val done    = Done.kr(eg)
 //    val limDur  = 0.01f
     val limIn   = hpf * eg
@@ -97,7 +100,6 @@ final class SoundScene(c: OSCClient) {
   }
 
   private[this] val masterGraph: SynthGraph = SynthGraph {
-    import de.sciss.numbers.Implicits._
     import de.sciss.synth.Ops.stringToControl
     import de.sciss.synth.ugen._
     val in      = In.ar(0, 2)
@@ -217,8 +219,9 @@ final class SoundScene(c: OSCClient) {
         // avoid clicking
         val fdIn1   = if (fadeIn  > 0) fadeIn  else 0.01f
         val fdOut1  = if (fadeOut > 0) fadeOut else 0.01f
+        val amp     = textAmpLin
         val syn     = Synth.play(diskGraph, nameHint = Some("disk"))(target = target,
-          args = List("bus" -> bus, "buf" -> buf.id, "dur" -> dur, "fadeIn" -> fdIn1, "fadeOut" -> fdOut1),
+          args = List("bus" -> bus, "buf" -> buf.id, "dur" -> dur, "fadeIn" -> fdIn1, "fadeOut" -> fdOut1, "amp" -> amp),
           dependencies = buf :: Nil)
         syn.onEndTxn { implicit tx =>
           buf.dispose()
@@ -252,7 +255,6 @@ final class SoundScene(c: OSCClient) {
           val numChannels = dis.readShort()
           val numFrames   = dis.readInt  ()
           val gain        = dis.readFloat()
-          import de.sciss.numbers.Implicits._
           val amp         = math.min(1f, gain.dbamp)
           Bee(id = id, numChannels = numChannels, numFrames = numFrames, amp = amp)
         }
@@ -337,6 +339,7 @@ final class SoundScene(c: OSCClient) {
     useBees = false
   }
 
+
   private def launchBee(left: Boolean)(implicit rnd: Random): Unit = {
     val ch = rnd.nextInt(6) + (if (left) 0 else 6)
     if (!config.isLaptop) {
@@ -349,7 +352,7 @@ final class SoundScene(c: OSCClient) {
     val fadeOut = Util.rrand(10f, 15f)
     val dur     = fadeIn + fadeOut + Util.rrand(30f, 60f)
     val start   = Util.rrand(0, bee.numFrames - 44100)
-    val amp     = bee.amp * config.beeAmp
+    val amp     = bee.amp * beeAmpLin
 
     system.step { implicit tx =>
       aural.serverOption.foreach { s =>

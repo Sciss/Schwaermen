@@ -17,7 +17,7 @@ package video
 import java.net.SocketAddress
 
 import de.sciss.equal.Implicits._
-import de.sciss.schwaermen.video.Glyphosat.EjectionCandidate
+import de.sciss.schwaermen.video.Glyphosat.EventCandidate
 import de.sciss.schwaermen.video.Main.log
 import de.sciss.schwaermen.video.Scene.{OscInjectAbort, OscInjectCommit, OscInjectQuery, OscInjectReply}
 
@@ -60,7 +60,8 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
 
   def queryInjection(sender: SocketAddress, Uid: Long, meta: TextPathFinder.Meta,
                      ejectVideoId: Int, ejectVertex: Int, expectedDelay: Float)(implicit tx: InTxn): Unit = {
-    if (stateRef() == Idle) {
+    val state = stateRef()
+    if (state == Idle) {
       log(f"queryInjection; ejectVideoId $ejectVideoId, $ejectVertex, expectedDelay = $expectedDelay%1.1f")
       val spkSrcVertex    = c.speakers.exits(ejectVideoId).toShort
       val spkTgtVertex    = c.speakers.exits(videoId     ).toShort
@@ -68,8 +69,9 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
       val pathLen         = spkPath.length
       val anticipatedDur  = pathLen * Glyphosat.AvgVertexDur
       val txtSrcVertex    = (ejectVertex + meta.vertexOffset(ejectVideoId)).toShort
-      // XXX TODO:
-      val txtTgtVertex    = (rnd.nextInt(meta.textLen(videoId)) + meta.vertexOffset(videoId)).toShort
+      val injCandidate    = gl.injectionCandidate(anticipatedDur)
+//      val txtTgtVertex    = (rnd.nextInt(meta.textLen(videoId)) + meta.vertexOffset(videoId)).toShort
+      val txtTgtVertex    = (injCandidate.vertexIdx + meta.vertexOffset(videoId)).toShort
 
       val t1          = System.currentTimeMillis()
       val textIdxPath = meta.finder
@@ -82,7 +84,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
       assert(textIdxPath.length == pathLen)
       val textPath    = textIdxPath.map(meta.vertex(_))
       val pathDur     = textPath.iterator.map(_.netDuration).sum
-      log(f"path length $pathLen; dur $pathDur%1.1f vs. pathLen * avgDur = $anticipatedDur")
+      log(f"path length $pathLen; dur $pathDur%1.1f vs. pathLen * avgDur = $anticipatedDur%1.1f; last = ${textPath.last.quote}")
 
       stateRef()      = InjectPending
       val reply       = OscInjectReply(Uid, OscInjectReply.Accepted)
@@ -98,6 +100,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
           retryInitiative()
       }}
     } else {
+      log(f"queryInjection; reject because state is $state")
       val reply = OscInjectReply(Uid, OscInjectReply.Rejected)
       c.sendTxn(sender, reply)
     }
@@ -161,7 +164,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   private def retryInitiative()(implicit tx: InTxn): Unit = {
     val oldState = stateRef.swap(Idle)
     assert(oldState == InjectQuery || oldState == InjectPending)
-    val dur = Util.rrand(3.5f, 5.0f)
+    val dur = Util.rrand(3.5f, 7.0f)
     log(f"Retrying initiative in $dur%1.1f seconds.")
     scheduleInitiative(dur)
   }
@@ -208,7 +211,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     }
   }
 
-  private def performEjection(ec: EjectionCandidate, uid: Long, targetDot: Int)(implicit tx: InTxn): Unit = {
+  private def performEjection(ec: EventCandidate, uid: Long, targetDot: Int)(implicit tx: InTxn): Unit = {
     log("performEjection")
     stateRef()      = Ejecting
     val timeOutSec  = ec.expectedDelay + 60f
@@ -230,11 +233,11 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
     val spkPath   = injSpkPath()
     val textPath  = injTextPath()
     val idx       = injSpkPathIdx.getAndTransform(_ + 1)
-    log(s"injectStep $idx")
     val isLast    = idx + 1 >= spkPath.length
     if (idx < spkPath.length) {  // this guard is needed for the case where the path is empty
       val spk = spkPath(idx)
       val txt = textPath(idx)
+      log(s"injectStep $idx - $spk - ${txt.quote}")
       val fadeIn0   = txt.fadeInSec
       val fadeIn    =
         if (fadeIn0  == 0 || idx == 0 || spkPath(idx - 1).canOverlap(spk)) fadeIn0
@@ -242,7 +245,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
       val fadeOut0  = txt.fadeOutSec
       val fadeOut   =
         if (fadeOut0 == 0 || isLast   || spkPath(idx + 1).canOverlap(spk)) fadeOut0
-        else math.min(fadeIn0, 0.1f)
+        else math.min(fadeOut0, 0.1f)
       val start     = txt.span.start + ((fadeIn0  - fadeIn ) * Vertex.SampleRate).toLong
       val stop      = txt.span.stop  - ((fadeOut0 - fadeOut) * Vertex.SampleRate).toLong
       c.soundNode(spk.dot).foreach { target =>
@@ -250,8 +253,10 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
           textId = txt.textId, ch = spk.ch, start = start, stop = stop, fadeIn = fadeIn, fadeOut = fadeOut))
       }
       if (!isLast) {
-        val delay = ((stop - start) / Vertex.SampleRate * 1000).toLong
-        c.scheduleTxn(delay)(tx => injectStep()(tx))
+        val delaySec  = (stop - start) / Vertex.SampleRate
+        val delayMS   = (delaySec * 1000).toLong
+        log(f"...delay $delaySec%1.1f; fadeIn0 $fadeIn0%1.1f; fadeIn $fadeIn%1.1f; fadeOut0 $fadeOut0%1.1f; fadeOut $fadeOut%1.1f")
+        c.scheduleTxn(delayMS)(tx => injectStep()(tx))
       }
     }
     if (isLast) {

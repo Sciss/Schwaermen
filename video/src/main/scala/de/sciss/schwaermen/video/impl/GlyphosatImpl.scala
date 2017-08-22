@@ -15,7 +15,7 @@ package de.sciss.schwaermen
 package video
 package impl
 
-import de.sciss.schwaermen.video.Glyphosat.{CharInfo, CharVertex, EjectionCandidate, Ejector, Word}
+import de.sciss.schwaermen.video.Glyphosat.{CharInfo, CharVertex, EventCandidate, Ejector, Word}
 import de.sciss.schwaermen.video.Main.log
 
 import scala.collection.Map
@@ -175,7 +175,7 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
   @volatile
   private[this] var ejectDone  = null : Ejector
 
-  def eject(ec: EjectionCandidate, callBack: Ejector): Unit = {
+  def eject(ec: EventCandidate, callBack: Ejector): Unit = {
     ejectDone     = callBack
     ejectIndex    = ec.vertexIdx
     ejectStopWord = (vertices(ec.vertexIdx).lastIndex + 1) % words.length
@@ -217,7 +217,15 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
   }
 
   /** Returns a vertex-index */
-  def ejectionCandidate(delay: Float): EjectionCandidate = {
+  def ejectionCandidate(delay: Float): EventCandidate =
+    findCandidate(delay, isEject = true)
+
+    /** Returns a vertex-index */
+  def injectionCandidate(delay: Float): EventCandidate =
+    findCandidate(delay, isEject = false)
+
+  // XXX TODO -- we currently do not adjust the formula for `isEject == false`
+  private def findCandidate(delay: Float, isEject: Boolean): EventCandidate = {
     // what we want:
     // - we want, with given delay, to find the
     //   earliest word _beginning a vertex_ that
@@ -244,7 +252,7 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
     val minCX       = ScreenCX + distance
     log(f"ejectionCandidate. fps = ${_fps}%1.1f, delayFrames = $delayFrames%1.1f, distance = $distance%1.1f minCX = $minCX%1.1f")
 
-    def test(left: Float, w: Word, ww: Float): EjectionCandidate = {
+    def test(left: Float, w: Word, ww: Float): EventCandidate = {
       val vertexIdx = startWordVertexIdx(w)
       if (vertexIdx < 0) null else {
         val wcx = left + ww * 0.5f
@@ -256,14 +264,14 @@ final class GlyphosatImpl(charShapes      : Map[Char        , CharInfo],
           log(f"gl.expectedDelay: $wcx%1.1f - $ScreenCX = $wxDist%1.1f px; which is $wxDlyFrames%1.1f + $wyDlyFrames%1.1f frames or $wDly%1.1f seconds at ${_fps}%1.1f fps and $absVX%1.1f px/frame")
           ejectWordWidth  = ww
           val numWords    = vertices(vertexIdx).numWords
-          EjectionCandidate(vertexIdx = vertexIdx, numWords = numWords, expectedDelay = wDly)
+          EventCandidate(vertexIdx = vertexIdx, numWords = numWords, expectedDelay = wDly)
         }
       }
     }
 
     var curr      = _head
     var pred      = curr
-    var result    = null: EjectionCandidate
+    var result    = null: EventCandidate
     while (curr != null && result == null) {
       val w     = words(curr.wordIndex)
       val ww    = w.width * statStretchX

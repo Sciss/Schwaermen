@@ -77,9 +77,14 @@ object Main extends MainLike {
         .action { (v, c) => c.copy(dot = v) }
 
       opt[Double] ("bee-amp")
-        .text (s"Amplitude factor (linear) for bees (default ${default.beeAmp}")
-        .validate { v => if (v > 0 && v < 30) success else failure("Must be > 0 and < 30") }
+        .text (s"Amplitude (decibels) for bees (default ${default.beeAmp}")
+        .validate { v => if (v >= -30 && v <= 30) success else failure("Must be >= -30 and <= 30") }
         .action { (v, c) => c.copy(beeAmp = v.toFloat) }
+
+      opt[Double] ("text-amp")
+        .text (s"Amplitude (decibels) for text (default ${default.textAmp}")
+        .validate { v => if (v >= -30 && v <= 30) success else failure("Must be >= -30 and <= 30") }
+        .action { (v, c) => c.copy(textAmp = v.toFloat) }
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
       val localSocketAddress = Network.initConfig(config, this)

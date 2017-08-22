@@ -20,7 +20,7 @@ import java.awt.{Font, Shape}
 
 import de.sciss.kollflitz
 import de.sciss.kollflitz.Vec
-import de.sciss.schwaermen.video.Glyphosat.{CharVertex, EjectionCandidate, Ejector}
+import de.sciss.schwaermen.video.Glyphosat.{CharVertex, EventCandidate, Ejector}
 import de.sciss.schwaermen.video.Main.log
 
 import scala.collection.{Map, Set, breakOut, mutable}
@@ -28,8 +28,8 @@ import scala.swing.Graphics2D
 import scala.util.Random
 
 object Glyphosat {
-  /** In seconds */
-  final val AvgVertexDur = 1.2f
+  /** In seconds. This is 'net' durations, but what inject actually does (empirical) */
+  final val AvgVertexDur = 1.6f // 1.2f
 
   private[this] lazy val _initFont: Font = {
     val url = getClass.getResource("/OpenSans-CondLight.ttf")
@@ -209,7 +209,7 @@ object Glyphosat {
     def stretchedWidth: Float = width * 1.28f  // XXX TODO --- this is measured with current forces and only approximate
   }
 
-  final case class EjectionCandidate(vertexIdx: Int, numWords: Int, expectedDelay: Float)
+  final case class EventCandidate(vertexIdx: Int, numWords: Int, expectedDelay: Float)
 
   trait Ejector {
     /** Called when the ejecting word moves above vertical threshold. */
@@ -233,14 +233,17 @@ trait Glyphosat {
   def numWords: Int
 
   /** Returns a vertex-index */
-  def ejectionCandidate(delay: Float): EjectionCandidate
+  def ejectionCandidate(delay: Float): EventCandidate
+
+  /** Returns a vertex-index */
+  def injectionCandidate(delay: Float): EventCandidate
 
   /** As currently measured. */
   def fps: Float
 
   def vertices: Array[Vertex]
 
-  def eject(ec: EjectionCandidate, callBack: Ejector): Unit
+  def eject(ec: EventCandidate, callBack: Ejector): Unit
 
   def reset(): Unit
 

@@ -123,4 +123,6 @@ object Spk {
   */
 final case class Spk(id: Short, dot: Byte, ch: Byte, exit: Byte, neighbours: Array[Short]) {
   def canOverlap(that: Spk): Boolean = this.dot != that.dot || (this.ch / 6) != (that.ch / 6)
+
+  override def toString: String = s"$productPrefix(id = $id, dot = $dot, ch = $ch)"
 }
