@@ -96,7 +96,8 @@ object Spk {
 
     val idMap     = speakers0.iterator.map(_.id).zipWithIndex.toMap
     val speakers  = speakers0.map { spk =>
-      val n = nMap(spk.id).result().map { nId =>
+      val nIds = nMap(spk.id).result().distinct
+      val n = nIds.map { nId =>
         require (nId != spk.id, s"Self cycle for $nId")
         idMap(nId).toShort
       }
