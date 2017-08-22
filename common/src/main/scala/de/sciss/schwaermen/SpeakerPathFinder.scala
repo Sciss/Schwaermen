@@ -27,11 +27,16 @@ final class SpeakerPathFinder(network: Spk.Network, maxPathLen: Int = Spk.Defaul
   private def zeroPos(vi: Short, n: Int): Int = {
     var res = 0
     var sh  = vi & 0xFFFF
-    while ((sh & 1) == 1) {
+    var m   = n
+    while (true) {
+      if ((sh & 1) == 0) {
+        if (m == 0) return res
+        m -= 1
+      }
       res += 1
       sh >>>= 1
     }
-    res
+    -1 // never here
   }
 
   /** @param sourceVertex   speaker _index_ of starting point
