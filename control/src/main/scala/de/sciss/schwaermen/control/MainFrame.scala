@@ -18,11 +18,10 @@ import java.util.Comparator
 import javax.swing.table.{AbstractTableModel, DefaultTableCellRenderer, TableCellRenderer, TableRowSorter}
 import javax.swing.{ButtonGroup, Icon, JTable, SwingConstants}
 
-import de.sciss.desktop.FileDialog
+import de.sciss.desktop.{FileDialog, OptionPane}
 import de.sciss.file._
 import de.sciss.osc
 import de.sciss.swingplus.Table
-import de.sciss.synth.SynthDef
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Table.AutoResizeMode
@@ -216,9 +215,25 @@ class MainFrame(c: OSCClient) {
     }
   }
 
-  private[this] val ggTestPath = Button("Test Path") {
-    selection.foreach { instance =>
-      c.tx.send(osc.Message("/test-path-finder"), instance.socketAddress)
+//  private[this] val ggTestPath = Button("Test Path") {
+//    selection.foreach { instance =>
+//      c.tx.send(osc.Message("/test-path-finder"), instance.socketAddress)
+//    }
+//  }
+
+  private[this] var shellString = "df"
+
+  private[this] val ggShell = Button("Shell...") {
+    val sel = selection
+    if (sel.nonEmpty) {
+      val opt = OptionPane.textInput("Shell command", initial = shellString)
+      opt.show(None).foreach { cmdS =>
+        shellString = cmdS
+        val cmd = cmdS.split(" ")
+        sel.foreach { instance =>
+          c.tx.send(Network.OscShell(cmd), instance.socketAddress)
+        }
+      }
     }
   }
 
@@ -278,9 +293,10 @@ class MainFrame(c: OSCClient) {
     }
   }
 
-  private[this] val pButtons1 = new FlowPanel(ggRefresh, ggUpdate, ggReboot, ggShutdown, ggTestPins, ggTestPath, ggBees)
+  private[this] val pButtons1 = new FlowPanel(ggRefresh, ggUpdate, ggReboot, ggShutdown, ggTestPins,
+    ggShell /* ggTestPath */)
   private[this] val pButtons2 = new FlowPanel(
-    new Label("Sound:"), ggSoundOff, ggSoundPing, ggSoundNoise /* , ggSoundNegatum */)
+    ggBees, new Label("Sound:"), ggSoundOff, ggSoundPing, ggSoundNoise /* , ggSoundNegatum */)
   private[this] val pChannels = new FlowPanel(Seq.tabulate(12) { ch =>
     Button((ch + 1).toString) {
       selection.foreach { instance =>

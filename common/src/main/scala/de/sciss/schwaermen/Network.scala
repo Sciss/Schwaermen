@@ -266,6 +266,18 @@ object Network {
       case _ => None
     }
   }
+
+  object OscShell {
+    private[this] val Name = "/shell"
+
+    def apply(cmd: Seq[String]): osc.Message = osc.Message(Name, cmd: _*)
+
+    def unapply(p: osc.Packet): Option[Seq[String]] = p match {
+      case osc.Message(Name, cmd @ _*) => Some(cmd.map(_.toString))
+      case _ => None
+    }
+  }
+
   final val OscShutdown : osc.Message = osc.Message("/shutdown" )
   final val OscReboot   : osc.Message = osc.Message("/reboot"   )
   final val OscHeart    : osc.Message = osc.Message("/heart"    )

@@ -21,6 +21,7 @@ import de.sciss.osc
 import de.sciss.osc.UDP
 
 import scala.concurrent.stm.{InTxn, Ref, Txn, atomic}
+import scala.util.Try
 import scala.util.control.NonFatal
 
 abstract class OSCClientLike {
@@ -94,6 +95,13 @@ abstract class OSCClientLike {
         updater.foreach(_.dispose())
         updater = Some(u)
         u.begin()
+
+      case Network.OscShell(cmd) =>
+        println("Executing shell command:")
+        println(cmd.mkString(" "))
+        import sys.process._
+        val result = Try(cmd.!!).toOption.getOrElse("ERROR")
+        transmitter.send(osc.Message("/shell_reply", result), sender)
 
       case Network.OscShutdown =>
         if (config.isLaptop)
