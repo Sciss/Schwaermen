@@ -53,6 +53,23 @@ final class OSCClient(override val config: Config, val dot: Int, val transmitter
     case Network.OscSetVolume(amp) =>
       scene.setMasterVolume(amp)
 
+    case Network.OscAmpChanVolume(amps) =>
+      val arr = scene.chanAmps.volumes
+      amps.iterator.take(arr.length).zipWithIndex.foreach { case (value, idx) =>
+        arr(idx) = value
+      }
+
+    case Network.OscSaveAmpChan() =>
+      scene.chanAmps.save()
+
+    case osc.Message("/server-info") =>
+      try {
+        val info = scene.serverInfo()
+        transmitter.send(osc.Message("/done", "server-info", info), sender)
+      } catch {
+        case NonFatal(ex) =>
+          transmitter.send(osc.Message("/fail", "server-info", ex.toString), sender)
+      }
     case osc.Message("/test-pin-mode") =>
       try {
         relay.bothPins

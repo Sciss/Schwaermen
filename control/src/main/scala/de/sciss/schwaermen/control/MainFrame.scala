@@ -215,6 +215,12 @@ class MainFrame(c: OSCClient) {
     }
   }
 
+  private[this] val ggServerInfo = Button("Server Info") {
+    selection.foreach { instance =>
+      c.tx.send(osc.Message("/server-info"), instance.socketAddress)
+    }
+  }
+
 //  private[this] val ggTestPath = Button("Test Path") {
 //    selection.foreach { instance =>
 //      c.tx.send(osc.Message("/test-path-finder"), instance.socketAddress)
@@ -289,12 +295,14 @@ class MainFrame(c: OSCClient) {
     listenTo(this)
     reactions += {
       case ValueChanged(_) =>
-        println("TODO - set master volume")
+        import de.sciss.numbers.Implicits._
+        val amp = if (value == min) 0f else value.dbamp
+        c ! Network.OscSetVolume(amp)
     }
   }
 
   private[this] val pButtons1 = new FlowPanel(ggRefresh, ggUpdate, ggReboot, ggShutdown, ggTestPins,
-    ggShell /* ggTestPath */)
+    ggShell, ggServerInfo /* ggTestPath */)
   private[this] val pButtons2 = new FlowPanel(
     ggBees, new Label("Sound:"), ggSoundOff, ggSoundPing, ggSoundNoise /* , ggSoundNegatum */)
   private[this] val pChannels = new FlowPanel(Seq.tabulate(12) { ch =>
@@ -318,11 +326,52 @@ class MainFrame(c: OSCClient) {
     }
   }: _*)
 
+  private[this] val amps = new Amp(userHome / "Documents")
+
+  private[this] val pChanAmps = Vector.tabulate(Amp.numChannels) { ch =>
+    import de.sciss.numbers.Implicits._
+    new Slider {
+      min               = -60
+      max               =   0
+      value             = (amps.volumes(ch).ampdb * 0.5).toInt
+      paintTicks        = true
+      paintLabels       = true
+      majorTickSpacing  = 6
+      orientation       = Orientation.Vertical
+      reactions += {
+        case ValueChanged(_) =>
+          import de.sciss.numbers.Implicits._
+          val amp = if (value == min) 0f else value.dbamp
+          amps.volumes(ch) = amp
+      }
+    }
+  }
+
+  private[this] val ggSendChanAmps = Button("Send Amps") {
+    selection.foreach { instance =>
+      c.tx.send(Network.OscAmpChanVolume(amps.volumes), instance.socketAddress)
+    }
+  }
+
+  private[this] val ggSaveChanAmps = Button("Save Amps") {
+    amps.save()
+    selection.foreach { instance =>
+      c.tx.send(Network.OscSaveAmpChan(), instance.socketAddress)
+    }
+  }
+
   private[this] val pBottom = new BoxPanel(Orientation.Vertical) {
     contents += pButtons1
     contents += pButtons2
     contents += pChannels
     contents += new FlowPanel(new Label("Main Vol."), ggAmp)
+    contents += new FlowPanel(pChanAmps.zipWithIndex.map { case (slider, ch) =>
+      new BoxPanel(Orientation.Vertical) {
+        contents += slider
+        contents += new Label((ch + 1).toString)
+      }
+    }: _*)
+    contents += new FlowPanel(ggSendChanAmps, ggSaveChanAmps)
   }
 
   private[this] val component: Component = {

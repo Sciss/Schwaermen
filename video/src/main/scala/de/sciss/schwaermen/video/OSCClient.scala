@@ -112,6 +112,8 @@ final class OSCClient(override val config: Config, val dot: Int,
             expectedDelay = expectedDelay)
         }
 
+    case Network.OscSetVolume(_) => // ignore volume
+
     case m @ osc.Message("/test-path-finder") =>
       metaSeq.find(_ != null).foreach { meta =>
         val t1  = System.currentTimeMillis()

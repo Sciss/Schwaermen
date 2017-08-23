@@ -28,7 +28,7 @@ import de.sciss.synth.proc.AuralSystem
 import de.sciss.synth.{Curve, SynthDef, SynthGraph, UGenGraph, addAfter, addToTail, freeSelf}
 
 import scala.Predef.{any2stringadd => _, _}
-import scala.concurrent.stm.Ref
+import scala.concurrent.stm.{Ref, TArray}
 import scala.util.Random
 import scala.util.control.NonFatal
 
@@ -72,10 +72,10 @@ final class SoundScene(c: OSCClient) {
   private[this] lazy val noisePulseGraph: SynthGraph = SynthGraph {
     import de.sciss.synth.Ops.stringToControl
     import de.sciss.synth.ugen._
-    val noise = PinkNoise.ar(0.5)
+    val noise = PinkNoise.ar(1.0)
     val hpf   = HPF.ar(noise, 80)
     val sig   = hpf * LFPulse.ar(2)
-    Out.ar("bus".kr, sig)
+    ReplaceOut.ar("bus".kr, sig)
   }
 
   private[this] val diskGraph: SynthGraph = SynthGraph {
@@ -170,6 +170,13 @@ final class SoundScene(c: OSCClient) {
     }
   }
 
+  def serverInfo(): String =
+    system.step { implicit tx =>
+      aural.serverOption.fold("not booted") { s =>
+        s.counts.toString
+      }
+    }
+
   def testSound(ch: Int, tpe: Int, rest: Seq[Any]): Boolean = {
     system.step { implicit tx =>
       aural.serverOption.fold(true) { s =>
@@ -182,7 +189,8 @@ final class SoundScene(c: OSCClient) {
             case Seq(b: ByteBuffer) =>
               readSynthDef(b).headOption.fold(false) { df =>
                 val syn = Synth.expanded(s, df.graph)
-                syn.play(target = target, args = "bus" -> ch :: Nil, addAction = addToTail, dependencies = Nil)
+                syn.play(target = target, args = "bus" -> ch :: Nil, addAction = addAfter /* addToTail */,
+                  dependencies = Nil)
                 true
               }
 
@@ -222,7 +230,7 @@ final class SoundScene(c: OSCClient) {
       // avoid clicking
       val fdIn1   = if (fadeIn  > 0) fadeIn  else 0.01f
       val fdOut1  = if (fadeOut > 0) fadeOut else 0.01f
-      val amp     = textAmpLin
+      val amp     = textAmpLin * ampChan(bus)
       val syn     = Synth.play(diskGraph, nameHint = Some("disk"))(target = target, addAction = addToTail,
         args = List("bus" -> bus, "buf" -> buf.id, "dur" -> dur, "fadeIn" -> fdIn1, "fadeOut" -> fdOut1, "amp" -> amp),
         dependencies = buf :: Nil)
@@ -286,17 +294,17 @@ final class SoundScene(c: OSCClient) {
     EnvGen.ar(env, doneAction = freeSelf)
   }
 
-  private[this] lazy val fadeGraph: SynthGraph = SynthGraph {
-    import de.sciss.synth._
-    import Ops.stringToControl
-    import ugen._
-    val bus   = "bus".ir
-    val dur   = "dur".ir
-    val env   = Line.ar(start = 1, end = 0f, dur = dur, doneAction = freeSelfToHead)
-    val in    = In.ar(bus)
-    val sig   = in * env
-    ReplaceOut.ar(bus, sig)
-  }
+//  private[this] lazy val fadeGraph: SynthGraph = SynthGraph {
+//    import de.sciss.synth._
+//    import Ops.stringToControl
+//    import ugen._
+//    val bus   = "bus".ir
+//    val dur   = "dur".ir
+//    val env   = Line.ar(start = 1, end = 0f, dur = dur, doneAction = freeSelfToHead)
+//    val in    = In.ar(bus)
+//    val sig   = in * env
+//    ReplaceOut.ar(bus, sig)
+//  }
 
   private def mkBeeGraph(numCh: Int): SynthGraph = SynthGraph {
     import de.sciss.synth._
@@ -316,13 +324,10 @@ final class SoundScene(c: OSCClient) {
     val hpf     = HPF.ar(chan, 80f)
     val env     = Env.linen(attack = fdIn, sustain = dur - (fdIn + fdOut), release = fdOut, curve = Curve.sine)
     val gain    = "amp".ir(-20.dbamp)
-    val eg      = EnvGen.ar(env, levelScale = gain)
-    val done    = Done.kr(eg)
-//    val limDur  = 0.01f
-    val limIn   = hpf * eg
-    val lim     = limIn // Limiter.ar(limIn, level = -0.2.dbamp, dur = limDur)
-    FreeSelf.kr(done) // TDelay.kr(done, limDur * 2))
-    val sig     = lim
+    val eg      = EnvGen.kr(env, levelScale = gain, doneAction = freeSelf)
+    // adds a gated envelope that can be used for release
+    val egRls   = EnvGen.kr(Env.asr(attack = 0), gate = "gate".kr(1f), doneAction = freeSelf)
+    val sig     = hpf * eg * egRls
     Out.ar(bus, sig)
   }
 
@@ -337,6 +342,8 @@ final class SoundScene(c: OSCClient) {
 
   implicit private[this] val rnd: Random = new Random
 
+  private[this] val beeSynths = TArray.ofDim[Synth](12)
+
   def quietBees(ch: Int, startSec: Float, durSec: Float): Unit = {
     val startTime = System.currentTimeMillis() + (startSec * 1000).toLong
     val stopTime  = startTime + (durSec * 1000).toLong
@@ -345,7 +352,7 @@ final class SoundScene(c: OSCClient) {
     val span      = if (oldSpan.overlaps(span0)) oldSpan.union(span0) else span0
     beesQuiet(ch) = span
     if (startSec < MaxBeeTime) {  // there might be ongoing bees, make sure we fade them out
-      fadeToGray(ch = ch, dur = startSec + durSec)
+      releaseBee(ch = ch, dur = startSec + durSec)
     }
   }
 
@@ -356,12 +363,15 @@ final class SoundScene(c: OSCClient) {
       }
     }
 
-  private def fadeToGray(ch: Int, dur: Float): Unit = {
-    val bus = ch / 6
+  private def releaseBee(ch: Int, dur: Float): Unit = {
+//    val bus = ch / 6
     serverTxn { implicit tx => s =>
-      val target  = s.defaultGroup
-      Synth.play(fadeGraph, nameHint = Some("fade"))(target = target, addAction = addToTail,
-        args = List("bus" -> bus, "dur" -> dur), dependencies = Nil)
+      val syn = beeSynths(ch)
+      beeSynths(ch) = null
+      if (syn != null) syn.release(dur)
+//      val target  = s.defaultGroup
+//      Synth.play(fadeGraph, nameHint = Some("fade"))(target = target, addAction = addToTail,
+//        args = List("bus" -> bus, "dur" -> dur), dependencies = Nil)
     }
   }
 
@@ -396,8 +406,18 @@ final class SoundScene(c: OSCClient) {
   private[this] val MaxBeeSustainTime = 60f
   private[this] val MaxBeeTime        = MaxBeeFadeTime + MaxBeeFadeTime + MaxBeeSustainTime
 
+  private[this] val _chanAmps         = new Amp(config.baseDir)
+
+  def chanAmps: Amp = _chanAmps
+
   private def checkNewBee(left: Boolean)(implicit tx: TxnLike): Unit =
     tx.afterCommit(if (useBees) launchBee(left = left))
+
+  private def ampChan(bus: Int): Float = {
+    val chanIdx = dotIdx * 2 + bus
+    val arr = _chanAmps.volumes
+    if (chanIdx < arr.length) arr(chanIdx) else 1f
+  }
 
   private def launchBee(left: Boolean)(implicit rnd: Random): Unit = {
     val ch      = rnd.nextInt(6) + (if (left) 0 else 6)
@@ -408,7 +428,7 @@ final class SoundScene(c: OSCClient) {
     val fadeOut = Util.rrand(MinBeeFadeTime, MaxBeeFadeTime)
     val dur     = fadeIn + fadeOut + Util.rrand(MinBeeSustainTime, MaxBeeSustainTime)
     val start   = Util.rrand(0, bee.numFrames - 44100)
-    val amp     = bee.amp * beeAmpLin
+    val amp     = bee.amp * beeAmpLin * ampChan(bus)
 
     val now     = System.currentTimeMillis()
     val span    = Span(now, now + (dur * 1000).toLong)
@@ -424,7 +444,7 @@ final class SoundScene(c: OSCClient) {
       val target  = s.defaultGroup
       if (isQuiet) {
         val syn = Synth.play(quietGraph, nameHint = Some("quiet"))(target = target, addAction = addToTail,
-          args = List("dur" -> dur), dependencies = Nil)
+          args = List("dur" -> 10f /* dur */), dependencies = Nil)
         syn.onEndTxn { implicit tx =>
           checkNewBee(left = left)
         }
@@ -440,8 +460,12 @@ final class SoundScene(c: OSCClient) {
         val syn = Synth.play(gr, nameHint = Some("bee"))(target = target, addAction = addToTail,
           args = List("bus" -> bus, "buf" -> buf.id, "dur" -> dur, "fadeIn" -> fdIn1, "fadeOut" -> fdOut1, "amp" -> amp),
           dependencies = buf :: Nil)
+        val oldSyn    = beeSynths(ch)
+        beeSynths(ch) = syn
+        if (oldSyn != null) oldSyn.release(1f)
         syn.onEndTxn { implicit tx =>
           buf.dispose()
+          if (beeSynths(ch) == syn) beeSynths(ch) = null
           checkNewBee(left = left)
         }
       }

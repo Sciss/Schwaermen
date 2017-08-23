@@ -267,6 +267,33 @@ object Network {
     }
   }
 
+  object OscAmpChanVolume {
+    private[this] val Name = "/amp-chan-volume"
+
+    /** N.B. `ch` amplifier channel, so 0 or 1 - left or right. */
+    def apply(amps: Seq[Float]): osc.Message = osc.Message(Name, amps: _*)
+
+    def unapply(p: osc.Packet): Option[Seq[Float]] = p match {
+      case osc.Message(Name, rest @ _*) =>
+        val amps = rest.collect {
+          case f: Float => f
+        }
+        Some(amps)
+      case _ => None
+    }
+  }
+
+  object OscSaveAmpChan {
+    private[this] val Name = "/amp-chan-save"
+
+    def apply(): osc.Message = osc.Message(Name)
+
+    def unapply(p: osc.Packet): Boolean = p match {
+      case osc.Message(Name) => true
+      case _ => false
+    }
+  }
+
   object OscShell {
     private[this] val Name = "/shell"
 
