@@ -95,8 +95,10 @@ object Spk {
       .toArray
 
     val idMap     = speakers0.iterator.map(_.id).zipWithIndex.toMap
+    var maxN      = 0
     val speakers  = speakers0.map { spk =>
       val nIds = nMap(spk.id).result().distinct
+      if (nIds.length > maxN) maxN = nIds.length
       val n = nIds.map { nId =>
         require (nId != spk.id, s"Self cycle for $nId")
         idMap(nId).toShort
@@ -104,11 +106,11 @@ object Spk {
       spk.copy(neighbours = n)
     }
 
-    new Spk.Network(speakers, exits)
+    new Spk.Network(speakers, exits, maxNumNeighbors = maxN)
   }
 
   /** @param exits  maps exit codes to speaker _indices_ */
-  final class Network(val speakers: Array[Spk], val exits: Map[Int, Int]) {
+  final class Network(val speakers: Array[Spk], val exits: Map[Int, Int], val maxNumNeighbors: Int) {
     def length: Int = speakers.length
   }
 }

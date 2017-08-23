@@ -45,10 +45,12 @@ abstract class OSCClientLike {
   private[this] val queries = Ref(List.empty[Query[_]])
 
   @volatile
-  private[this] var alive   = Map.empty[SocketAddress, Long]
+  private[this] var alive = Map.empty[SocketAddress, Long]
 
-  final def filterAlive(in: Vec[SocketAddress]): Vec[SocketAddress] =
-    in.filter(alive.contains)
+  final def filterAlive(in: Vec[SocketAddress]): Vec[SocketAddress] = {
+    val deadline = System.currentTimeMillis() - 30000L
+    in.filter(alive.getOrElse(_, 0L) > deadline)
+  }
 
   final def scheduleTxn(delay: Long)(body: InTxn => Unit)(implicit tx: InTxn): Task =
     Task(timer, delay)(body)

@@ -282,6 +282,21 @@ object Network {
   final val OscReboot   : osc.Message = osc.Message("/reboot"   )
   final val OscHeart    : osc.Message = osc.Message("/heart"    )
 
+  object OscQuietBees {
+    private[this] val Name = "/quiet-bees"
+
+    /** @param ch       the target sound node's channel (0 until 12) which is affected
+      * @param start    the delay in seconds until the quietness should set in
+      * @param dur      the duration in seconds for the quietness to last
+      */
+    def apply(ch: Int, start: Float, dur: Float): osc.Message = osc.Message(Name, ch, start, dur)
+
+    def unapply(p: osc.Packet): Option[(Int, Float, Float)] = p match {
+      case osc.Message(Name, ch: Int, start: Float, dur: Float) => Some((ch, start, dur))
+      case _ => None
+    }
+  }
+
   final val oscDumpFilter: osc.Dump.Filter = { p =>
     p.encodedSize(oscCodec) < 1024
   }

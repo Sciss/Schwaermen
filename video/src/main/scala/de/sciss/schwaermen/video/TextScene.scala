@@ -99,6 +99,9 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
           log(s"Injection target for $Uid received abortion or was not selected - $other")
           retryInitiative()
       }}
+
+      mkQuietBees(expectedDelay = expectedDelay, spkPath = spkPath, textPath = textPath)
+
     } else {
       log(f"queryInjection; reject because state is $state")
       val reply = OscInjectReply(Uid, OscInjectReply.Rejected)
@@ -229,6 +232,43 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   private[this] val injTextPath   = Ref(Array.empty[Vertex])
   private[this] val injSpkPathIdx = Ref(0)
 
+  private def mkTextPlayData(spkPath: Array[Spk], textPath: Array[Vertex], idx: Int): TextPlayData = {
+    val isLast    = idx + 1 >= spkPath.length
+    val spk       = spkPath(idx)
+    val txt       = textPath(idx)
+    val fadeIn0   = txt.fadeInSec
+    val fadeIn    =
+      if (fadeIn0  == 0 || idx == 0 || spkPath(idx - 1).canOverlap(spk)) fadeIn0
+      else math.min(fadeIn0, 0.1f)
+    val fadeOut0  = txt.fadeOutSec
+    val fadeOut   =
+      if (fadeOut0 == 0 || isLast   || spkPath(idx + 1).canOverlap(spk)) fadeOut0
+      else math.min(fadeOut0, 0.1f)
+    val start     = txt.span.start + ((fadeIn0  - fadeIn ) * Vertex.SampleRate).toLong
+    val stop      = txt.span.stop  - ((fadeOut0 - fadeOut) * Vertex.SampleRate).toLong
+    TextPlayData(fadeIn = fadeIn, fadeOut = fadeOut, start = start, stop = stop)
+  }
+
+  private def mkQuietBees(expectedDelay: Float, spkPath: Array[Spk], textPath: Array[Vertex])
+                         (implicit tx: InTxn): Unit = {
+    val pad       = 10f   // seconds before and after
+    val pad2      = pad * 2
+    var idx       = 0
+    var startSec  = expectedDelay - pad
+    while (idx < spkPath.length) {
+      val spk     = spkPath(idx)
+      val data    = mkTextPlayData(spkPath, textPath, idx = idx)
+      val netDur  = (data.stop - data.start) / Vertex.SampleRate
+      val brutDur = netDur + pad2
+      c.soundNode(spk.dot).foreach { target =>
+        c.sendTxn(target, Network.OscQuietBees(
+          ch = spk.ch, start = math.max(0f, startSec), dur = brutDur))
+      }
+      startSec += netDur
+      idx += 1
+    }
+  }
+
   private def injectStep()(implicit tx: InTxn): Unit = {
     val spkPath   = injSpkPath()
     val textPath  = injTextPath()
@@ -238,16 +278,8 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
       val spk = spkPath(idx)
       val txt = textPath(idx)
       log(s"injectStep $idx - $spk - ${txt.quote}")
-      val fadeIn0   = txt.fadeInSec
-      val fadeIn    =
-        if (fadeIn0  == 0 || idx == 0 || spkPath(idx - 1).canOverlap(spk)) fadeIn0
-        else math.min(fadeIn0, 0.1f)
-      val fadeOut0  = txt.fadeOutSec
-      val fadeOut   =
-        if (fadeOut0 == 0 || isLast   || spkPath(idx + 1).canOverlap(spk)) fadeOut0
-        else math.min(fadeOut0, 0.1f)
-      val start     = txt.span.start + ((fadeIn0  - fadeIn ) * Vertex.SampleRate).toLong
-      val stop      = txt.span.stop  - ((fadeOut0 - fadeOut) * Vertex.SampleRate).toLong
+      val data  = mkTextPlayData(spkPath, textPath, idx = idx)
+      import data._
       c.soundNode(spk.dot).foreach { target =>
         c.sendTxn(target, Network.OscPlayText(
           textId = txt.textId, ch = spk.ch, start = start, stop = stop, fadeIn = fadeIn, fadeOut = fadeOut))
@@ -255,7 +287,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
       if (!isLast) {
         val delaySec  = (stop - start) / Vertex.SampleRate
         val delayMS   = (delaySec * 1000).toLong
-        log(f"...delay $delaySec%1.1f; fadeIn0 $fadeIn0%1.1f; fadeIn $fadeIn%1.1f; fadeOut0 $fadeOut0%1.1f; fadeOut $fadeOut%1.1f")
+        log(f"...delay $delaySec%1.1f; fadeIn $fadeIn%1.1f; fadeOut $fadeOut%1.1f")
         c.scheduleTxn(delayMS)(tx => injectStep()(tx))
       }
     }
