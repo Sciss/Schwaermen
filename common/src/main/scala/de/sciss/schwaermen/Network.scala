@@ -54,6 +54,8 @@ object Network {
 
   final val ClientPort = 57120
 
+  final val KeypadDot = 23
+
   private def mkSocket(dot: Int): InetSocketAddress = {
     val addr = InetAddress.getByAddress(Array(192.toByte, 168.toByte, 0.toByte, dot.toByte))
     new InetSocketAddress(addr, ClientPort)

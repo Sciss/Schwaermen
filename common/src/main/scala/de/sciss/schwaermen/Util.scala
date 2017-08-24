@@ -17,11 +17,13 @@ import scala.util.Random
 
 object Util {
   def shutdown(): Unit = {
+    Thread.sleep(1000) // this allows for sender == receiver to broadcast first
     import sys.process._
     Seq("sudo", "shutdown", "now").run()
   }
 
   def reboot(): Unit = {
+    Thread.sleep(1000) // this allows for sender == receiver to broadcast first
     import sys.process._
     Seq("sudo", "reboot", "now").run()
   }

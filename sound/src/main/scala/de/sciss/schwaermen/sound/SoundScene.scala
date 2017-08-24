@@ -316,7 +316,7 @@ final class SoundScene(c: OSCClient) {
     val fdIn    = "fadeIn"  .ir
     val fdOut   = "fadeOut" .ir
     val disk    = VDiskIn.ar(numChannels = numCh, buf = buf, speed = BufRateScale.ir(buf), loop = 1)
-    disk.poll(1, "disk")
+//    disk.poll(1, "disk")
     val chan    = if (numCh == 1) disk else {
       val pan   = LFNoise1.kr(1.0 / 45)
       LinXFade2.ar(disk \ 0, disk \ 1, pan)

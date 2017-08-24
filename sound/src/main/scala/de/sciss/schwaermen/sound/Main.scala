@@ -19,6 +19,7 @@ import java.net.InetSocketAddress
 import com.pi4j.wiringpi.GpioUtil
 import de.sciss.file._
 
+import scala.swing.Swing
 import scala.util.control.NonFatal
 
 object Main extends MainLike {
@@ -85,6 +86,10 @@ object Main extends MainLike {
         .text (s"Amplitude (decibels) for text (default ${default.textAmp}")
         .validate { v => if (v >= -30 && v <= 30) success else failure("Must be >= -30 and <= 30") }
         .action { (v, c) => c.copy(textAmp = v.toFloat) }
+
+      opt[Unit] ("keypad")
+        .text ("Enable keypad window")
+        .action { (_, c) => c.copy(keypad = true) }
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
       val localSocketAddress = Network.initConfig(config, this)
@@ -130,5 +135,6 @@ object Main extends MainLike {
           ex.printStackTrace()
       }
     }
+    if (c.dot == Network.KeypadDot || config.keypad) Swing.onEDT(new KeypadWindow(c))
   }
 }
