@@ -13,12 +13,14 @@
 
 package de.sciss.susceptible.force
 
+import java.awt.event.MouseEvent
 import java.awt.image.BufferedImage
 import java.awt.{Color, Font, LayoutManager, RenderingHints}
+import java.io.File
 import javax.imageio.ImageIO
 import javax.swing.JPanel
 
-import de.sciss.file._
+import de.sciss.pdflitz.Generate
 import de.sciss.schwaermen.Edge
 import prefuse.action.assignment.ColorAction
 import prefuse.action.{ActionList, RepaintAction}
@@ -155,7 +157,7 @@ object Visual {
       _textOutline = value
     }
 
-    private def setText1(value: WordEdges) =
+    private def setText1(value: WordEdges): Unit =
       visDo {
         stopAnimation()
         setText(value)
@@ -370,8 +372,9 @@ object Visual {
       _dsp.addControlListener(new ZoomControl     ())
       _dsp.addControlListener(new WheelZoomControl())
       _dsp.addControlListener(new PanControl        )
-      _dsp.addControlListener(new DragControl       )
+//      _dsp.addControlListener(new DragControl       )
       _dsp.addControlListener(new ClickControl(this))
+      _dsp.addControlListener(FixControl)
       _dsp.setHighQuality(true)
 
       // ------------------------------------------------
@@ -394,6 +397,25 @@ object Visual {
       // _vis.run(ACTION_COLOR)
 
       component = Component.wrap(p)
+    }
+
+
+    private object FixControl extends DragControl {
+      private[this] var originalNuttah = false
+
+      override def itemEntered(vi: VisualItem, e: MouseEvent): Unit = {
+        originalNuttah = vi.isFixed
+        super.itemEntered(vi, e)
+      }
+
+      override def itemPressed(vi: VisualItem, e: MouseEvent): Unit = {
+        if (e.getClickCount == 2) {
+          vi.setFixed(!originalNuttah)
+          resetItem = false
+        } else {
+          super.itemPressed(vi, e)
+        }
+      }
     }
 
     def displaySize: Dimension = _dsp.getSize
@@ -483,14 +505,14 @@ object Visual {
       // val scale = width.toDouble / VIDEO_WIDTH_SQR
       // val p0 = new Point(0, 0)
       try {
-//        _dsp.damageReport() // force complete redrawing
-//        // _dsp.zoom(p0, scale)
-//        // actionAutoZoom.karlHeinz = scale
-//        val dw = _dsp.getWidth
-//        val dh = _dsp.getHeight
-//        val sx = width .toDouble / dw
-//        val sy = height.toDouble / dh
-//        g.scale(sx, sy)
+        //        _dsp.damageReport() // force complete redrawing
+        //        // _dsp.zoom(p0, scale)
+        //        // actionAutoZoom.karlHeinz = scale
+        //        val dw = _dsp.getWidth
+        //        val dh = _dsp.getHeight
+        //        val sx = width .toDouble / dw
+        //        val sy = height.toDouble / dh
+        //        g.scale(sx, sy)
         val oldWidth    = _dsp.bufWidth
         val oldHeight   = _dsp.bufHeight
         try {
@@ -509,6 +531,27 @@ object Visual {
       } finally {
         g.dispose()
       }
+    }
+
+    def saveFrameAsPDF(file: File, width: Int, height: Int): Unit = {
+      val view = new Generate.Source {
+        def size: Dimension = new Dimension(width, height)
+        def preferredSize: Dimension = size
+
+        def render(g: Graphics2D): Unit = {
+          val oldWidth    = _dsp.bufWidth
+          val oldHeight   = _dsp.bufHeight
+          try {
+            _dsp.bufWidth   = width
+            _dsp.bufHeight  = height
+            _dsp.paintComponent(g)
+          } finally {
+            _dsp.bufWidth   = oldWidth
+            _dsp.bufHeight  = oldHeight
+          }
+        }
+      }
+      Generate(file, view, usePreferredSize = false, overwrite = true)
     }
   }
 
@@ -546,6 +589,8 @@ trait Visual {
   def saveFrameAsPNG(file: File): Unit
 
   def saveFrameAsPNG(file: File, width: Int, height: Int): Unit
+
+  def saveFrameAsPDF(file: File, width: Int, height: Int): Unit
 
   var forceParameters: Map[String, Map[String, Float]]
 

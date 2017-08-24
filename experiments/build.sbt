@@ -9,7 +9,7 @@ lazy val commonSettings = Seq(
   description         := "An art project - experiments",
   homepage            := Some(url(s"https://github.com/Sciss/$webName")),
   scalaVersion        := "2.12.3",
-  licenses            := Seq(gpl2),
+  licenses            := Seq(gpl3),
   scalacOptions      ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint"),
   libraryDependencies ++= Seq(
     "de.sciss"          %% "fileutil"           % "1.1.3",
@@ -22,11 +22,13 @@ lazy val commonSettings = Seq(
     "de.sciss"          %% "fscape"             % "2.8.1",
     "de.sciss"          %  "prefuse-core"       % "1.0.1",
     "de.sciss"          %% "desktop"            % "0.8.0",
-    "de.sciss"          %% "soundprocesses"     % "3.13.0"
+    "de.sciss"          %% "soundprocesses"     % "3.13.0",
+    "de.sciss"          %% "pdflitz"            % "1.2.2"
   )
 )
 
-lazy val gpl2 = "GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt")
+//lazy val gpl2 = "GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt")
+lazy val gpl3 = "GPL v3+" -> url("http://www.gnu.org/licenses/gpl-3.0.txt")
 
 lazy val root = Project(id = baseNameL, base = file("."))
   .settings(commonSettings)

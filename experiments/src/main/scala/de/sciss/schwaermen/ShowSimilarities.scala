@@ -116,7 +116,8 @@ object ShowSimilarities {
 //  private[this] val colors = Array[Int](0xFF0000, 0x00C000, 0x0000FF)
   private[this] val colors = Array[Int](0xFF0000, 0x0000FF, 0x00C000)
 
-  final case class Config(textIndices: List[Int] = Nil, dropAmt: Double = 0.0)
+  final case class Config(textIndices: List[Int] = Nil, dropAmt: Double = 0.0,
+                          displayWidth: Int = 800, displayHeight: Int = 800)
 
   def main(args: Array[String]): Unit = {
     val default = Config()
@@ -127,9 +128,17 @@ object ShowSimilarities {
         .action { (v, c) => c.copy(textIndices = v.toList) }
 
       opt[Double]('d', "drop")
-        .text("Drop amount in percent (0 until 100")
+        .text("Drop amount in percent (0 until 100)")
         .validate(v => if (v >= 0 && v < 100) success else failure("Must be >= 0 and < 100"))
         .action { (v, c) => c.copy(dropAmt = v * 100) }
+
+      opt[Int]('w', "width")
+        .text(s"Display view width in pixels (default: ${default.displayWidth})")
+        .action { (v, c) => c.copy(displayWidth = v) }
+
+      opt[Int]('h', "height")
+        .text(s"Display view height in pixels (default: ${default.displayHeight})")
+        .action { (v, c) => c.copy(displayHeight = v) }
     }
     p.parse(args, default).fold(sys.exit(1))(run)
   }
@@ -147,13 +156,13 @@ object ShowSimilarities {
     }
 
     onEDT {
-      mkFrame(wordEdges, useColor = useColor)
+      mkFrame(wordEdges, config, useColor = useColor)
     }
   }
 
-  def mkFrame(edges: Visual.WordEdges, useColor: Boolean): Unit = {
+  def mkFrame(edges: Visual.WordEdges, config: Config, useColor: Boolean): Unit = {
     val v = Visual()
-    v.displaySize = (800, 800)
+    v.displaySize = (config.displayWidth, config.displayHeight)
 
     v.text = edges
     if (useColor) {
@@ -218,21 +227,18 @@ object ShowSimilarities {
       add(pBottom    , BorderPanel.Position.South )
     }
 
-    //    split.oneTouchExpandable  = true
-    //    split.continuousLayout    = false
-    //    split.dividerLocation     = 800
-    //    split.resizeWeight        = 1.0
-
     val mb = new MenuBar {
       contents += new Menu("File") {
         contents += new MenuItem(new Action("Export Image...") {
           accelerator = Some(KeyStroke.getKeyStroke("ctrl S"))
           def apply(): Unit = {
-            FileDialog.save(init = Some(userHome / "Documents" / "out.png")).show(None).foreach { f =>
+            val dlg = FileDialog.save(init = Some(userHome / "Documents" / "out.png"))
+            dlg.title = "Choose output png or pdf file"
+            dlg.show(None).foreach { f =>
               val pFull = new RenderImage(v,
                 width   = mWidth .getNumber.intValue,
                 height  = mHeight.getNumber.intValue,
-                fOut = f.replaceExt("png"))
+                fOut = if (f.extL == "pdf") f else f.replaceExt("png"))
               pFull.start()
               val futTail = pFull
               mkProgressDialog("Exporting...", pFull, futTail)
@@ -272,7 +278,10 @@ object ShowSimilarities {
 
     protected def body(): Unit = blocking {
       //      if (!fOut.exists()) {
-      v.saveFrameAsPNG(fOut, width = width, height = height)
+      if (fOut.extL == "pdf")
+        v.saveFrameAsPDF(fOut, width = width, height = height)
+      else
+        v.saveFrameAsPNG(fOut, width = width, height = height)
       //      }
       progress = 1.0
     }

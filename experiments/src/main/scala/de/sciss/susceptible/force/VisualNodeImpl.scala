@@ -27,7 +27,7 @@ object VisualNodeImpl {
   final val diam    = 50
   final val diam05  = 25 // diam * 0.5
 
-  private final val eps = 1.0e-2
+//  private final val eps = 1.0e-2
 
   final val colrPlaying   = new Color(0x00, 0xC0, 0x00)
   final val colrStopped   = new Color(0x80, 0x80, 0x80)
@@ -51,33 +51,8 @@ object VisualNodeImpl {
   // final val threeDigits   = new MathContext(3, RoundingMode.HALF_UP)
 }
 trait VisualNodeImpl extends VisualNode /* with VisualDataImpl */ {
-  import VisualNodeImpl._
 
   protected def color: Int
-
-  //  private[this] var _pNode: PNode = _
-  //
-  //  def dispose(): Unit = {
-  //    if (pNode.isValid) main.graph.removeNode(pNode)
-  //  }
-
-  //  final def pNode: PNode = {
-  //    if (_pNode == null) throw new IllegalStateException(s"Component $this has no initialized GUI")
-  //    _pNode
-  //  }
-
-  // private[this] val _init = Ref(initialValue = false)
-
-  //  def init(): Unit = {
-  //    // implicit val itx = tx.peer
-  //    // require(!_init.swap(true), s"Already initialized: $this")
-  //
-  //    // touch()
-  //    // main.deferVisTx {
-  //      mkPNode()
-  //      if (Visual.DEBUG) println(s"MAKE NODE $this")
-  //    // }
-  //  }
 
   protected def mkPNode(): PNode = {
     // if (_pNode != null) throw new IllegalStateException(s"Component $this has already been initialized")
@@ -99,24 +74,6 @@ trait VisualNodeImpl extends VisualNode /* with VisualDataImpl */ {
   protected val gp      = new GeneralPath()
 
   var fixed = false
-
-  def update(shp: Shape): Unit = {
-    val newR = shp.getBounds2D
-    if ((math.abs(newR.getWidth  - r.getWidth ) < eps) &&
-      (math.abs(newR.getHeight - r.getHeight) < eps)) {
-
-      r.setFrame(newR.getX, newR.getY, r.getWidth, r.getHeight)
-      return
-    }
-    r.setFrame(newR)
-    outline = shp
-
-    outerE.setFrame(0, 0, r.getWidth, r.getHeight)
-    innerE.setFrame(margin, margin, r.getWidth - margin2, r.getHeight - margin2)
-    gp.reset()
-    gp.append(outerE, false)
-    boundsResized()
-  }
 
   private var _fontSize = 0f
   private var _font: Font = _
@@ -192,7 +149,7 @@ trait VisualNodeImpl extends VisualNode /* with VisualDataImpl */ {
         // val x = ((r.getWidth - vvb.getWidth) * 0.5).toFloat
         // val y = ((r.getHeight + vvb.getHeight) * 0.5).toFloat
         val x = 2
-        val y = 12
+        val y = 16 // 12
 
         labelShape = v.getOutline(x, y)
         labelShapeO = if (txtOL <= 0) labelShape else {
