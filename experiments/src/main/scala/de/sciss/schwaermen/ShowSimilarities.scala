@@ -14,7 +14,7 @@
 package de.sciss.schwaermen
 
 import java.awt.Color
-import java.io.{DataInputStream, FileInputStream}
+import java.io.DataInputStream
 import javax.swing.{KeyStroke, SpinnerNumberModel}
 
 import de.sciss.desktop.{FileDialog, OptionPane}
@@ -27,23 +27,30 @@ import de.sciss.susceptible.force.Visual
 import de.sciss.swingplus.Spinner
 import prefuse.util.ui.JForcePanel
 
+import scala.collection.breakOut
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Future, blocking}
 import scala.swing.Swing.{VStrut, _}
 import scala.swing.event.{ButtonClicked, ValueChanged}
 import scala.swing.{Action, BorderPanel, BoxPanel, Button, Component, FlowPanel, Frame, Label, Menu, MenuBar, MenuItem, Orientation, ProgressBar, ToggleButton}
-import scala.collection.breakOut
-import scala.concurrent.{Future, blocking}
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Failure
 
 object ShowSimilarities {
   def loadGraph(textIndices: Seq[Int]): List[SimEdge] = {
-    val fIn   = file(s"/data/temp/edges${textIndices.mkString}.bin")
-    val din   = new DataInputStream(new FileInputStream(fIn))
+    val is1         = textIndices == List(1)
+    val is3         = textIndices == List(3)
+    val allIndices  = if (is1 || is3) 1 :: 3 :: Nil else textIndices
+    val fileId      = allIndices.mkString
+
+    val rsrcName    = s"/edges$fileId.bin"
+    val in          = getClass.getResourceAsStream(rsrcName)
+    require(in != null, s"Resource '$rsrcName' not found")
+    val din   = new DataInputStream(in)
     val edgesI = try {
-      val numEdges = (fIn.length() / 10 /* 8 */).toInt
+      val numEdges = in.available() / 10
 
       val vertices: Map[Int, Vector[Vertex]] =
-        textIndices.map(i => i -> BuildSimilarities.readVertices(i).to[Vector])(breakOut)
+        allIndices.map(i => i -> BuildSimilarities.readVertices(i).to[Vector])(breakOut)
 
       def getVertex(t: Int, i: Int): Vertex =
         vertices(t).find(_.index == i).getOrElse(sys.error(s"Vertex $i not found"))
@@ -65,7 +72,19 @@ object ShowSimilarities {
     } finally {
       din.close()
     }
-    edgesI
+
+    val res = if (is1) {
+      edgesI.filter { e =>
+        e.start.textIdx == 1 && e.end.textIdx == 1
+      }
+    } else if (is3) {
+      edgesI.filter { e =>
+        e.start.textIdx == 3 && e.end.textIdx == 3
+      }
+
+    } else edgesI
+
+    res
   }
 
   /** Loads a text graph and returns its minimum-spanning-tree.
@@ -97,13 +116,30 @@ object ShowSimilarities {
 //  private[this] val colors = Array[Int](0xFF0000, 0x00C000, 0x0000FF)
   private[this] val colors = Array[Int](0xFF0000, 0x0000FF, 0x00C000)
 
-  final val USE_COLOR = true
+  final case class Config(textIndices: List[Int] = Nil, dropAmt: Double = 0.0)
 
   def main(args: Array[String]): Unit = {
-    val edges = loadAndSortGraph(1 :: 3 :: Nil, dropAmt = 0.2)
+    val default = Config()
+    val p = new scopt.OptionParser[Config]("ShowSimilarities") {
+      opt[Seq[Int]]('i', "indices")
+        .required()
+        .text("Text indices (one or two comma separated numbers between 1 and 3)")
+        .action { (v, c) => c.copy(textIndices = v.toList) }
+
+      opt[Double]('d', "drop")
+        .text("Drop amount in percent (0 until 100")
+        .validate(v => if (v >= 0 && v < 100) success else failure("Must be >= 0 and < 100"))
+        .action { (v, c) => c.copy(dropAmt = v * 100) }
+    }
+    p.parse(args, default).fold(sys.exit(1))(run)
+  }
+
+  def run(config: Config): Unit = {
+    val edges     = loadAndSortGraph(config.textIndices, dropAmt = config.dropAmt)
     val vertices  = edges.flatMap(e => Seq(e.start, e.end)).toSet
+    val useColor  = config.textIndices.size > 1
     val wordMap: Map[Vertex, Visual.Word] = vertices.map { v =>
-      v -> Visual.Word(v.wordsString, color = if (USE_COLOR) colors(v.textIdx - 1) else 0)
+      v -> Visual.Word(v.wordsString, color = if (useColor) colors(v.textIdx - 1) else 0xFFFFFF)
     } (breakOut)
 
     val wordEdges = edges.map { e =>
@@ -111,16 +147,16 @@ object ShowSimilarities {
     }
 
     onEDT {
-      mkFrame(wordEdges)
+      mkFrame(wordEdges, useColor = useColor)
     }
   }
 
-  def mkFrame(edges: Visual.WordEdges): Unit = {
+  def mkFrame(edges: Visual.WordEdges, useColor: Boolean): Unit = {
     val v = Visual()
     v.displaySize = (800, 800)
 
     v.text = edges
-    if (USE_COLOR) {
+    if (useColor) {
       v.edgeColor = Color.gray
     }
 
