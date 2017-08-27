@@ -167,7 +167,7 @@ final class TextScene(c: OSCClient)(implicit rnd: Random) extends Scene.Text {
   private def retryInitiative()(implicit tx: InTxn): Unit = {
     val oldState = stateRef.swap(Idle)
     assert(oldState == InjectQuery || oldState == InjectPending)
-    val dur = Util.rrand(3.5f, 7.0f)
+    val dur = Util.rrand(config.textMinRetry, config.textMaxRetry)
     log(f"Retrying initiative in $dur%1.1f seconds.")
     scheduleInitiative(dur)
   }

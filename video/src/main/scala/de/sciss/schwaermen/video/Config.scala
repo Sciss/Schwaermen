@@ -56,7 +56,9 @@ final case class Config(
                          textPairLYK        : Float         = 0.038f,
                          textPairRYK        : Float         = 0.030f, // 0.015f
                          textMinDur         : Float         = 30f,
-                         textMaxDur         : Float         = 60f,
+                         textMaxDur         : Float         = 90f,
+                         textMinRetry       : Float         = 4.5f,
+                         textMaxRetry       : Float         = 27.0f,
                          debugText          : Boolean       = false,
                          ownSocket          : Option[InetSocketAddress] = None,
                          videoId            : Int           = -1,

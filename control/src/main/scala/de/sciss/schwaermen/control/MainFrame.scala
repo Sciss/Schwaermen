@@ -16,12 +16,12 @@ package control
 
 import java.util.Comparator
 import javax.swing.table.{AbstractTableModel, DefaultTableCellRenderer, TableCellRenderer, TableRowSorter}
-import javax.swing.{ButtonGroup, Icon, JTable, SwingConstants}
+import javax.swing.{ButtonGroup, Icon, JTable, SpinnerNumberModel, SwingConstants}
 
 import de.sciss.desktop.{FileDialog, OptionPane}
 import de.sciss.file._
 import de.sciss.osc
-import de.sciss.swingplus.Table
+import de.sciss.swingplus.{Spinner, Table}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Table.AutoResizeMode
@@ -255,11 +255,13 @@ class MainFrame(c: OSCClient) {
   private[this] val ggSoundOff    = new ToggleButton("Off"  )
   private[this] val ggSoundPing   = new ToggleButton("Ping" )
   private[this] val ggSoundNoise  = new ToggleButton("Noise")
-//  private[this] val ggSoundNegatum= new ToggleButton("Negatum")
+  private[this] val ggSoundText   = new ToggleButton("Text:")
+
   private[this] val gSound = new ButtonGroup
   gSound.add(ggSoundOff     .peer)
   gSound.add(ggSoundPing    .peer)
   gSound.add(ggSoundNoise   .peer)
+  gSound.add(ggSoundText    .peer)
 //  gSound.add(ggSoundNegatum .peer)
 
   private[this] val ggBees = ToggleButton("Bees", init = true) { onOff =>
@@ -301,30 +303,47 @@ class MainFrame(c: OSCClient) {
     }
   }
 
+  private[this] val testVertices  = Vertex.readVertices(textId = 1)
+  private[this] val mVertices     = new SpinnerNumberModel(0, 0, testVertices.length - 1, 1)
+  private[this] val ggVertices    = new Spinner(mVertices)
+  private[this] val ggRepeat      = new ToggleButton("Repeat")
+
+  private[this] var lastChan      = -1
+  private[this] val timRepeat     = new javax.swing.Timer(1500, Swing.ActionListener { _ =>
+    if (lastChan >= 0) mkTest(lastChan)
+  })
+  timRepeat.setRepeats(false)
+
   private[this] val pButtons1 = new FlowPanel(ggRefresh, ggUpdate, ggReboot, ggShutdown, ggTestPins,
     ggShell, ggServerInfo /* ggTestPath */)
   private[this] val pButtons2 = new FlowPanel(
-    ggBees, new Label("Sound:"), ggSoundOff, ggSoundPing, ggSoundNoise /* , ggSoundNegatum */)
+    ggBees, new Label("Sound:"), ggSoundOff, ggSoundPing, ggSoundNoise, ggSoundText, ggVertices, ggRepeat)
   private[this] val pChannels = new FlowPanel(Seq.tabulate(12) { ch =>
     Button((ch + 1).toString) {
-      selection.foreach { instance =>
-//        if (ggSoundNegatum.selected) {
-//          val tpe = 2
-//          import de.sciss.numbers.Implicits._
-//          val amp  = ggAmp.value.dbamp
-//          val df = SynthDef("test") {
-////            NegatumGraphs.g1_51_4456(amp) // graphBubbles()
-//            NegatumGraphs.g1_51_4533(amp) // graphBubbles()
-//          }
-//          val rest = df.recvMsg.bytes
-//          c.tx.send(osc.Message("/test-channel", ch, tpe, rest), instance.socketAddress)
-//        } else {
-          val tpe = if (ggSoundPing.selected) 0 else if (ggSoundNoise.selected) 1 else -1
-          c.tx.send(osc.Message("/test-channel", ch, tpe), instance.socketAddress)
-//        }
-      }
+      mkTest(ch)
     }
   }: _*)
+
+  private def mkTest(ch: Int): Unit = {
+    lastChan = ch
+    selection.foreach { instance =>
+      if (ggSoundText.selected) {
+        val txt = testVertices(mVertices.getNumber.intValue())
+        val start = txt.span.start
+        val stop = txt.span.stop
+        c.tx.send(Network.OscPlayText(textId = txt.textId, ch = ch, start = start, stop = stop,
+          fadeIn = 0.01f, fadeOut = 0.01f), instance.socketAddress)
+
+      } else {
+        val tpe = if (ggSoundPing.selected) 0 else if (ggSoundNoise.selected) 1 else -1
+        c.tx.send(osc.Message("/test-channel", ch, tpe), instance.socketAddress)
+      }
+
+      if (ggRepeat.selected) {
+        timRepeat.restart()
+      }
+    }
+  }
 
   private[this] val amps = new Amp(userHome / "Documents")
 

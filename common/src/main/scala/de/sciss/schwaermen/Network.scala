@@ -244,8 +244,8 @@ object Network {
     /** @param textId   which text file to use (0 to 2)
       * @param ch       the channel to use with respect to the audio node (0 until 12)
       * @param start    the start frame into the audio file
-      * @param stop     the stop frame into the audio file
-      * @param fadeIn   the fade-in in seconds
+      * @param stop     the stop  frame into the audio file
+      * @param fadeIn   the fade-in  in seconds
       * @param fadeOut  the fade-out in seconds
       */
     def apply(textId: Int, ch: Int, start: Long, stop: Long, fadeIn: Float, fadeOut: Float): osc.Message =

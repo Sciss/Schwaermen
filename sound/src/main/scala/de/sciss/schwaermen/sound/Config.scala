@@ -29,7 +29,7 @@ final case class Config(
                         ownSocket           : Option[InetSocketAddress] = None,
                         dot                 : Int           = -1,
                         log                 : Boolean       = false,
-                        textAmp             : Float         = 17.5f,
+                        textAmp             : Float         = 17.0f,
                         beeAmp              : Float         = 4.5f,
                         keypad              : Boolean       = false
                        )
