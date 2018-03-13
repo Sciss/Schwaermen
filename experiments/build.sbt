@@ -12,18 +12,19 @@ lazy val commonSettings = Seq(
   licenses            := Seq(gpl3),
   scalacOptions      ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint"),
   libraryDependencies ++= Seq(
-    "de.sciss"          %% "fileutil"           % "1.1.3",
-    "de.sciss"          %% "numbers"            % "0.1.4",
-    "de.sciss"          %% "kollflitz"          % "0.2.1",
-    "com.github.scopt"  %% "scopt"              % "3.7.0",
-    "de.sciss"          %  "shapeinterpolator"  % "0.1.0",
-    "de.sciss"          %% "swingplus"          % "0.2.4",
-    "de.sciss"          %% "span"               % "1.3.3",
-    "de.sciss"          %% "fscape"             % "2.12.0",
-    "de.sciss"          %  "prefuse-core"       % "1.0.1",
-    "de.sciss"          %% "desktop"            % "0.8.1",
-    "de.sciss"          %% "soundprocesses"     % "3.17.0",
-    "de.sciss"          %% "pdflitz"            % "1.2.2"
+    "de.sciss"                %% "fileutil"           % "1.1.3",
+    "de.sciss"                %% "numbers"            % "0.1.4",
+    "de.sciss"                %% "kollflitz"          % "0.2.1",
+    "com.github.scopt"        %% "scopt"              % "3.7.0",
+    "de.sciss"                %  "shapeinterpolator"  % "0.1.0",
+    "de.sciss"                %% "swingplus"          % "0.2.4",
+    "de.sciss"                %% "span"               % "1.3.3",
+    "de.sciss"                %% "fscape"             % "2.12.0",
+    "de.sciss"                %  "prefuse-core"       % "1.0.1",
+    "de.sciss"                %% "desktop"            % "0.8.1",
+    "de.sciss"                %% "soundprocesses"     % "3.17.0",
+    "de.sciss"                %% "pdflitz"            % "1.2.2",
+    "org.scala-lang.modules"  %% "scala-xml"          % "1.1.0"
   )
 )
 
