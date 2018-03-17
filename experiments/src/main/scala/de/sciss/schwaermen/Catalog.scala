@@ -43,31 +43,40 @@ object Catalog {
   val MarginLeftMM  : Int =  25
   val MarginRightMM : Int =  25
 
-  val MarginParMM   : Int =  25
-  val WidthParMM    : Int = (200 - 25 - 25)/2
-  val HeightParMM   : Int = WidthParMM
+//  val MarginParMM   : Int =  25
+//  val WidthParMM    : Int = (200 - 25 - 25)/2
+//  val HeightParMM   : Int = WidthParMM
+//
+//  val WidthParBMM   : Int = WidthParMM  + MarginParMM + MarginParMM
+//  val HeightParBMM  : Int = HeightParMM + MarginParMM + MarginParMM
 
-  val WidthParBMM   : Int = WidthParMM  + MarginParMM + MarginParMM
-  val HeightParBMM  : Int = HeightParMM + MarginParMM + MarginParMM
+  val ColumnSepMM   : Int     = 25
+  val LineSpacingPt : Double  = 10.2
+  val FontSizePt    : Double  = 8.5
+  val PointsPerMM   : Double  = 72 / 25.4   // 1 pt = 1/72 inch
 
-  val ColumnSepMM   : Int = 25
+  val WidthParMM    : Double  = (PaperWidthMM - (MarginLeftMM + MarginRightMM + ColumnSepMM))/2.0
+
+  def HeightParMM(numLines: Int): Double = {
+    val lnMM = LineSpacingPt / PointsPerMM
+    lnMM * numLines
+  }
 
   // horizontal line filling is broken if we use single column
 
-  val latexTemplate: String =
+  def latexTemplate(text: String): String =
     s"""@documentclass[10pt,twocolumn]{article}
        |@usepackage[paperheight=${PaperHeightMM}mm,paperwidth=${PaperWidthMM}mm,top=${MarginTopMM}mm,bottom=${MarginBotMM}mm,right=${MarginRightMM}mm,left=${MarginLeftMM}mm,heightrounded]{geometry}
        |@usepackage[ngerman]{babel}
        |@usepackage{Alegreya}
        |@usepackage[T1]{fontenc}
        |@usepackage[utf8]{inputenc}
-       |
        |@setlength{@columnsep}{${ColumnSepMM}mm}
        |@begin{document}
        |@pagestyle{empty}
-       |@fontsize{8.5pt}{10.2pt}@selectfont
+       |@fontsize{${FontSizePt}pt}{${LineSpacingPt}pt}@selectfont
        |@noindent
-       |%s
+       |$text
        |@end{document}""".stripMargin.replace('@', '\\')
 
   def writeText(s: String, f: File): Unit = {
@@ -255,7 +264,7 @@ object Catalog {
   case class Result(f: File, numLines: Int)
 
   def run(text: String, textId: Int): Result = {
-    val latex = latexTemplate.format(text)
+    val latex = latexTemplate(text)
     val dir   = file("/") / "data" / "temp" / "latex"
     require (dir.isDirectory, s"Not a directory: $dir")
     val fOutTex = dir / s"schwaermen_cat_hh_$textId.tex"
