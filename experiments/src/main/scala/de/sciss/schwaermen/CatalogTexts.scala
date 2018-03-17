@@ -221,4 +221,74 @@ object CatalogTexts {
       out
     }
   }
+
+  /////////////////////////////////////////////////////
+
+  def parseEdges(s: String): Map[(Int, Int), String] = {
+    val s1 = s.stripMargin
+    val s2 = s1.split("\n\\{").map(_.trim).filter(_.nonEmpty)
+    s2.iterator.map { s3 =>
+      val i   = s3.indexOf('}')
+      val s4  = s3.substring(0, i)
+      val s5  = s3.substring(i + 1)
+      val j   = s4.indexOf('-')
+      val e1  = s4.substring(0, j).toInt
+      val e2  = s4.substring(j + 1).toInt
+      val s6  = s5.replace("\n", "").trim
+      (e1, e2) -> s6
+    } .toMap
+  }
+
+  val edgesDe: Map[(Int, Int), String] = parseEdges("""
+    |{1-7}
+    |
+    |Ich schaue erneut zurück auf ein starkes Gefälle, wohinunter, zur Missbilligung der Umstehenden, eine Reihe von Steinen fällt.
+    |
+    |{1-8}
+    |
+    |Im Vorführraum herrscht eine starke Vertikalität, die sich quer zur Linearität des Filmes vom Boden zur Decke erstreckt.
+    |
+    |{1-9}
+    |
+    |Zwei mit hoher Frequenz vibrierende Metallkugeln berühren intermittierend ein riesiges Fenster, das zum Abgreifen eines Signals verwendet wird.
+    |
+    |{1-10}
+    |
+    |Ich gehe noch einmal die Knotenpunkte des Raumes entlang. Licht fällt durch leere und zugleich wässerige Pupillen herein.
+    |
+    |{1-11}
+    |
+    |In den Gassen schwärmt eine jahrhundertelange Bewegung, gleitet mit wirklichkeitsfremder Begeisterung an Wänden und Seilen hoch, zerläuft schließlich.
+    |
+    |{1-12}
+    |
+    |Alle neun Ecken des Raumes sind orangefarben und identisch konfiguriert und ausgestattet, doch kleine Differenzen werden extrem verstärkt.
+    |
+    |{1-13}
+    |
+    |Jemand ruft mich an, schüttelt Linien von Wörtern über mich, hat Schwierigkeiten und ein Blatt vor dem Mund.
+    |
+    |{1-14}
+    |
+    |Am Schluß sind alle Dinge eng aufgerollt, mit geringsten Amplituden gepolstert und innerhalb von Kisten ohne Griffmöglichkeiten montiert.
+    |
+    |{1-15}
+    |
+    |Gibt es beim Ausschwärmen nur einen einzigen Weg oder gegenläufige Abkürzungen? Neues Territorium erscheint als Feld oder Tisch. 
+    |
+    |{1-16}
+    |
+    |Alles ist hinunter zu einer Fluchtlinie binarisiert. Ich ziehe mich an zehn Fingern zur binären Teilung nach draußen.
+    |
+    |{1-17}
+    |
+    |Die Arbeit besteht aus drei wandernden Stimmen aus Glas, deren Worte meist von der Größe kleiner Äpfel sind.
+    |
+    |{1-18}
+    |
+    |Die Größenverhältnisse in der Installation und Ausstellung zu verstehen, verlangt eine bestimmten Pose des Besuchers und seiner Partnerin.
+    |""")
+
+//  println(edgesDe.mkString("\n"))
+//  println(edgesDe.size)
 }

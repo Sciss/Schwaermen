@@ -29,7 +29,12 @@ object Catalog {
 //    val t1 = Transform.fromAwt(t0.toAwt)
 //    assert(t0 == t1)
 
-    run()
+    if (!fLinesOut.isFile || !fOutCat.isFile) {
+      preparePar()
+    } else {
+      CatalogTexts
+      println("(Skipping preparePar)")
+    }
   }
 
   val dir       : File = file("/") / "data" / "projects" / "Schwaermen" / "catalog" / "hhr"
@@ -245,7 +250,7 @@ object Catalog {
     case _ => None // sys.error(s"Could not parse text $n")
   }
 
-  def run(): Unit = {
+  def preparePar(): Unit = {
     require (dir.isDirectory, s"Not a directory: $dir")
     val resAll = CatalogTexts.parDe.zipWithIndex.map { case (text, i) =>
       val textId = i + 1
