@@ -29,16 +29,23 @@ object Catalog {
 //    val t1 = Transform.fromAwt(t0.toAwt)
 //    assert(t0 == t1)
 
-    if (!fLinesOut.isFile || !fOutCat.isFile) {
+    if (!fLinesOut.isFile || !fOutCat.isFile || !parFile(1).isFile) {
       preparePar()
     } else {
-      CatalogTexts
       println("(Skipping preparePar)")
+    }
+
+    if (!fOutArr.isFile) {
+      renderPages()
+    } else {
+      println("(Skipping renderPages)")
     }
   }
 
   val dir       : File = file("/") / "data" / "projects" / "Schwaermen" / "catalog" / "hhr"
+  val dirTmp    : File = file("/") / "data" / "temp" / "latex"
   val fOutCat   : File = dir / "par_cat.pdf"
+  val fOutArr   : File = dir / "par_arr.pdf"
   val fLinesOut : File = dir / "par_lines.txt"
 
   val PaperWidthMM  : Int = 200
@@ -67,14 +74,16 @@ object Catalog {
     lnMM * numLines
   }
 
-  // horizontal line filling is broken if we use single column
-
-  def readNumLines(): Vec[Int] = {
-    val s = readText(fLinesOut)
-    s.split("\n").iterator.map(_.trim).filter(_.nonEmpty).map(_.toInt).toIndexedSeq
+  def readParInfo(): Vec[ParFileInfo] = {
+    val s          = readText(fLinesOut)
+    val numLinesIt = s.split("\n").iterator.map(_.trim).filter(_.nonEmpty).map(_.toInt)
+    numLinesIt.zipWithIndex.map { case (numLines, i) =>
+      ParFileInfo(id = i + 1, numLines = numLines)
+    } .toIndexedSeq
   }
 
-  def latexParTemplate(text: String): String =
+  // N.B.: horizontal line filling is broken if we use single column
+  def latexParTemplate(text: String): String = stripTemplate(
     s"""@documentclass[10pt,twocolumn]{article}
        |@usepackage[paperheight=${PaperHeightMM}mm,paperwidth=${PaperWidthMM}mm,top=${MarginTopMM}mm,bottom=${MarginBotMM}mm,right=${MarginRightMM}mm,left=${MarginLeftMM}mm,heightrounded]{geometry}
        |@usepackage[ngerman]{babel}
@@ -87,7 +96,76 @@ object Catalog {
        |@fontsize{${FontSizePt}pt}{${LineSpacingPt}pt}@selectfont
        |@noindent
        |$text
-       |@end{document}""".stripMargin.replace('@', '\\')
+       |@end{document}
+       |"""
+    )
+
+  private def stripTemplate(s: String): String = s.stripMargin.replace('@', '\\')
+
+  def renderPages(): Unit = {
+    val pre = stripTemplate(s"""@documentclass[10pt]{article}
+       |@usepackage[paperheight=${PaperHeightMM}mm,paperwidth=${PaperWidthMM}mm,top=0mm,bottom=0mm,left=0mm,right=0mm]{geometry}
+       |@usepackage{tikz}
+       |@usepackage{graphicx}
+       |@usetikzlibrary{calc}
+       |@begin{document}
+       |@pagestyle{empty}
+       |""")
+
+    val post = stripTemplate(
+      """@end{document}
+        |""")
+
+    def mkGraphics(f: ParFileInfo, heightMM: Double, leftMM: Double, topMM: Double): String = {
+      val trimLeft    = MarginLeftMM
+      val trimTop     = MarginTopMM
+      val trimBottom  = PaperHeightMM - MarginBotMM - heightMM
+      val trimRight   = PaperWidthMM - MarginRightMM - WidthParMM
+
+//      @fbox{@includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(f.id)}}}
+
+      stripTemplate(
+        s"""  @node[anchor=north west,inner sep=0] at ($$(current page.north west)+(${leftMM}mm,${-topMM}mm)$$) {
+           |    @includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(f.id)}}
+           |  };
+           |"""
+      )
+    }
+
+    def mkPage(f1: ParFileInfo, f2: ParFileInfo, f3: ParFileInfo): String = {
+      val h1 = HeightParMM(f1.numLines)
+      val h2 = HeightParMM(f2.numLines)
+      val h3 = HeightParMM(f3.numLines)
+      val x1 = MarginLeftMM
+      val x2 = PaperWidthMM - MarginRightMM - WidthParMM
+      val x3 = x1
+      val y1 = MarginTopMM
+      val y2 = (PaperHeightMM - h2)/2 // XXX TODO
+      val y3 = PaperHeightMM - MarginBotMM - h3
+
+      stripTemplate(
+        s"""@begin{tikzpicture}[remember picture,overlay]
+           |${mkGraphics(f1, h1, x1, y1)}
+           |${mkGraphics(f2, h2, x2, y2)}
+           |${mkGraphics(f3, h3, x3, y3)}
+           |@end{tikzpicture}
+           |"""
+        )
+    }
+
+    val info0     = readParInfo()
+    val info      = CatalogTexts.parOrder.map(id => info0(id - 1))
+    val pageInfo  = info.grouped(3)
+    val pages     = pageInfo.map { case Seq(f1, f2, f3) => mkPage(f1, f2, f3) }
+    val text      = pages.mkString(pre, "\\newpage\n", post)
+
+    val fArrTex   = dirTmp / s"${fOutArr.base}.tex"
+    writeText(text, fArrTex)
+    val fArrPDF   = fArrTex.replaceExt("pdf")
+    val argPDF    = Seq("-interaction=batchmode", fArrTex.path)
+    exec(pdflatex, dirTmp, argPDF)
+    exec("cp", dirTmp, fArrPDF.path :: fOutArr.path :: Nil)
+  }
 
   def writeText(s: String, f: File): Unit = {
     val fos = new FileOutputStream(f)
@@ -277,18 +355,17 @@ object Catalog {
     val numLinesTxt = numLinesAll.mkString("", "\n", "\n")
     writeText(numLinesTxt, fLinesOut)
 
-    val fOutAll     = resAll.map(_.f)
-    val argsCat     = fOutAll.map(_.path) :+ "cat" :+ "output" :+ fOutCat.path
+    val fOutAll     = resAll.map(_.id)
+    val argsCat     = fOutAll.map(parFile(_).path) :+ "cat" :+ "output" :+ fOutCat.path
     exec(pdftk, dir, argsCat)
   }
 
-  case class Result(f: File, numLines: Int)
+  case class ParFileInfo(id: Int, numLines: Int)
 
   def parFile(id: Int): File = dir / s"par_$id.pdf"
 
-  def run(text: String, textId: Int): Result = {
+  def run(text: String, textId: Int): ParFileInfo = {
     val latex = latexParTemplate(text)
-    val dirTmp = file("/") / "data" / "temp" / "latex"
     require (dirTmp.isDirectory, s"Not a directory: $dirTmp")
     val fOutTex = dirTmp / s"par_temp_$textId.tex"
     val fOutPDF = fOutTex.replaceExt("pdf")
@@ -425,7 +502,7 @@ object Catalog {
     val argsSVG2 = Seq("--export-pdf", fOutPDF2.path, fOutSVG2.path)
     exec(inkscape, dirTmp, argsSVG2)
 
-    Result(f = fOutPDF2, numLines = numLines)
+    ParFileInfo(id = textId, numLines = numLines)
   }
 
   def exec(program: String, dir: File, args: Seq[String]): Unit = {

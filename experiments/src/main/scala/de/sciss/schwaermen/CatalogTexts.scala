@@ -199,6 +199,12 @@ object CatalogTexts {
       |"""
   ).map(mkText)
 
+  val numPar: Int = {
+    val res = parDe.size
+    assert(res == 18)
+    res
+  }
+
   val bugWords: Set[String] = Set(
     "gefielen", "Laborfilme", "identifiziert", "befinden", "konfiguriert", "gegenläufige", "flachem", "flach"
   )
