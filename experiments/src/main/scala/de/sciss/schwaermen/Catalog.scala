@@ -74,6 +74,11 @@ object Catalog {
     lnMM * numLines
   }
 
+  def readOrderedParInfo(): Vec[ParFileInfo] = {
+    val info0 = readParInfo()
+    CatalogTexts.parOrder.map(id => info0(id - 1))
+  }
+
   def readParInfo(): Vec[ParFileInfo] = {
     val s          = readText(fLinesOut)
     val numLinesIt = s.split("\n").iterator.map(_.trim).filter(_.nonEmpty).map(_.toInt)
@@ -102,6 +107,37 @@ object Catalog {
 
   private def stripTemplate(s: String): String = s.stripMargin.replace('@', '\\')
 
+  case class Rectangle(x: Double, y: Double, width: Double, height: Double) {
+    def * (scalar: Double): Rectangle =
+      copy(x = x* scalar, y = y * scalar, width = width * scalar, height = height * scalar)
+
+    def border(amt: Double): Rectangle = border(amt, amt, amt, amt)
+
+    // let's use LaTeX order
+    def border(left: Double, bottom: Double, right: Double, top: Double): Rectangle =
+      copy(x = x - left, y = y - top, width = width + left + right, height = height + top + bottom)
+  }
+
+  def getParPage(i: ParFileInfo): Int = (i.id - 1) / 3
+
+  def getParRectMM(i: ParFileInfo): Rectangle = {
+    val idx = (i.id - 1) % 3
+
+    val w   = WidthParMM
+    val h   = HeightParMM(i.numLines)
+    val x = idx match {
+      case 0 | 2  => MarginLeftMM
+      case 1      => PaperWidthMM - MarginRightMM - WidthParMM
+    }
+    val y = idx match {
+      case 0 => MarginTopMM
+      case 1 => (PaperHeightMM - h)/2 // XXX TODO
+      case 2 => PaperHeightMM - MarginBotMM - h
+    }
+
+    Rectangle(x = x, y = y, width = w, height = h)
+  }
+
   def renderPages(): Unit = {
     val pre = stripTemplate(s"""@documentclass[10pt]{article}
        |@usepackage[paperheight=${PaperHeightMM}mm,paperwidth=${PaperWidthMM}mm,top=0mm,bottom=0mm,left=0mm,right=0mm]{geometry}
@@ -116,45 +152,35 @@ object Catalog {
       """@end{document}
         |""")
 
-    def mkGraphics(f: ParFileInfo, heightMM: Double, leftMM: Double, topMM: Double): String = {
+    def mkGraphics(i: ParFileInfo): String = {
+      val r           = getParRectMM(i)
       val trimLeft    = MarginLeftMM
       val trimTop     = MarginTopMM
-      val trimBottom  = PaperHeightMM - MarginBotMM - heightMM
+      val trimBottom  = PaperHeightMM - MarginBotMM - r.height
       val trimRight   = PaperWidthMM - MarginRightMM - WidthParMM
 
 //      @fbox{@includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(f.id)}}}
 
       stripTemplate(
-        s"""  @node[anchor=north west,inner sep=0] at ($$(current page.north west)+(${leftMM}mm,${-topMM}mm)$$) {
-           |    @includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(f.id)}}
+        s"""  @node[anchor=north west,inner sep=0] at ($$(current page.north west)+(${r.x}mm,${-r.y}mm)$$) {
+           |    @includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(i.id)}}
            |  };
            |"""
       )
     }
 
     def mkPage(f1: ParFileInfo, f2: ParFileInfo, f3: ParFileInfo): String = {
-      val h1 = HeightParMM(f1.numLines)
-      val h2 = HeightParMM(f2.numLines)
-      val h3 = HeightParMM(f3.numLines)
-      val x1 = MarginLeftMM
-      val x2 = PaperWidthMM - MarginRightMM - WidthParMM
-      val x3 = x1
-      val y1 = MarginTopMM
-      val y2 = (PaperHeightMM - h2)/2 // XXX TODO
-      val y3 = PaperHeightMM - MarginBotMM - h3
-
       stripTemplate(
         s"""@begin{tikzpicture}[remember picture,overlay]
-           |${mkGraphics(f1, h1, x1, y1)}
-           |${mkGraphics(f2, h2, x2, y2)}
-           |${mkGraphics(f3, h3, x3, y3)}
+           |${mkGraphics(f1)}
+           |${mkGraphics(f2)}
+           |${mkGraphics(f3)}
            |@end{tikzpicture}
            |"""
         )
     }
 
-    val info0     = readParInfo()
-    val info      = CatalogTexts.parOrder.map(id => info0(id - 1))
+    val info      = readOrderedParInfo()
     val pageInfo  = info.grouped(3)
     val pages     = pageInfo.map { case Seq(f1, f2, f3) => mkPage(f1, f2, f3) }
     val text      = pages.mkString(pre, "\\newpage\n", post)
