@@ -24,6 +24,8 @@ lazy val commonSettings = Seq(
     "de.sciss"                %% "desktop"            % "0.8.1",
     "de.sciss"                %% "soundprocesses"     % "3.17.0",
     "de.sciss"                %  "neuralgas-core"     % "2.3.1",
+    "de.sciss"                %% "dijkstra"           % "0.1.0",
+    "de.sciss"                %% "catmullromspline"   % "0.1.0",
     "de.sciss"                %% "pdflitz"            % "1.2.2",
     "org.scala-lang.modules"  %% "scala-xml"          % "1.1.0"
   )
