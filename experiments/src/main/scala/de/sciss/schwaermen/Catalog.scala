@@ -15,13 +15,13 @@ package de.sciss.schwaermen
 
 import java.awt.Font
 import java.awt.geom.AffineTransform
-import java.io.FileOutputStream
+import java.io.{FileInputStream, FileOutputStream}
 import java.nio.channels.Channels
 
 import de.sciss.file._
 import de.sciss.numbers
 
-import scala.collection.immutable.{Seq => ISeq}
+import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 
 object Catalog {
   def main(args: Array[String]): Unit = {
@@ -69,7 +69,12 @@ object Catalog {
 
   // horizontal line filling is broken if we use single column
 
-  def latexTemplate(text: String): String =
+  def readNumLines(): Vec[Int] = {
+    val s = readText(fLinesOut)
+    s.split("\n").iterator.map(_.trim).filter(_.nonEmpty).map(_.toInt).toIndexedSeq
+  }
+
+  def latexParTemplate(text: String): String =
     s"""@documentclass[10pt,twocolumn]{article}
        |@usepackage[paperheight=${PaperHeightMM}mm,paperwidth=${PaperWidthMM}mm,top=${MarginTopMM}mm,bottom=${MarginBotMM}mm,right=${MarginRightMM}mm,left=${MarginLeftMM}mm,heightrounded]{geometry}
        |@usepackage[ngerman]{babel}
@@ -90,6 +95,17 @@ object Catalog {
       fos.write(s.getBytes("UTF-8"))
     } finally {
       fos.close()
+    }
+  }
+
+  def readText(f: File): String = {
+    val fis = new FileInputStream(f)
+    try {
+      val arr = new Array[Byte](fis.available())
+      fis.read(arr)
+      new String(arr, "UTF-8")
+    } finally {
+      fis.close()
     }
   }
 
@@ -268,20 +284,22 @@ object Catalog {
 
   case class Result(f: File, numLines: Int)
 
+  def parFile(id: Int): File = dir / s"par_$id.pdf"
+
   def run(text: String, textId: Int): Result = {
-    val latex = latexTemplate(text)
-    val dir   = file("/") / "data" / "temp" / "latex"
-    require (dir.isDirectory, s"Not a directory: $dir")
-    val fOutTex = dir / s"schwaermen_cat_hh_$textId.tex"
+    val latex = latexParTemplate(text)
+    val dirTmp = file("/") / "data" / "temp" / "latex"
+    require (dirTmp.isDirectory, s"Not a directory: $dirTmp")
+    val fOutTex = dirTmp / s"par_temp_$textId.tex"
     val fOutPDF = fOutTex.replaceExt("pdf")
     writeText(latex, fOutTex)
 
     val argPDF = Seq("-interaction=batchmode", fOutTex.path)
-    exec(pdflatex, dir, argPDF)
+    exec(pdflatex, dirTmp, argPDF)
 
     val fOutSVG = fOutPDF.replaceExt("svg")
     val argSVG = Seq("-l", fOutSVG.path, fOutPDF.path)
-    exec(inkscape, dir, argSVG)
+    exec(inkscape, dirTmp, argSVG)
 
     /*
 
@@ -402,9 +420,10 @@ object Catalog {
 //      writer.close()
 //    }
 
-    val fOutPDF2 = fOutSVG2.replaceExt("pdf")
+//    val fOutPDF2 = fOutSVG2.replaceExt("pdf")
+    val fOutPDF2 = parFile(textId)
     val argsSVG2 = Seq("--export-pdf", fOutPDF2.path, fOutSVG2.path)
-    exec(inkscape, dir, argsSVG2)
+    exec(inkscape, dirTmp, argsSVG2)
 
     Result(f = fOutPDF2, numLines = numLines)
   }

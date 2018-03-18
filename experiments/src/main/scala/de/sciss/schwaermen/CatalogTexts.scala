@@ -13,7 +13,7 @@
 
 package de.sciss.schwaermen
 
-import scala.collection.immutable.{Seq => ISeq}
+import scala.collection.immutable.{Seq => ISeq, IndexedSeq => Vec}
 
 object CatalogTexts {
 
@@ -221,6 +221,15 @@ object CatalogTexts {
       out
     }
   }
+
+  val parOrder: Vec[Int] = Vector(
+    13, 14, 15,
+     7,  8,  9,
+     1,  2,  3,
+     4,  5,  6,
+    10, 11, 12,
+    16, 17, 18
+  )
 
   /////////////////////////////////////////////////////
 
