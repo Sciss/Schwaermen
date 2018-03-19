@@ -24,7 +24,7 @@ import de.sciss.kollflitz.Vec
 import de.sciss.neuralgas
 import de.sciss.neuralgas.{ComputeGNG, ImagePD}
 import de.sciss.numbers
-import de.sciss.schwaermen.Catalog.{ColumnSepMM, FontSizePt, LineSpacingPt, Transform, dirTmp, exec, inkscape, pdflatex, setAttr, stripTemplate, writeSVG, ppmmSVG, writeText, PaperWidthMM, PaperHeightMM}
+import de.sciss.schwaermen.Catalog.{ColumnSepMM, FontSizePt, LineSpacingPt, TotalPaperWidthMM, Transform, dirTmp, exec, inkscape, pdflatex, setAttr, stripTemplate, writeSVG, ppmmSVG, writeText, PaperWidthMM, PaperHeightMM}
 
 import scala.swing.{Component, Dimension, Frame, Graphics2D, Swing}
 
@@ -225,7 +225,7 @@ object CatalogPaths {
       t2
     }
 
-    val widthOut  = PaperWidthMM  * ppmmSVG
+    val widthOut  = TotalPaperWidthMM /* PaperWidthMM */ * ppmmSVG
     val heightOut = PaperHeightMM * ppmmSVG
 
     val gTransOut = {
