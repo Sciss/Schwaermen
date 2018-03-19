@@ -18,6 +18,7 @@ import java.awt.geom.AffineTransform
 import java.io.{FileInputStream, FileOutputStream}
 import java.nio.channels.Channels
 
+import de.sciss.catmullrom.Point2D
 import de.sciss.file._
 import de.sciss.numbers
 
@@ -105,7 +106,7 @@ object Catalog {
        |"""
     )
 
-  private def stripTemplate(s: String): String = s.stripMargin.replace('@', '\\')
+  def stripTemplate(s: String): String = s.stripMargin.replace('@', '\\')
 
   case class Rectangle(x: Double, y: Double, width: Double, height: Double) {
     def * (scalar: Double): Rectangle =
@@ -218,19 +219,19 @@ object Catalog {
   val inkscape: String = "inkscape"
   val pdftk   : String = "pdftk"
 
+  // SVG pixel density
+  val ppmSVG: Double = 96.0 / 25.4
+
   case class Style(font: Font)
 
-  object Point2D {
-    def fromAwt(in: java.awt.geom.Point2D): Point2D =
-      apply(in.getX, in.getY)
-  }
-  case class Point2D(x: Double, y: Double) {
-    def toAwt: java.awt.geom.Point2D = new java.awt.geom.Point2D.Double(x, y)
-  }
+  def pointFromAwt(in: java.awt.geom.Point2D): Point2D = Point2D(in.getX, in.getY)
+  def pointToAwt  (in: Point2D): java.awt.geom.Point2D = new java.awt.geom.Point2D.Double(in.x, in.y)
 
   object Transform {
     def fromAwt(in: AffineTransform): Transform =
       apply(in.getScaleX, in.getShearY, in.getShearX, in.getScaleY, in.getTranslateX, in.getTranslateY)
+
+    def identity: Transform = fromAwt(new AffineTransform)
   }
   case class Transform(a: Double, b: Double, c: Double, d: Double, e: Double, f: Double) {
     private[this] lazy val at = new AffineTransform(a, b, c, d, e, f)
@@ -238,7 +239,15 @@ object Catalog {
     def toAwt: AffineTransform = new AffineTransform(at)
 
     def apply(pt: Point2D): Point2D =
-      Point2D.fromAwt(at.transform(pt.toAwt, null))
+      pointFromAwt(at.transform(pointToAwt(pt), null))
+
+    def scaleX    : Double = a
+    def scaleY    : Double = d
+    def translateX: Double = e
+    def translateY: Double = f
+
+    def toAttrValue: String =
+      s"matrix(${a.toFloat},${b.toFloat},${c.toFloat},${d.toFloat},${e.toFloat},${f.toFloat})"
   }
 
   case class TSpan(id: String, y: Double, x: ISeq[Double], text: String, node: xml.Elem) {
@@ -257,6 +266,13 @@ object Catalog {
       val n3  = n2.copy(child = new xml.Text(t1) :: Nil)
       copy(id = id1, y = y, x = x1, text = t1, node = n3)
     }
+
+    def setLocation(x: ISeq[Double], y: Double): TSpan = {
+      val xs = x.mkString(" ")
+      val ys = y.toString
+      val n1 = setAttr(setAttr(node, "y", ys), "x", xs)
+      copy(y = y, x = x, node = n1)
+    }
   }
 
   def setAttr(in: xml.Elem, key: String, value: String): xml.Elem = {
@@ -269,7 +285,7 @@ object Catalog {
 
   case class Text(id: String, style: Style, transform: Transform, children: ISeq[TSpan], node: xml.Elem) {
     def setTransform(t: Transform): Text = {
-      val ts = s"matrix(${t.a.toFloat},${t.b.toFloat},${t.c.toFloat},${t.d.toFloat},${t.e.toFloat},${t.f.toFloat})"
+      val ts = t.toAttrValue
       val n1 = setAttr(node, "transform", ts)
       copy(node = n1)
     }
@@ -279,6 +295,12 @@ object Catalog {
       val (n1, n2) = (node.copy(child = c1), node.copy(child = c2))
       val (c3, c4) = children.splitAt(idx)
       (copy(children = c3, node = n1), copy(children = c4, node = n2))
+    }
+
+    def mapChildren(f: TSpan => TSpan): Text = {
+      val c1 = children.map(f)
+      val n1 = node.copy(child = c1.map(_.node))
+      copy(children = c1, node = n1)
     }
 
     def size: Int = children.size
@@ -389,6 +411,27 @@ object Catalog {
   case class ParFileInfo(id: Int, numLines: Int)
 
   def parFile(id: Int): File = dir / s"par_$id.pdf"
+
+  case class ParsedSVG(transform: Transform, text: ISeq[Text], doc: xml.Elem, group: xml.Elem) {
+    def setTransform(t: Transform): ParsedSVG = {
+      val ts  = t.toAttrValue
+      val n1  = setAttr(group, "transform", ts)
+      setGroup(n1)
+    }
+
+    def setGroup(g: xml.Elem): ParsedSVG = {
+      val doc1 = doc.copy(child = g :: Nil)
+      copy(doc = doc1, group = g)
+    }
+  }
+
+  def parseSVG(f: File): ParsedSVG = {
+    val svgDoc  : xml.Elem    = xml.XML.loadFile(f)
+    val group   : xml.Elem    = (svgDoc \ "g").head.asInstanceOf[xml.Elem]
+    val transform = parseTransform (group \ "@transform")
+    val text      = group.child.iterator.flatMap(parseText).toList
+    ParsedSVG(transform, text, doc = svgDoc, group = group)
+  }
 
   def run(text: String, textId: Int): ParFileInfo = {
     val latex = latexParTemplate(text)
@@ -515,7 +558,7 @@ object Catalog {
 
     val fOutSVG2 = fOutSVG.parent / s"${fOutSVG.base}-out.svg"
     // XXX TODO --- pretty printing fails because it puts newlines before tspan text
-    writePretty(svgDocOut, fOutSVG2, pretty = false)
+    writeSVG(svgDocOut, fOutSVG2 /*, pretty = false */)
 //    val writer = new FileWriter(fOutSVG2)
 //    try {
 //      xml.XML.write(writer, node = svgDocOut, enc = "", xmlDecl = false, doctype = null)
@@ -538,7 +581,8 @@ object Catalog {
     require (res == 0, s"$program, failed with code $res")
   }
 
-  def writePretty(node: xml.Node, f: File, pretty: Boolean = true): Unit = {
+  def writeSVG(node: xml.Node, f: File /* , pretty: Boolean = true */): Unit = {
+    val pretty  = false
     val pp      = new xml.PrettyPrinter(80, 2)
 //    {
 //      override protected def traverse(node: xml.Node, pScope: xml.NamespaceBinding, ind: Int): Unit =
