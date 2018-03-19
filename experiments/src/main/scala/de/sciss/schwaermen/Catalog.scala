@@ -67,13 +67,20 @@ object Catalog {
   val LineSpacingPt : Double  = 10.2
   val FontSizePt    : Double  = 8.5
   val PointsPerMM   : Double  = 72 / 25.4   // 1 pt = 1/72 inch
+  val LineSpacingMM : Double  = LineSpacingPt / PointsPerMM
 
   val WidthParMM    : Double  = (PaperWidthMM - (MarginLeftMM + MarginRightMM + ColumnSepMM))/2.0
 
-  def HeightParMM(numLines: Int): Double = {
-    val lnMM = LineSpacingPt / PointsPerMM
-    lnMM * numLines
-  }
+  // 'inner'
+  val InnerWidthReduxMM : Int = 10
+  val PaperIWidthMM     : Int = PaperWidthMM - InnerWidthReduxMM
+
+  val ColSepIMM : Double  = (PaperIWidthMM - (WidthParMM + WidthParMM)) / 2
+  val MarLeftIMM: Double  = ColSepIMM / 2
+  val MarLeftOMM: Double  = MarLeftIMM + InnerWidthReduxMM
+
+  def HeightParMM(numLines: Int): Double =
+    LineSpacingMM * numLines
 
   def readOrderedParInfo(): Vec[ParFileInfo] = {
     val info0 = readParInfo()
@@ -109,6 +116,9 @@ object Catalog {
   def stripTemplate(s: String): String = s.stripMargin.replace('@', '\\')
 
   case class Rectangle(x: Double, y: Double, width: Double, height: Double) {
+    def cx: Double = x + width /2
+    def cy: Double = y + height/2
+
     def * (scalar: Double): Rectangle =
       copy(x = x* scalar, y = y * scalar, width = width * scalar, height = height * scalar)
 
@@ -119,20 +129,39 @@ object Catalog {
       copy(x = x - left, y = y - top, width = width + left + right, height = height + top + bottom)
   }
 
-  def getParPage(i: ParFileInfo): Int = (i.id - 1) / 3
+  def getParPage(parIdx: Int): Int = parIdx / 3
 
-  def getParRectMM(i: ParFileInfo): Rectangle = {
-    val idx = (i.id - 1) % 3
+  object Lang {
+    case object De extends Lang
+    case object En extends Lang
+  }
+  sealed trait Lang
 
-    val w   = WidthParMM
-    val h   = HeightParMM(i.numLines)
-    val x = idx match {
-      case 0 | 2  => MarginLeftMM
-      case 1      => PaperWidthMM - MarginRightMM - WidthParMM
+  def getParRectMM(info: Vec[ParFileInfo], parIdx: Int, absLeft: Boolean = false, lang: Lang = Lang.De): Rectangle = {
+    val i       = info(parIdx)
+    val pageIdx = getParPage(parIdx)
+    val idx     = parIdx % 3
+
+    val w     = WidthParMM
+    val h     = HeightParMM(i.numLines)
+    val left  = if (pageIdx == 0) MarLeftOMM else MarLeftIMM
+    val x0 = idx match {
+      case 0 | 2  => left
+      case 1      => left + WidthParMM + ColSepIMM
     }
+    val x = if (pageIdx == 0 || !absLeft) x0 else {
+      x0 + PaperWidthMM + (pageIdx - 1) * PaperIWidthMM
+    }
+
     val y = idx match {
       case 0 => MarginTopMM
-      case 1 => (PaperHeightMM - h)/2 // XXX TODO
+      case 1 =>
+        // (PaperHeightMM - h)/2
+        val rPred = getParRectMM(info = info, parIdx = parIdx - 1, absLeft = absLeft, lang = lang)
+        val rSucc = getParRectMM(info = info, parIdx = parIdx + 1, absLeft = absLeft, lang = lang)
+        val cy    = (rPred.cy + rSucc.cy)/2
+        cy - h/2 - LineSpacingMM
+
       case 2 => PaperHeightMM - MarginBotMM - h
     }
 
@@ -140,27 +169,34 @@ object Catalog {
   }
 
   def renderPages(): Unit = {
-    val pre = stripTemplate(s"""@documentclass[10pt]{article}
-       |@usepackage[paperheight=${PaperHeightMM}mm,paperwidth=${PaperWidthMM}mm,top=0mm,bottom=0mm,left=0mm,right=0mm]{geometry}
-       |@usepackage{tikz}
-       |@usepackage{graphicx}
-       |@usetikzlibrary{calc}
-       |@begin{document}
-       |@pagestyle{empty}
-       |""")
+    val pre = {
+      val pw = /* if (pageIdx == 0) */ PaperWidthMM /* else PaperIWidthMM */
+      stripTemplate(s"""@documentclass[10pt]{article}
+                       |@usepackage[paperheight=${PaperHeightMM}mm,paperwidth=${pw}mm,top=0mm,bottom=0mm,left=0mm,right=0mm]{geometry}
+                       |@usepackage{tikz}
+                       |@usepackage{graphicx}
+                       |@usetikzlibrary{calc}
+                       |@begin{document}
+                       |@pagestyle{empty}
+                       |""")
+    }
 
     val post = stripTemplate(
       """@end{document}
         |""")
 
-    def mkGraphics(i: ParFileInfo): String = {
-      val r           = getParRectMM(i)
+    val info = readOrderedParInfo()
+
+    def mkGraphics(parIdx: Int, absLeft: Boolean = false): String = {
+      val r           = getParRectMM(info = info, parIdx = parIdx, absLeft = absLeft)
       val trimLeft    = MarginLeftMM
       val trimTop     = MarginTopMM
       val trimBottom  = PaperHeightMM - MarginBotMM - r.height
       val trimRight   = PaperWidthMM - MarginRightMM - WidthParMM
+      val i           = info(parIdx)
 
-//      @fbox{@includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(f.id)}}}
+//      @fbox{@includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(i.id)}}}
+//      @includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(i.id)}}
 
       stripTemplate(
         s"""  @node[anchor=north west,inner sep=0] at ($$(current page.north west)+(${r.x}mm,${-r.y}mm)$$) {
@@ -170,7 +206,7 @@ object Catalog {
       )
     }
 
-    def mkPage(f1: ParFileInfo, f2: ParFileInfo, f3: ParFileInfo): String = {
+    def mkPage(f1: Int, f2: Int, f3: Int): String = {
       stripTemplate(
         s"""@begin{tikzpicture}[remember picture,overlay]
            |${mkGraphics(f1)}
@@ -181,10 +217,9 @@ object Catalog {
         )
     }
 
-    val info      = readOrderedParInfo()
-    val pageInfo  = info.grouped(3)
-    val pages     = pageInfo.map { case Seq(f1, f2, f3) => mkPage(f1, f2, f3) }
-    val text      = pages.mkString(pre, "\\newpage\n", post)
+    val parIndicies = info.indices.grouped(3)
+    val pages       = parIndicies.map { case Seq(f1, f2, f3) => mkPage(f1, f2, f3) }
+    val text        = pages.mkString(pre, "\\newpage\n", post)
 
     val fArrTex   = dirTmp / s"${fOutArr.base}.tex"
     writeText(text, fArrTex)
@@ -220,7 +255,7 @@ object Catalog {
   val pdftk   : String = "pdftk"
 
   // SVG pixel density
-  val ppmSVG: Double = 96.0 / 25.4
+  val ppmmSVG: Double = 96.0 / 25.4
 
   case class Style(font: Font)
 
@@ -342,7 +377,7 @@ object Catalog {
     val fntSize   = m("font-size")
     val fntFamily = m("font-family")
     val fntSizeD  = {
-      // XXX TODO -- somehow inkscape treats 1 px = 1 pt here?
+      // N.B. inkscape treats 1 px = 1 pt here
       require (fntSize.endsWith("px"))
       fntSize.substring(0, fntSize.length - 2).toFloat
     }

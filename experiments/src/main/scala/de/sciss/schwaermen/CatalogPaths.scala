@@ -24,7 +24,7 @@ import de.sciss.kollflitz.Vec
 import de.sciss.neuralgas
 import de.sciss.neuralgas.{ComputeGNG, ImagePD}
 import de.sciss.numbers
-import de.sciss.schwaermen.Catalog.{ColumnSepMM, FontSizePt, LineSpacingPt, Transform, dirTmp, exec, inkscape, pdflatex, setAttr, stripTemplate, writeSVG, writeText}
+import de.sciss.schwaermen.Catalog.{ColumnSepMM, FontSizePt, LineSpacingPt, Transform, dirTmp, exec, inkscape, pdflatex, setAttr, stripTemplate, writeSVG, ppmmSVG, writeText, PaperWidthMM, PaperHeightMM}
 
 import scala.swing.{Component, Dimension, Frame, Graphics2D, Swing}
 
@@ -58,13 +58,16 @@ object CatalogPaths {
 
    */
 
-  val ppi       : Double  = 150.0 // 90.0
-  val ppmm      : Double  = ppi / 25.4
+  val ppi       : Double  = 150.0       // for the GNG
+  val ppmm      : Double  = ppi / 25.4  // for the GNG
   val PadParMM  : Int     = 5 // 2
   val PadMarMM  : Int     = 5 // 2
 
-  lazy val PageWidthPx : Int = math.round(ppmm * Catalog.PaperWidthMM ).toInt
-  lazy val PageHeightPx: Int = math.round(ppmm * Catalog.PaperHeightMM).toInt
+  lazy val PageWidthPx  : Int = math.round(ppmm * PaperWidthMM ).toInt
+  lazy val PageHeightPx : Int = math.round(ppmm * PaperHeightMM).toInt
+
+//  lazy val PageIWidthPx : Int = math.round(ppmm * PaperIWidthMM).toInt
+//  lazy val PageIHeightPx: Int = PageHeightPx
 
   lazy val fOutGNG : File = Catalog.dir / "gng.bin"
 
@@ -202,7 +205,7 @@ object CatalogPaths {
 
     val textNode    = svg.text.head
     val textLine    = textNode.children.head
-    val textScaleMM = svg.transform.scaleX / Catalog.ppmSVG
+    val textScaleMM = svg.transform.scaleX / Catalog.ppmmSVG
     val textExtent  = textLine.x.last * textScaleMM
     val pathCursor  = new PathCursor(intp)
     val pathExtent  = pathCursor.extent // intp.sliding(2, 1).map { case Seq(a, b) => (a dist b) / ppmm } .sum
@@ -222,8 +225,8 @@ object CatalogPaths {
       t2
     }
 
-    val widthOut  = Catalog.PaperWidthMM  * Catalog.ppmSVG
-    val heightOut = Catalog.PaperHeightMM * Catalog.ppmSVG
+    val widthOut  = PaperWidthMM  * ppmmSVG
+    val heightOut = PaperHeightMM * ppmmSVG
 
     val gTransOut = {
 //      val at = AffineTransform.getTranslateInstance(0.0, heightOut)
@@ -394,9 +397,9 @@ object CatalogPaths {
     val MarPx = math.round(PadMarMM * ppmm).toInt
     gImg.fillRect(MarPx, MarPx, SurfaceWidthPx - (MarPx + MarPx), SurfaceHeightPx - (MarPx + MarPx))
     gImg.setColor(Color.white)
-    info.foreach { i =>
-      val pi  = Catalog.getParPage(i)
-      val r   = Catalog.getParRectMM(i).border(PadMarMM) * ppmm
+    info.zipWithIndex.foreach { case (i, parIdx) =>
+      val pi  = Catalog.getParPage(parIdx)
+      val r   = Catalog.getParRectMM(info, parIdx = parIdx).border(PadMarMM) * ppmm
       val px  = pi * PageWidthPx
       val xi  = math.round(r.x).toInt
       val yi  = math.round(r.y).toInt
