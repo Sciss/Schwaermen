@@ -79,6 +79,8 @@ object Catalog {
   val MarLeftIMM: Double  = ColSepIMM / 2
   val MarLeftOMM: Double  = MarLeftIMM + InnerWidthReduxMM
 
+  def TotalPaperWidthMM: Int = PaperWidthMM + 5 * PaperIWidthMM
+
   def HeightParMM(numLines: Int): Double =
     LineSpacingMM * numLines
 
@@ -168,9 +170,9 @@ object Catalog {
     Rectangle(x = x, y = y, width = w, height = h)
   }
 
-  def renderPages(): Unit = {
+  def renderPages(splitPages: Boolean = false, fbox: Boolean = false): Unit = {
     val pre = {
-      val pw = /* if (pageIdx == 0) */ PaperWidthMM /* else PaperIWidthMM */
+      val pw = if (splitPages) PaperWidthMM else TotalPaperWidthMM // /* if (pageIdx == 0) */ PaperWidthMM /* else PaperIWidthMM */
       stripTemplate(s"""@documentclass[10pt]{article}
                        |@usepackage[paperheight=${PaperHeightMM}mm,paperwidth=${pw}mm,top=0mm,bottom=0mm,left=0mm,right=0mm]{geometry}
                        |@usepackage{tikz}
@@ -187,7 +189,7 @@ object Catalog {
 
     val info = readOrderedParInfo()
 
-    def mkGraphics(parIdx: Int, absLeft: Boolean = false): String = {
+    def mkGraphics(parIdx: Int, absLeft: Boolean = !splitPages): String = {
       val r           = getParRectMM(info = info, parIdx = parIdx, absLeft = absLeft)
       val trimLeft    = MarginLeftMM
       val trimTop     = MarginTopMM
@@ -198,34 +200,51 @@ object Catalog {
 //      @fbox{@includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(i.id)}}}
 //      @includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(i.id)}}
 
+      val fboxIn  = if (fbox) "@fbox{" else ""
+      val fboxOut = if (fbox) "}"      else ""
+
       stripTemplate(
         s"""  @node[anchor=north west,inner sep=0] at ($$(current page.north west)+(${r.x}mm,${-r.y}mm)$$) {
-           |    @includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(i.id)}}
+           |    $fboxIn@includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(i.id)}}$fboxOut
            |  };
            |"""
       )
     }
 
+    val tikzBegin = stripTemplate(
+      s"""@begin{tikzpicture}[remember picture,overlay]
+         |""".stripMargin)
+
+    val tikzEnd =  stripTemplate(
+      s"""@end{tikzpicture}
+         |""".stripMargin)
+
     def mkPage(f1: Int, f2: Int, f3: Int): String = {
+      val pre   = if (splitPages) tikzBegin else ""
+      val post  = if (splitPages) tikzEnd   else ""
       stripTemplate(
-        s"""@begin{tikzpicture}[remember picture,overlay]
+        s"""$pre
            |${mkGraphics(f1)}
            |${mkGraphics(f2)}
            |${mkGraphics(f3)}
-           |@end{tikzpicture}
+           |$post
            |"""
         )
     }
 
-    val parIndicies = info.indices.grouped(3)
-    val pages       = parIndicies.map { case Seq(f1, f2, f3) => mkPage(f1, f2, f3) }
-    val text        = pages.mkString(pre, "\\newpage\n", post)
+    val parIndices  = info.indices.grouped(3)
+    val pages       = parIndices.map { case Seq(f1, f2, f3) => mkPage(f1, f2, f3) }
+    val parSep      = if (splitPages) "\\newpage\n" else "\n"
+    val pre1        = if (splitPages) pre   else pre ++ tikzBegin
+    val post1       = if (splitPages) post  else tikzEnd ++ post
+    val text        = pages.mkString(pre1, parSep, post1)
 
     val fArrTex   = dirTmp / s"${fOutArr.base}.tex"
     writeText(text, fArrTex)
     val fArrPDF   = fArrTex.replaceExt("pdf")
     val argPDF    = Seq("-interaction=batchmode", fArrTex.path)
     exec(pdflatex, dirTmp, argPDF)
+    exec(pdflatex, dirTmp, argPDF)  // WTF latex
     exec("cp", dirTmp, fArrPDF.path :: fOutArr.path :: Nil)
   }
 
@@ -517,10 +536,17 @@ object Catalog {
 
     val (groupOut, numLines) = {
       val tt0: Seq[Text] = group.child.flatMap(parseText)
-      val _numLines = tt0.iterator.flatMap { t =>
-        val y0 = t.transform.f
-        t.children.map(_.start.y + y0)
-      }.toSet.size
+      val set = tt0.iterator.flatMap { t =>
+        val y0 = t.transform.translateY
+        t.children.map(c => (c.y - y0).toInt)
+      }.toSet // XXX TODO --- possible problem with floating point noise
+
+//      if (textId == 15) {
+//        val xx = set.toList.sorted
+//        println("AQUI")
+//      }
+
+      val _numLines = set.size
 
 //      println(s"numLines = $numLines")
 
@@ -613,7 +639,7 @@ object Catalog {
     import sys.process._
     val cmd = program +: args
     val res = Process(cmd, dir).!
-    require (res == 0, s"$program, failed with code $res")
+    require (res == 0, s"$cmd, failed with code $res")
   }
 
   def writeSVG(node: xml.Node, f: File /* , pretty: Boolean = true */): Unit = {
