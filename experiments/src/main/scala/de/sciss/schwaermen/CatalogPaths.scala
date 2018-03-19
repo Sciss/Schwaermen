@@ -226,8 +226,10 @@ object CatalogPaths {
     val heightOut = Catalog.PaperHeightMM * Catalog.ppmSVG
 
     val gTransOut = {
-      val at = AffineTransform.getTranslateInstance(0.0, heightOut)
-      at.scale(1.0 / Catalog.ppmSVG, -1.0 / Catalog.ppmSVG)
+//      val at = AffineTransform.getTranslateInstance(0.0, heightOut)
+//      at.scale(1.0 / Catalog.ppmSVG, -1.0 / Catalog.ppmSVG)
+      val at = AffineTransform.getTranslateInstance(0.0, 0.0)
+      at.scale(1.0 / Catalog.ppmSVG, 1.0 / Catalog.ppmSVG)
       Transform.fromAwt(at)
     }
 
