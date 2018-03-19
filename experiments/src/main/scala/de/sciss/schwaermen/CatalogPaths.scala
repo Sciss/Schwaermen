@@ -24,8 +24,10 @@ import de.sciss.kollflitz.Vec
 import de.sciss.neuralgas.{ComputeGNG, ImagePD}
 import de.sciss.{neuralgas, numbers}
 import de.sciss.schwaermen.Catalog._
+import de.sciss.swingplus.ComboBox
 
-import scala.swing.{Component, Dimension, Frame, Graphics2D, Swing}
+import scala.swing.event.SelectionChanged
+import scala.swing.{BorderPanel, Component, Dimension, Frame, Graphics2D, Swing}
 
 object CatalogPaths {
   def main(args: Array[String]): Unit = {
@@ -35,7 +37,8 @@ object CatalogPaths {
       println("(Skipping runGNG)")
     }
 //    viewGNG()
-    test()
+//    testDrawPath()
+    testViewFolds()
   }
 
   /*
@@ -182,7 +185,7 @@ object CatalogPaths {
     }
   }
 
-  case class Fold(pages: List[FoldPage]) {
+  case class Fold(indices: List[Int], pages: List[FoldPage]) {
     lazy val surface: Rectangle = {
       val r = pages.map(_.rectangle)
       val hd :: tl = r
@@ -194,14 +197,14 @@ object CatalogPaths {
       val dx  = -s.x
       val dy  = -s.y
       val p1  = pages.map(_.shift(dx, dy))
-      copy(p1)
+      copy(pages = p1)
     }
   }
 
   def mkFoldSeq(info: Vec[ParFileInfo], lang: Lang = Lang.De): List[Fold] = foldIndices.flatMap { indices =>
 
     def loop(idx: Int, rem: List[Int], pred: List[FoldPage], res: List[Fold]): List[Fold] =
-      if (idx == NumPages) res else {
+      if (idx == NumPages) res :+ Fold(indices, pred) else {
         val r1      = getPageRectMM(pageIdx = idx, absLeft = true, lang = lang)
         val parIdx0 = idx * 3
         val par1    = List(parIdx0, parIdx0+1, parIdx0+2).map(parIdx =>
@@ -238,7 +241,7 @@ object CatalogPaths {
     private[this] var _pos  = 0.0
     private[this] var ptIdx = 0
     private[this] var ptOff = 0.0
-    
+
     lazy val extent: Double =
       pt.sliding(2, 1).map { case Seq(a, b) => a dist b } .sum
 
@@ -297,7 +300,7 @@ object CatalogPaths {
     }
   }
 
-  def test(): Unit = {
+  def testDrawPath(): Unit = {
     val text = CatalogTexts.edgesDe.head._2
     val latex = latexEdgeTemplate(text)
     require (dirTmp.isDirectory, s"Not a directory: $dirTmp")
@@ -499,6 +502,95 @@ object CatalogPaths {
       new Frame {
         contents = comp
         preferredSize = new Dimension(1600, 400)
+        pack().centerOnScreen()
+        open()
+      }
+    }
+  }
+
+  def mkFoldImage(info: Vec[ParFileInfo], fold: Fold): BufferedImage = {
+    val w   = math.round(ppmm * fold.surface.width ).toInt
+    val h   = math.round(ppmm * fold.surface.height).toInt
+    val img = new BufferedImage(w, h, BufferedImage.TYPE_BYTE_BINARY)
+    val g   = img.createGraphics()
+    val c0  = Color.white
+    val c1  = Color.black
+
+    def fillRectMM(r: Rectangle): Unit = {
+      val rs = r.scale(ppmm)
+      val xi = math.round(rs.x).toInt
+      val yi = math.round(rs.y).toInt
+      val wi = math.round(rs.x + rs.width ).toInt - xi
+      val hi = math.round(rs.y + rs.height).toInt - yi
+      g.fillRect(xi, yi, wi, hi)
+    }
+
+    g.setColor(c0)
+    g.fillRect(0, 0, w, h)
+    g.setColor(c1)
+    fold.pages.foldLeft(Option.empty[Rectangle]) { case (rPred, foldPage) =>
+      val r0 = foldPage.rectangle.inset(PadParMM)
+      val r1 = rPred.fold(r0)(_ union r0)
+      fillRectMM(r1)
+      Some(r0)
+    }
+    g.setColor(c0)
+    fold.pages.foreach { foldPage =>
+      foldPage.par.foreach { rp0 =>
+        fillRectMM(rp0)
+      }
+    }
+    g.dispose()
+    img
+  }
+
+  def testViewFolds(): Unit = {
+    val info    = Catalog.readOrderedParInfo()
+    val folds   = mkFoldSeq(info)
+//    val maxRect = folds.map(_.surface).reduce(_ union _)
+    Swing.onEDT {
+      var fold: Fold          = folds.head
+      var img : BufferedImage = mkFoldImage(info, fold)
+
+      val ggImage = new Component {
+        preferredSize = new Dimension(1600, 800)
+
+        override protected def paintComponent(g: Graphics2D): Unit = {
+          super.paintComponent(g)
+          g.setColor(Color.gray)
+          val w = peer.getWidth
+          val h = peer.getHeight
+          g.fillRect(0, 0, w, h)
+          val sx = w.toDouble / img.getWidth
+          val sy = h.toDouble / img.getHeight
+          val scale = math.min(sx, sy)
+          val wi = (img.getWidth  * scale).toInt
+          val hi = (img.getHeight * scale).toInt
+          val xi = (w - wi)/2
+          val yi = (h - hi)/2
+          g.drawImage(img, xi, yi, wi, hi, peer)
+          g.setColor(Color.yellow)
+          g.drawString(fold.indices.mkString("[", ", ", "]"), 8, 24)
+        }
+      }
+
+      val ggSelect = new ComboBox(folds.indices) {
+        listenTo(selection)
+        reactions += {
+          case SelectionChanged(_) =>
+            img.flush()
+            fold = folds(selection.index)
+            img = mkFoldImage(info, fold)
+            ggImage.repaint()
+        }
+      }
+
+      new Frame {
+        title     = "Folds"
+        contents  = new BorderPanel {
+          add(ggSelect, BorderPanel.Position.North )
+          add(ggImage , BorderPanel.Position.Center)
+        }
         pack().centerOnScreen()
         open()
       }
