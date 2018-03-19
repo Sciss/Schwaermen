@@ -164,10 +164,10 @@ object CatalogPaths {
       math.atan2(d.y, d.x)
     }
 
-    def transform: Transform = {
+    def transform(scale: Double = 1.0): Transform = {
       val loc = location
       val r   = rotation
-      val at  = AffineTransform.getTranslateInstance(loc.x, loc.y)
+      val at  = AffineTransform.getTranslateInstance(loc.x * scale, loc.y * scale)
       at.rotate(r)
       Transform.fromAwt(at)
     }
@@ -213,12 +213,12 @@ object CatalogPaths {
     var lastTextX   = 0.0
     val textNodesOut = chopped.map { t =>
       val x0 = t.children.head.x.head
-      pathCursor.advance(x0 - lastTextX)
+      pathCursor.advance((x0 - lastTextX) * textScaleMM)
       lastTextX = x0
       val t1 = t.mapChildren { tSpan =>
         tSpan.setLocation(0.0 :: Nil, 0.0)
       }
-      val t2 = t1.setTransform(pathCursor.transform)
+      val t2 = t1.setTransform(pathCursor.transform(1.0 / textScaleMM))
       t2
     }
 
@@ -229,7 +229,8 @@ object CatalogPaths {
 //      val at = AffineTransform.getTranslateInstance(0.0, heightOut)
 //      at.scale(1.0 / Catalog.ppmSVG, -1.0 / Catalog.ppmSVG)
       val at = AffineTransform.getTranslateInstance(0.0, 0.0)
-      at.scale(1.0 / Catalog.ppmSVG, 1.0 / Catalog.ppmSVG)
+      // at.scale(Catalog.ppmSVG, Catalog.ppmSVG)
+      at.scale(svg.transform.scaleX, svg.transform.scaleX)
       Transform.fromAwt(at)
     }
 
