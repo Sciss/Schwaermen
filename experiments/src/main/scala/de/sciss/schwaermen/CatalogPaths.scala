@@ -21,10 +21,9 @@ import java.io.{DataInputStream, DataOutputStream, FileInputStream, FileOutputSt
 import de.sciss.catmullrom.{CatmullRomSpline, Point2D}
 import de.sciss.file._
 import de.sciss.kollflitz.Vec
-import de.sciss.neuralgas
 import de.sciss.neuralgas.{ComputeGNG, ImagePD}
-import de.sciss.numbers
-import de.sciss.schwaermen.Catalog.{ColumnSepMM, FontSizePt, LineSpacingPt, TotalPaperWidthMM, Transform, dirTmp, exec, inkscape, pdflatex, setAttr, stripTemplate, writeSVG, ppmmSVG, writeText, PaperWidthMM, PaperHeightMM}
+import de.sciss.{neuralgas, numbers}
+import de.sciss.schwaermen.Catalog._
 
 import scala.swing.{Component, Dimension, Frame, Graphics2D, Swing}
 
@@ -58,10 +57,10 @@ object CatalogPaths {
 
    */
 
-  val ppi       : Double  = 150.0       // for the GNG
-  val ppmm      : Double  = ppi / 25.4  // for the GNG
-  val PadParMM  : Int     = 5 // 2
-  val PadMarMM  : Int     = 5 // 2
+  lazy val ppi       : Double  = 150.0       // for the GNG
+  lazy val ppmm      : Double  = ppi / 25.4  // for the GNG
+  lazy val PadParMM  : Int     = 5 // 2
+  lazy val PadMarMM  : Int     = 5 // 2
 
   lazy val PageWidthPx  : Int = math.round(ppmm * PaperWidthMM ).toInt
   lazy val PageHeightPx : Int = math.round(ppmm * PaperHeightMM).toInt
@@ -71,7 +70,7 @@ object CatalogPaths {
 
   lazy val fOutGNG : File = Catalog.dir / "gng.bin"
 
-  val GNG_MaxNodes  = 6561 // 8192
+  lazy val GNG_MaxNodes  = 6561 // 8192
 
   private val GNG_COOKIE = 0x474E470   // "GNG\0"
 
@@ -98,7 +97,7 @@ object CatalogPaths {
        |"""
   )
 
-  val testRoute: List[Int] = List(
+  lazy val testRoute: List[Int] = List(
     3621, 2999, 6374,  182, 3149, 1398,  933, 2136, 1413, 4812,  124,  635, 4662, 1373, 3859, 4332, 1615, 3705, 2496,
     3654,  502, 5303,  340,  417, 4416, 6510, 2647, 3996, 5986,  961, 3244,  121, 4740, 3088, 4457, 1982, 2758, 1842,
     6007, 2731, 1748, 1897, 2826, 4156, 6072, 2789, 1294, 6127,  460, 3418, 2323, 3513, 2536, 1718, 2201, 3301, 2239,
@@ -112,7 +111,129 @@ object CatalogPaths {
       38, 5842, 3902, 2574,  320, 2504, 5869, 1649, 2470, 3689, 5660,  135, 3073,  577, 1365, 5470, 3609, 2370,  296,
      441, 4866, 1500
   )
-  
+
+  lazy val foldIndices: List[List[Int]] = {
+    val base = 0 until (NumPages - 1)
+    val res = (1 to NumPages/2).toList.flatMap { nc =>
+      base.toList.combinations(nc).filterNot { sq =>
+        sq.sliding(2, 1).exists { case Seq(a, b) => a + 1 == b; case _ => false }
+      } .toList
+    } .distinct
+    res
+  }
+
+  case class FoldPage(idx: Int, rectangle: Rectangle, par: List[Rectangle], rotation: Int = 0) {
+    def isCW      : Boolean = rotation == +180
+    def isCCW     : Boolean = rotation == -180
+    def isUpright : Boolean = rotation ==    0
+
+    def shift(dx: Double, dy: Double): FoldPage = {
+      val r1    = rectangle.translate(dx, dy)
+      val par1  = par.map(_.translate(dx, dy))
+      copy(rectangle = r1, par = par1)
+    }
+
+    private def rotatePars: List[Rectangle] = par.map { r =>
+      val x1 = rectangle.right  - r.right
+      val y1 = rectangle.bottom - r.bottom
+      val dx = x1 - r.x
+      val dy = y1 - r.y
+      r.translate(dx, dy)
+    }
+
+    def rotateCW: FoldPage = {
+      require(!isCW)
+      val rot1 = rotation + 180
+      performRotate(rot1, isCCW = false)
+    }
+
+    def rotateCCW: FoldPage = {
+      require(!isCCW)
+      val rot1 = rotation - 180
+      performRotate(rot1, isCCW = true)
+    }
+
+    private def performRotate(rot1: Int, isCCW: Boolean): FoldPage = {
+      val par1 = rotatePars
+      // in CW , if rotation was    0, bottom left corner is fixed - translation is (-w, +h)
+      // in CW , if rotation was -180, bottom left corner is fixed - translation is (+w, -h
+      // in CCW, if rotation was    0, top    left corner is fixed - translation is (-w, -h)
+      // in CCW, if rotation was -180, top    left corner is fixed - translation is (+w, +h
+      val dx    = if (isUpright)         -rectangle.width   else +rectangle.width
+      val dy    = if (isUpright ^ isCCW) +rectangle.height  else -rectangle.height
+      val f1    = copy(par = par1, rotation = rot1)
+      f1.shift(dx, dy)
+    }
+
+    def nextTo(pred: FoldPage): FoldPage = {
+      require(isUpright)
+      if (pred.isUpright) {
+        val curr = this
+        val dx = pred.rectangle.right - curr.rectangle.left
+        val dy = pred.rectangle.top   - curr.rectangle.top
+        curr.shift(dx, dy)
+
+      } else {
+        val curr = if (pred.isCW) rotateCW else rotateCCW
+        val dx = pred.rectangle.left  - curr.rectangle.right
+        val dy = pred.rectangle.top   - curr.rectangle.top
+        curr.shift(dx, dy)
+      }
+    }
+  }
+
+  case class Fold(pages: List[FoldPage]) {
+    lazy val surface: Rectangle = {
+      val r = pages.map(_.rectangle)
+      val hd :: tl = r
+      tl.foldLeft(hd)(_ union _)
+    }
+
+    def normalizeOrigin: Fold = {
+      val s   = surface
+      val dx  = -s.x
+      val dy  = -s.y
+      val p1  = pages.map(_.shift(dx, dy))
+      copy(p1)
+    }
+  }
+
+  def mkFoldSeq(info: Vec[ParFileInfo], lang: Lang = Lang.De): List[Fold] = foldIndices.flatMap { indices =>
+
+    def loop(idx: Int, rem: List[Int], pred: List[FoldPage], res: List[Fold]): List[Fold] =
+      if (idx == NumPages) res else {
+        val r1      = getPageRectMM(pageIdx = idx, absLeft = true, lang = lang)
+        val parIdx0 = idx * 3
+        val par1    = List(parIdx0, parIdx0+1, parIdx0+2).map(parIdx =>
+          getParRectMM(info, parIdx = parIdx, absLeft = true, lang = lang)
+        )
+        val p0      = FoldPage(idx = idx, rectangle = r1, par = par1)
+        val p1      = pred.lastOption.fold(p0)(p0.nextTo)
+        val foldIdx = idx - 1
+        rem match {
+          case `foldIdx` :: remTail =>
+            if (foldIdx % 2 == 0) { // rotate
+              val res1 = if (p1.isCCW) res else {
+                val p2 = p1.rotateCCW
+                loop(idx = idx + 1, rem = remTail, pred = pred :+ p2, res = res)
+              }
+              if (p1.isCW) res1 else {
+                val p2 = p1.rotateCW
+                loop(idx = idx + 1, rem = remTail, pred = pred :+ p2, res = res1)
+              }
+
+            } else {  // hide
+              loop(idx = idx + 1, rem = remTail, pred = pred.init, res = res)
+            }
+
+          case _ => loop(idx = idx + 1, rem = rem, pred = pred :+ p1, res = res)
+        }
+      }
+
+    val seq0 = loop(idx = 0, rem = indices, pred = Nil, res = Nil)
+    seq0.map(_.normalizeOrigin)
+  }
+
   class PathCursor(pt: Vec[Point2D]) {
     private[this] var _pos  = 0.0
     private[this] var ptIdx = 0
@@ -397,9 +518,9 @@ object CatalogPaths {
     val MarPx = math.round(PadMarMM * ppmm).toInt
     gImg.fillRect(MarPx, MarPx, SurfaceWidthPx - (MarPx + MarPx), SurfaceHeightPx - (MarPx + MarPx))
     gImg.setColor(Color.white)
-    info.zipWithIndex.foreach { case (i, parIdx) =>
+    info.indices.foreach { parIdx =>
       val pi  = Catalog.getParPage(parIdx)
-      val r   = Catalog.getParRectMM(info, parIdx = parIdx).border(PadMarMM) * ppmm
+      val r   = Catalog.getParRectMM(info, parIdx = parIdx).border(PadMarMM) scale ppmm
       val px  = pi * PageWidthPx
       val xi  = math.round(r.x).toInt
       val yi  = math.round(r.y).toInt

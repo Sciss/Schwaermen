@@ -79,7 +79,9 @@ object Catalog {
   val MarLeftIMM: Double  = ColSepIMM / 2
   val MarLeftOMM: Double  = MarLeftIMM + InnerWidthReduxMM
 
-  def TotalPaperWidthMM: Int = PaperWidthMM + 5 * PaperIWidthMM
+  val NumPages  = 6
+
+  def TotalPaperWidthMM: Int = PaperWidthMM + (NumPages - 1) * PaperIWidthMM
 
   def HeightParMM(numLines: Int): Double =
     LineSpacingMM * numLines
@@ -121,10 +123,30 @@ object Catalog {
     def cx: Double = x + width /2
     def cy: Double = y + height/2
 
-    def * (scalar: Double): Rectangle =
+    def left  : Double = x
+    def top   : Double = y
+    def right : Double = x + width
+    def bottom: Double = y + height
+
+    def scale(scalar: Double): Rectangle =
       copy(x = x* scalar, y = y * scalar, width = width * scalar, height = height * scalar)
 
+    def translate(dx: Double, dy: Double): Rectangle =
+      copy(x = x + dx, y = y + dy)
+
+    def inset(amt: Double): Rectangle = border(-amt)
+
     def border(amt: Double): Rectangle = border(amt, amt, amt, amt)
+
+    def union(that: Rectangle): Rectangle = {
+      val xOut = math.min(this.x      , that.x      )
+      val yOut = math.min(this.y      , that.y      )
+      val rOut = math.max(this.right  , that.right  )
+      val bOut = math.max(this.bottom , that.bottom )
+      val wOut = rOut - xOut
+      val hOut = bOut - yOut
+      Rectangle(xOut, yOut, wOut, hOut)
+    }
 
     // let's use LaTeX order
     def border(left: Double, bottom: Double, right: Double, top: Double): Rectangle =
@@ -138,6 +160,16 @@ object Catalog {
     case object En extends Lang
   }
   sealed trait Lang
+
+  def getPageRectMM(pageIdx: Int, absLeft: Boolean = false, lang: Lang = Lang.De): Rectangle = {
+    val x = if (pageIdx == 0 || !absLeft) 0.0 else {
+      PaperWidthMM + (pageIdx - 1) * PaperIWidthMM
+    }
+    val y = 0.0
+    val w = if (pageIdx == 0) PaperWidthMM else PaperIWidthMM
+    val h = PaperHeightMM
+    Rectangle(x, y, w, h)
+  }
 
   def getParRectMM(info: Vec[ParFileInfo], parIdx: Int, absLeft: Boolean = false, lang: Lang = Lang.De): Rectangle = {
     val i       = info(parIdx)
