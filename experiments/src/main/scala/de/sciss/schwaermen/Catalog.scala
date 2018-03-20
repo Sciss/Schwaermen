@@ -49,35 +49,51 @@ object Catalog {
   val fOutArr   : File = dir / "par_arr.pdf"
   val fLinesOut : File = dir / "par_lines.txt"
 
-  val PaperWidthMM  : Int = 200
-  val PaperHeightMM : Int = 200
-  val MarginTopMM   : Int =  25
-  val MarginBotMM   : Int =  25
-  val MarginLeftMM  : Int =  25
-  val MarginRightMM : Int =  25
-
-//  val MarginParMM   : Int =  25
-//  val WidthParMM    : Int = (200 - 25 - 25)/2
-//  val HeightParMM   : Int = WidthParMM
+//  val PaperWidthMM  : Int = 200
+//  val PaperHeightMM : Int = 200
+//  val MarginTopMM   : Int =  25
+//  val MarginBotMM   : Int =  25
+//  val MarginLeftMM  : Int =  25
+//  val MarginRightMM : Int =  25
 //
-//  val WidthParBMM   : Int = WidthParMM  + MarginParMM + MarginParMM
-//  val HeightParBMM  : Int = HeightParMM + MarginParMM + MarginParMM
+//  val ColumnSepMM   : Int     = 25
+//  val LineSpacingPt : Double  = 10.2
+//  val FontSizePt    : Double  = 8.5
+//  val PointsPerMM   : Double  = 72 / 25.4   // 1 pt = 1/72 inch
+//  val LineSpacingMM : Double  = LineSpacingPt / PointsPerMM
+//
+//  val WidthParMM    : Double  = (PaperWidthMM - (MarginLeftMM + MarginRightMM + ColumnSepMM))/2.0
+//
+//  // 'inner'
+//  val InnerWidthReduxMM : Int = 10
+//  val PaperIWidthMM     : Int = PaperWidthMM - InnerWidthReduxMM
+//
+//  val ColSepIMM : Double  = (PaperIWidthMM - (WidthParMM + WidthParMM)) / 2
+//  val MarLeftIMM: Double  = ColSepIMM / 2
+//  val MarLeftOMM: Double  = MarLeftIMM + InnerWidthReduxMM
 
-  val ColumnSepMM   : Int     = 25
-  val LineSpacingPt : Double  = 10.2
-  val FontSizePt    : Double  = 8.5
-  val PointsPerMM   : Double  = 72 / 25.4   // 1 pt = 1/72 inch
-  val LineSpacingMM : Double  = LineSpacingPt / PointsPerMM
+  val PaperWidthMM      : Int     = 158 + 12
+  val PaperHeightMM     : Int     = 158
+  val MarginTopMM       : Int     =  21
+  val MarginBotMM       : Int     =  21
+  val MarginLeftMM      : Int     =  21
+  val MarginRightMM     : Int     =  21
 
-  val WidthParMM    : Double  = (PaperWidthMM - (MarginLeftMM + MarginRightMM + ColumnSepMM))/2.0
+  val ColumnSepMM       : Int     = 21
+  val LineSpacingPt     : Double  = 8.4
+  val FontSizePt        : Double  = 7.0
+  val PointsPerMM       : Double  = 72 / 25.4   // 1 pt = 1/72 inch
+  val LineSpacingMM     : Double  = LineSpacingPt / PointsPerMM
+
+  val WidthParMM        : Double  = (PaperWidthMM - (MarginLeftMM + MarginRightMM + ColumnSepMM))/2.0
 
   // 'inner'
-  val InnerWidthReduxMM : Int = 10
-  val PaperIWidthMM     : Int = PaperWidthMM - InnerWidthReduxMM
+  val InnerWidthReduxMM : Int     = 12
+  val PaperIWidthMM     : Int     = PaperWidthMM - InnerWidthReduxMM
 
-  val ColSepIMM : Double  = (PaperIWidthMM - (WidthParMM + WidthParMM)) / 2
-  val MarLeftIMM: Double  = ColSepIMM / 2
-  val MarLeftOMM: Double  = MarLeftIMM + InnerWidthReduxMM
+  val ColSepIMM         : Double  = (PaperIWidthMM - (WidthParMM + WidthParMM)) / 2
+  val MarLeftIMM        : Double  = ColSepIMM / 2
+  val MarLeftOMM        : Double  = MarLeftIMM + InnerWidthReduxMM
 
   val NumPages  = 6
 
