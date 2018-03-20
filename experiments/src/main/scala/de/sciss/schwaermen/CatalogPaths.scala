@@ -34,13 +34,13 @@ object CatalogPaths {
   def main(args: Array[String]): Unit = {
     val info  = readOrderedParInfo()
     val folds = mkFoldSeq(info)
-    folds.foreach { fold =>
-      val fOutGNG = gngFile(fold)
-      if (!fOutGNG.isFile) {
-        println(s"runGNG(${fOutGNG.name})")
-        runGNG(info, fold, fOutGNG)
-      }
-    }
+//    folds.foreach { fold =>
+//      val fOutGNG = gngFile(fold)
+//      if (!fOutGNG.isFile) {
+//        println(s"runGNG(${fOutGNG.name})")
+//        runGNG(info, fold, fOutGNG)
+//      }
+//    }
 
 //    testDrawPath(folds(6))
 //    viewGNG(folds(5))
@@ -224,15 +224,30 @@ object CatalogPaths {
         (s1 :: s2, Some(p))
       }._1.reverse.mkString("-")
 
-    def normalizeOrigin: Fold = {
-      val s   = surfaceMM
+    // makes sure first page is upright and union rectangle has origin of (0, 0).
+    def normalize: Fold = {
+      val r0 = pages.headOption.fold(0)(_.rotation)
+      val f1 = if (r0 == 0) this else {
+        // val action: FoldPage => FoldPage = if (r0 < 0) _.rotateCW else _.rotateCCW
+        val pages1 = pages.foldLeft(List.empty[FoldPage]) { (res, p) =>
+          val rOld  = p.rotation
+          val rNew  = (rOld - r0 + 360) % 360
+          val p0    = if (p.isCW) p.rotateCCW else if (p.isCCW) p.rotateCW else p
+          val p1    = res.headOption.fold(p0)(p0.nextTo)
+          val p2    = if (rNew < 0) p1.rotateCCW else if (rNew > 0) p1.rotateCW else p1
+          p2 :: res
+        } .reverse
+        copy(pages = pages1)
+      }
+
+      val s   = f1.surfaceMM
       val dx  = -s.x
       val dy  = -s.y
-      val p1  = pages.map(_.shift(dx, dy))
-      copy(pages = p1)
+      val p1  = f1.pages.map(_.shift(dx, dy))
+      f1.copy(pages = p1)
     }
 
-    def isValid: Boolean = {
+    def isValid: Boolean = pages.nonEmpty && {
       pages.combinations(2).forall { case Seq(a, b) => !(a.rectangle overlaps b.rectangle) }
     }
   }
@@ -242,7 +257,7 @@ object CatalogPaths {
     def loop(idx: Int, rem: List[Int], pred: List[FoldPage], res: List[Fold]): List[Fold] =
       if (idx == NumPages) {
         val f = Fold(pages = pred)
-        if (f.isValid) res :+ f else res
+        if (f.isValid && f.pages.head.idx == 0 && f.pages.last.idx == NumPages - 1) res :+ f else res
       } else {
         val r1      = getPageRectMM(pageIdx = idx, absLeft = true, lang = lang)
         val parIdx0 = idx * 3
@@ -254,7 +269,7 @@ object CatalogPaths {
         val foldIdx = idx - 1
         rem match {
           case `foldIdx` :: remTail =>
-            if (foldIdx % 2 == 0) { // rotate
+            if (foldIdx % 2 == 1) { // rotate; == 0 for En, == 1 for De
               val res1 = if (p1.isCCW) res else {
                 val p2 = p1.rotateCCW
                 loop(idx = idx + 1, rem = remTail, pred = pred :+ p2, res = res)
@@ -273,7 +288,7 @@ object CatalogPaths {
       }
 
     val seq0 = loop(idx = 0, rem = indices, pred = Nil, res = Nil)
-    seq0.map(_.normalizeOrigin)
+    seq0.map(_.normalize)
   }
 
   class PathCursor(pt: Vec[Point2D]) {
@@ -490,15 +505,17 @@ object CatalogPaths {
     }
 
     val f3 = if (!tgtIsLeft) f2 else f2.filter { f =>
-      f.pages match {
-        case p1 :: p2 :: _ if p1.rotation == p2.rotation => true
+      f.pages.takeRight(2) match {
+        case p1 :: p2 :: Nil if p1.rotation == p2.rotation => true
         case _ => false
       }
     }
 
-    val f4 = f3.map(_.normalizeOrigin).distinct
-    ??? // distinct has floating point prob
-    f4
+//    val f4 = f3.map(_.normalize).distinct  // distinct has floating point prob
+    val f4 = f3.map(_.normalize)
+    val f5 = f4.iterator.map(f => f.id -> f).toMap.toList
+    val f6 = f5.sortBy { case (fId, _) => f4.indexWhere(_.id == fId) } .map(_._2)
+    f6
   }
 
   def viewGNG(fold: Fold): Unit = {
@@ -701,15 +718,18 @@ object CatalogPaths {
         val srcParIdx = mSrc.getNumber.intValue
         val tgtParIdx = mTgt.getNumber.intValue
         if (srcParIdx >= 0 && tgtParIdx > srcParIdx) {
-          folds           = filterFold(folds0, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
-          val filtered    = folds.map { fF =>
+          folds = filterFold(folds0, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
+          val filtered = folds.map { fF =>
             val idF = fF.id
-            val i   = folds0.indexWhere(_.id.contains(idF))
+            val i = folds0.indexWhere(_.id.contains(idF))
             i
           }
-          ggSelect.items  = filtered
-          updateImage()
+          ggSelect.items = filtered
+        } else {
+          folds = folds0
+          ggSelect.items = folds.indices
         }
+        updateImage()
       }
 
       val ggSrc = new Spinner(mSrc) {
