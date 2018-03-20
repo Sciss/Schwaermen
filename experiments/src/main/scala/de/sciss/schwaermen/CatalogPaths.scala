@@ -33,7 +33,7 @@ import scala.swing.{BorderPanel, Component, Dimension, Frame, Graphics2D, GridPa
 object CatalogPaths {
   def main(args: Array[String]): Unit = {
     val info  = readOrderedParInfo()
-    val folds = mkFoldSeq(info)
+    val folds = mkFoldSeq(info, Lang.De)
 //    folds.foreach { fold =>
 //      val fOutGNG = gngFile(fold)
 //      if (!fOutGNG.isFile) {
@@ -127,9 +127,12 @@ object CatalogPaths {
   lazy val foldIndices: List[List[Int]] = {
     val base = 0 until (NumPages - 1)
     val res = (0 to NumPages/2).toList.flatMap { nc =>
-      base.toList.combinations(nc).filterNot { sq =>
-        sq.sliding(2, 1).exists { case Seq(a, b) => a + 1 == b; case _ => false }
-      } .toList
+      val comb = base.toList.combinations(nc)
+//      val filtered = comb.filterNot { sq =>
+//        sq.sliding(2, 1).exists { case Seq(a, b) => a + 1 == b; case _ => false }
+//      }
+      val filtered = comb
+      filtered.toList
     } .distinct
     res
   }
@@ -252,43 +255,46 @@ object CatalogPaths {
     }
   }
 
-  def mkFoldSeq(info: Vec[ParFileInfo], lang: Lang = Lang.De): List[Fold] = foldIndices.flatMap { indices =>
+  def mkFoldSeq(info: Vec[ParFileInfo], lang: Lang): List[Fold] = {
+    val langFoldWay = if (lang == Lang.De) 1 else 0
+    val all = foldIndices.flatMap { indices =>
+      def loop(idx: Int, rem: List[Int], pred: List[FoldPage], res: List[Fold]): List[Fold] =
+        if (idx == NumPages) {
+          val f = Fold(pages = pred)
+          if (f.isValid && f.pages.head.idx == 0 && f.pages.last.idx == NumPages - 1) res :+ f else res
+        } else {
+          val r1      = getPageRectMM(pageIdx = idx, absLeft = true, lang = lang)
+          val parIdx0 = idx * 3
+          val par1    = List(parIdx0, parIdx0+1, parIdx0+2).map(parIdx =>
+            getParRectMM(info, parIdx = parIdx, absLeft = true, lang = lang)
+          )
+          val p0      = FoldPage(idx = idx, rectangle = r1, par = par1)
+          val p1      = pred.lastOption.fold(p0)(p0.nextTo)
+          val foldIdx = idx - 1
+          rem match {
+            case `foldIdx` :: remTail =>
+              if (foldIdx % 2 == langFoldWay) { // rotate; == 0 for En, == 1 for De
+                val res1 = if (p1.isCCW) res else {
+                  val p2 = p1.rotateCCW
+                  loop(idx = idx + 1, rem = remTail, pred = pred :+ p2, res = res)
+                }
+                if (p1.isCW) res1 else {
+                  val p2 = p1.rotateCW
+                  loop(idx = idx + 1, rem = remTail, pred = pred :+ p2, res = res1)
+                }
 
-    def loop(idx: Int, rem: List[Int], pred: List[FoldPage], res: List[Fold]): List[Fold] =
-      if (idx == NumPages) {
-        val f = Fold(pages = pred)
-        if (f.isValid && f.pages.head.idx == 0 && f.pages.last.idx == NumPages - 1) res :+ f else res
-      } else {
-        val r1      = getPageRectMM(pageIdx = idx, absLeft = true, lang = lang)
-        val parIdx0 = idx * 3
-        val par1    = List(parIdx0, parIdx0+1, parIdx0+2).map(parIdx =>
-          getParRectMM(info, parIdx = parIdx, absLeft = true, lang = lang)
-        )
-        val p0      = FoldPage(idx = idx, rectangle = r1, par = par1)
-        val p1      = pred.lastOption.fold(p0)(p0.nextTo)
-        val foldIdx = idx - 1
-        rem match {
-          case `foldIdx` :: remTail =>
-            if (foldIdx % 2 == 1) { // rotate; == 0 for En, == 1 for De
-              val res1 = if (p1.isCCW) res else {
-                val p2 = p1.rotateCCW
-                loop(idx = idx + 1, rem = remTail, pred = pred :+ p2, res = res)
+              } else {  // hide
+                loop(idx = idx + 1, rem = remTail, pred = pred.init, res = res)
               }
-              if (p1.isCW) res1 else {
-                val p2 = p1.rotateCW
-                loop(idx = idx + 1, rem = remTail, pred = pred :+ p2, res = res1)
-              }
 
-            } else {  // hide
-              loop(idx = idx + 1, rem = remTail, pred = pred.init, res = res)
-            }
-
-          case _ => loop(idx = idx + 1, rem = rem, pred = pred :+ p1, res = res)
+            case _ => loop(idx = idx + 1, rem = rem, pred = pred :+ p1, res = res)
+          }
         }
-      }
 
-    val seq0 = loop(idx = 0, rem = indices, pred = Nil, res = Nil)
-    seq0.map(_.normalize)
+      val seq0 = loop(idx = 0, rem = indices, pred = Nil, res = Nil)
+      seq0.map(_.normalize)
+    }
+    distinctFolds(all)
   }
 
   class PathCursor(pt: Vec[Point2D]) {
@@ -513,8 +519,12 @@ object CatalogPaths {
 
 //    val f4 = f3.map(_.normalize).distinct  // distinct has floating point prob
     val f4 = f3.map(_.normalize)
-    val f5 = f4.iterator.map(f => f.id -> f).toMap.toList
-    val f6 = f5.sortBy { case (fId, _) => f4.indexWhere(_.id == fId) } .map(_._2)
+    distinctFolds(f4)
+  }
+
+  def distinctFolds(folds: List[Fold]): List[Fold] = {
+    val f5 = folds.iterator.map(f => f.id -> f).toMap.toList
+    val f6 = f5.sortBy { case (fId, _) => folds.indexWhere(_.id == fId) } .map(_._2)
     f6
   }
 
@@ -665,7 +675,7 @@ object CatalogPaths {
 
   def testViewFolds(): Unit = {
     val info    = Catalog.readOrderedParInfo()
-    val folds0  = mkFoldSeq(info)
+    val folds0  = mkFoldSeq(info, Lang.De)
     val maxRect = folds0.map(_.surfaceMM).reduce(_ union _).scale(ppmm)
     Swing.onEDT {
       var folds : List[Fold]    = folds0
