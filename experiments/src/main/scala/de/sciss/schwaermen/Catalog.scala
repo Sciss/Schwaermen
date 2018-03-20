@@ -148,6 +148,23 @@ object Catalog {
       Rectangle(xOut, yOut, wOut, hOut)
     }
 
+    def intersect(that: Rectangle): Rectangle = {
+      val xOut = math.max(this.x      , that.x      )
+      val yOut = math.max(this.y      , that.y      )
+      val rOut = math.min(this.right  , that.right  )
+      val bOut = math.min(this.bottom , that.bottom )
+      val wOut = math.max(0.0, rOut - xOut)
+      val hOut = math.max(0.0, bOut - yOut)
+      Rectangle(xOut, yOut, wOut, hOut)
+    }
+
+    def isEmpty : Boolean = width <= 0 || height <= 0
+    def nonEmpty: Boolean = !isEmpty
+
+    def overlaps(that: Rectangle): Boolean = (this intersect that).nonEmpty
+
+    def contains(that: Rectangle): Boolean = (this union that) == this
+
     // let's use LaTeX order
     def border(left: Double, bottom: Double, right: Double, top: Double): Rectangle =
       copy(x = x - left, y = y - top, width = width + left + right, height = height + top + bottom)

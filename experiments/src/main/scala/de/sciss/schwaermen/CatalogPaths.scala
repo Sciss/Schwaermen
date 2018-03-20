@@ -117,7 +117,7 @@ object CatalogPaths {
 
   lazy val foldIndices: List[List[Int]] = {
     val base = 0 until (NumPages - 1)
-    val res = (1 to NumPages/2).toList.flatMap { nc =>
+    val res = (0 to NumPages/2).toList.flatMap { nc =>
       base.toList.combinations(nc).filterNot { sq =>
         sq.sliding(2, 1).exists { case Seq(a, b) => a + 1 == b; case _ => false }
       } .toList
@@ -126,6 +126,8 @@ object CatalogPaths {
   }
 
   case class FoldPage(idx: Int, rectangle: Rectangle, par: List[Rectangle], rotation: Int = 0) {
+    require(par.forall(rectangle.contains), toString)
+
     def isCW      : Boolean = rotation == +180
     def isCCW     : Boolean = rotation == -180
     def isUpright : Boolean = rotation ==    0
@@ -137,8 +139,8 @@ object CatalogPaths {
     }
 
     private def rotatePars: List[Rectangle] = par.map { r =>
-      val x1 = rectangle.right  - r.right
-      val y1 = rectangle.bottom - r.bottom
+      val x1 = rectangle.right  - r.right  + rectangle.left
+      val y1 = rectangle.bottom - r.bottom + rectangle.top
       val dx = x1 - r.x
       val dy = y1 - r.y
       r.translate(dx, dy)
@@ -192,6 +194,21 @@ object CatalogPaths {
       tl.foldLeft(hd)(_ union _)
     }
 
+    lazy val rotations: List[Int] = pages.map(_.rotation)
+
+    lazy val rotationString: String =
+      pages.iterator.foldLeft(List.empty[String] -> Option.empty[FoldPage]) { case ((s, pPrev), p) =>
+        val rPrev = pPrev.fold(0)(_.rotation)
+        val s1 =
+          if (p.rotation == rPrev) "s"
+          else if (p.rotation < rPrev) "U"
+          else "D"
+        val s2 = pPrev.fold(s) { prev =>
+          List.fill(p.idx - prev.idx - 1)("X") ::: s
+        }
+        (s1 :: s2, Some(p))
+      }._1.reverse.mkString("-")
+
     def normalizeOrigin: Fold = {
       val s   = surface
       val dx  = -s.x
@@ -199,12 +216,19 @@ object CatalogPaths {
       val p1  = pages.map(_.shift(dx, dy))
       copy(pages = p1)
     }
+
+    def isValid: Boolean = {
+      pages.combinations(2).forall { case Seq(a, b) => !(a.rectangle overlaps b.rectangle) }
+    }
   }
 
   def mkFoldSeq(info: Vec[ParFileInfo], lang: Lang = Lang.De): List[Fold] = foldIndices.flatMap { indices =>
 
     def loop(idx: Int, rem: List[Int], pred: List[FoldPage], res: List[Fold]): List[Fold] =
-      if (idx == NumPages) res :+ Fold(indices, pred) else {
+      if (idx == NumPages) {
+        val f = Fold(indices, pred)
+        if (f.isValid) res :+ f else res
+      } else {
         val r1      = getPageRectMM(pageIdx = idx, absLeft = true, lang = lang)
         val parIdx0 = idx * 3
         val par1    = List(parIdx0, parIdx0+1, parIdx0+2).map(parIdx =>
@@ -508,10 +532,10 @@ object CatalogPaths {
     }
   }
 
-  def mkFoldImage(info: Vec[ParFileInfo], fold: Fold): BufferedImage = {
+  def mkFoldImage(info: Vec[ParFileInfo], fold: Fold, color: Boolean = false): BufferedImage = {
     val w   = math.round(ppmm * fold.surface.width ).toInt
     val h   = math.round(ppmm * fold.surface.height).toInt
-    val img = new BufferedImage(w, h, BufferedImage.TYPE_BYTE_BINARY)
+    val img = new BufferedImage(w, h, if (color) BufferedImage.TYPE_INT_ARGB else BufferedImage.TYPE_BYTE_BINARY)
     val g   = img.createGraphics()
     val c0  = Color.white
     val c1  = Color.black
@@ -529,10 +553,19 @@ object CatalogPaths {
     g.fillRect(0, 0, w, h)
     g.setColor(c1)
     fold.pages.foldLeft(Option.empty[Rectangle]) { case (rPred, foldPage) =>
-      val r0 = foldPage.rectangle.inset(PadParMM)
-      val r1 = rPred.fold(r0)(_ union r0)
-      fillRectMM(r1)
-      Some(r0)
+      val r0 = foldPage.rectangle
+      val r1 = r0.inset(PadParMM)
+      val r2 = rPred.fold(r1)(_ union r1)
+      val r3 = r0.border(PadParMM)
+      val r4 = r3.intersect(r2)
+      if (color) {
+        val c2 = if (foldPage.isUpright) c1
+          else if (foldPage.isCCW) Color.red
+          else new Color(0, 0x80, 0)
+        g.setColor(c2)
+      }
+      fillRectMM(r4)
+      Some(r1)
     }
     g.setColor(c0)
     fold.pages.foreach { foldPage =>
@@ -547,10 +580,10 @@ object CatalogPaths {
   def testViewFolds(): Unit = {
     val info    = Catalog.readOrderedParInfo()
     val folds   = mkFoldSeq(info)
-//    val maxRect = folds.map(_.surface).reduce(_ union _)
+    val maxRect = folds.map(_.surface).reduce(_ union _).scale(ppmm)
     Swing.onEDT {
       var fold: Fold          = folds.head
-      var img : BufferedImage = mkFoldImage(info, fold)
+      var img : BufferedImage = mkFoldImage(info, fold, color = true)
 
       val ggImage = new Component {
         preferredSize = new Dimension(1600, 800)
@@ -561,8 +594,8 @@ object CatalogPaths {
           val w = peer.getWidth
           val h = peer.getHeight
           g.fillRect(0, 0, w, h)
-          val sx = w.toDouble / img.getWidth
-          val sy = h.toDouble / img.getHeight
+          val sx = w.toDouble / maxRect.width
+          val sy = h.toDouble / maxRect.height
           val scale = math.min(sx, sy)
           val wi = (img.getWidth  * scale).toInt
           val hi = (img.getHeight * scale).toInt
@@ -570,7 +603,7 @@ object CatalogPaths {
           val yi = (h - hi)/2
           g.drawImage(img, xi, yi, wi, hi, peer)
           g.setColor(Color.yellow)
-          g.drawString(fold.indices.mkString("[", ", ", "]"), 8, 24)
+          g.drawString(fold.rotationString, 8, 24)
         }
       }
 
@@ -580,7 +613,7 @@ object CatalogPaths {
           case SelectionChanged(_) =>
             img.flush()
             fold = folds(selection.index)
-            img = mkFoldImage(info, fold)
+            img = mkFoldImage(info, fold, color = true)
             ggImage.repaint()
         }
       }
