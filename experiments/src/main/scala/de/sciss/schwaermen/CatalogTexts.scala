@@ -13,7 +13,9 @@
 
 package de.sciss.schwaermen
 
-import scala.collection.immutable.{Seq => ISeq, IndexedSeq => Vec}
+import de.sciss.schwaermen.Catalog.Lang
+
+import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 
 object CatalogTexts {
 
@@ -210,7 +212,7 @@ object CatalogTexts {
   )
 
   val bugMap: Map[String, String] = bugWords.iterator.map { w =>
-    w.replace("fi", "f").replace("fl", "f") -> w.replace("fi", "ﬁ").replace("fl", "ﬂ")
+    w.replace("fi", "@").replace("fl", "f").replace("@", "f") -> w.replace("fi", "ﬁ").replace("fl", "ﬂ")
   }.toMap
 
   // "thanks" to our beloved inkscape
@@ -226,6 +228,20 @@ object CatalogTexts {
       }) ()
       out
     }
+  }
+
+  /** Guarantees that `res._1 < res._2`. */
+  def parIdToIndex(id1: Int, id2: Int): (Int, Int) = {
+    require(id1 != id2)
+    val idx1 = parIdToIndex(id1)
+    val idx2 = parIdToIndex(id2)
+    if (idx1 < idx2) (idx1, idx2) else (idx2, idx1)
+  }
+
+  def parIdToIndex(id: Int): Int = {
+    val res = parOrder.indexOf(id)
+    require(res >= 0)
+    res
   }
 
   val parOrder: Vec[Int] = Vector(
@@ -253,6 +269,14 @@ object CatalogTexts {
       (e1, e2) -> s6
     } .toMap
   }
+
+  /** Maps from (srcParId, tgtParId) to text.
+    *
+    * __Note:__ these are 1-based identifiers, not indices.
+    */
+  def edges(lang: Lang): Map[(Int, Int), String] =
+    if (lang == Lang.de) edgesDe
+    else ???
 
   val edgesDe: Map[(Int, Int), String] = parseEdges("""
     |{1-7}

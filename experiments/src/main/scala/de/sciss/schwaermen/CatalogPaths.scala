@@ -32,15 +32,22 @@ import scala.swing.{BorderPanel, Component, Dimension, Frame, Graphics2D, GridPa
 
 object CatalogPaths {
   def main(args: Array[String]): Unit = {
-    val info  = readOrderedParInfo()
-    val folds = mkFoldSeq(info, Lang.De)
-//    folds.foreach { fold =>
-//      val fOutGNG = gngFile(fold)
-//      if (!fOutGNG.isFile) {
-//        println(s"runGNG(${fOutGNG.name})")
-//        runGNG(info, fold, fOutGNG)
-//      }
-//    }
+    val lang    = Lang.de
+    val info    = readOrderedParInfo()
+    val folds0  = mkFoldSeq(info, lang)
+    val edgeMap = CatalogTexts.edges(lang)
+
+    edgeMap.foreach { case ((srcParId, tgtParId), _) =>
+      val (srcParIdx, tgtParIdx) = CatalogTexts.parIdToIndex(srcParId, tgtParId)
+      val folds = filterFolds(folds0, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
+      folds.foreach { fold =>
+        val fOutGNG = gngFile(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+        if (!fOutGNG.isFile) {
+          println(s"runGNG(${fOutGNG.name})")
+          runGNG(info, fold, fOutGNG)
+        }
+      }
+    }
 
 //    testDrawPath(folds(6))
 //    viewGNG(folds(5))
@@ -233,11 +240,11 @@ object CatalogPaths {
       val f1 = if (r0 == 0) this else {
         // val action: FoldPage => FoldPage = if (r0 < 0) _.rotateCW else _.rotateCCW
         val pages1 = pages.foldLeft(List.empty[FoldPage]) { (res, p) =>
-          val rOld  = p.rotation
-          val rNew  = (rOld - r0 + 360) % 360
-          val p0    = if (p.isCW) p.rotateCCW else if (p.isCCW) p.rotateCW else p
-          val p1    = res.headOption.fold(p0)(p0.nextTo)
-          val p2    = if (rNew < 0) p1.rotateCCW else if (rNew > 0) p1.rotateCW else p1
+          val rOld    = p.rotation
+          val p0      = if (p.isCW) p.rotateCCW else if (p.isCCW) p.rotateCW else p
+          val p1      = res.headOption.fold(p0)(p0.nextTo)
+          val relRot  = rOld - res.headOption.fold(0)(_.rotation)
+          val p2      = if (relRot == 0) p1 else if (relRot < 0) p1.rotateCCW else p1.rotateCW
           p2 :: res
         } .reverse
         copy(pages = pages1)
@@ -256,7 +263,7 @@ object CatalogPaths {
   }
 
   def mkFoldSeq(info: Vec[ParFileInfo], lang: Lang): List[Fold] = {
-    val langFoldWay = if (lang == Lang.De) 1 else 0
+    val langFoldWay = if (lang == Lang.de) 1 else 0
     val all = foldIndices.flatMap { indices =>
       def loop(idx: Int, rem: List[Int], pred: List[FoldPage], res: List[Fold]): List[Fold] =
         if (idx == NumPages) {
@@ -360,7 +367,7 @@ object CatalogPaths {
     }
   }
 
-  def testDrawPath(fold: Fold): Unit = {
+  def testDrawPath(fold: Fold, srcParIdx: Int, tgtParIdx: Int, lang: Lang): Unit = {
     val text = CatalogTexts.edgesDe.head._2
     val latex = latexEdgeTemplate(text)
     require (dirTmp.isDirectory, s"Not a directory: $dirTmp")
@@ -377,7 +384,7 @@ object CatalogPaths {
 
     val svg = Catalog.parseSVG(fOutSVG)
 
-    val gr    = readGNG(fold)
+    val gr    = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
     val route = testRoute
     val intp: Vec[Point2D] = route.grouped(3).map(_.head).sliding(4).flatMap { nodeIds =>
       val Seq(p1, p2, p3, p4) = nodeIds.map { id =>
@@ -443,11 +450,11 @@ object CatalogPaths {
     exec(inkscape, dirTmp, argsSVG2)
   }
 
-  def gngFile(fold: Fold): File =
-    Catalog.dir / s"gng-${fold.rotationString}.bin"
+  def gngFile(fold: Fold, srcParIdx: Int, tgtParIdx: Int, lang: Lang): File =
+    Catalog.dir / s"gng-$lang-$srcParIdx-$tgtParIdx-${fold.id}.bin"
 
-  def readGNG(fold: Fold): GraphGNG = {
-    val fOutGNG = gngFile(fold)
+  def readGNG(fold: Fold, srcParIdx: Int, tgtParIdx: Int, lang: Lang): GraphGNG = {
+    val fOutGNG = gngFile(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
     val fis = new FileInputStream(fOutGNG)
     try {
       val dis = new DataInputStream(fis)
@@ -485,7 +492,7 @@ object CatalogPaths {
     * The result is then trimmed so pages start with source page
     * and end with target page, and made distinct.
     */
-  def filterFold(folds: List[Fold], srcParIdx: Int, tgtParIdx: Int): List[Fold] = {
+  def filterFolds(folds: List[Fold], srcParIdx: Int, tgtParIdx: Int): List[Fold] = {
     val srcPageIdx = getParPage(srcParIdx)
     val tgtPageIdx = getParPage(tgtParIdx)
 
@@ -497,6 +504,7 @@ object CatalogPaths {
     val f1 = f0.map { f =>
       val p1 = f.pages.dropWhile(_.idx <  srcPageIdx)
       val p2 = p1     .takeWhile(_.idx <= tgtPageIdx)
+      require(p2.nonEmpty, s"Empty filter for srcParIdx $srcParIdx, tgtParIdx $tgtParIdx")
       f.copy(pages = p2)  // preserve `id`
     }
 
@@ -528,8 +536,8 @@ object CatalogPaths {
     f6
   }
 
-  def viewGNG(fold: Fold): Unit = {
-    val gr = readGNG(fold)
+  def viewGNG(fold: Fold, srcParIdx: Int, tgtParIdx: Int, lang: Lang): Unit = {
+    val gr = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
 //    val startIdx  = util.Random.nextInt(gr.nodes.size)
 //    val stopIdx   = {
 //      val i = util.Random.nextInt(gr.nodes.size - 1)
@@ -675,7 +683,7 @@ object CatalogPaths {
 
   def testViewFolds(): Unit = {
     val info    = Catalog.readOrderedParInfo()
-    val folds0  = mkFoldSeq(info, Lang.De)
+    val folds0  = mkFoldSeq(info, Lang.de)
     val maxRect = folds0.map(_.surfaceMM).reduce(_ union _).scale(ppmm)
     Swing.onEDT {
       var folds : List[Fold]    = folds0
@@ -728,7 +736,7 @@ object CatalogPaths {
         val srcParIdx = mSrc.getNumber.intValue
         val tgtParIdx = mTgt.getNumber.intValue
         if (srcParIdx >= 0 && tgtParIdx > srcParIdx) {
-          folds = filterFold(folds0, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
+          folds = filterFolds(folds0, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
           val filtered = folds.map { fF =>
             val idF = fF.id
             val i = folds0.indexWhere(_.id.contains(idF))
@@ -809,19 +817,16 @@ object CatalogPaths {
     c.addNode(null)
 
     val res             = new ComputeGNG.Result
-    var lastNum         = 0
+    var lastProg        = 0
     var iter            = 0
     val t0              = System.currentTimeMillis()
-    var lastT           = t0
+    println("_" * 60)
     while (!res.stop && c.nNodes < c.maxNodes) {
       c.learn(res)
-      if (c.nNodes != lastNum) {
-        val t1 = System.currentTimeMillis()
-        if (t1 - lastT > 4000) {
-          lastNum = c.nNodes
-          lastT   = t1
-          println(lastNum)
-        }
+      val prog: Int = (c.nNodes * 60) / c.maxNodes
+      while (lastProg < prog) {
+        print('#')
+        lastProg += 1
       }
       iter += 1
       //      if (iter == 1000) {
@@ -829,7 +834,7 @@ object CatalogPaths {
       //      }
     }
 
-    println(s"Done. Took ${(System.currentTimeMillis() - t0)/1000} seconds, and ${c.numSignals} signals.")
+    println(s" Done. Took ${(System.currentTimeMillis() - t0)/1000} seconds.") // ", and ${c.numSignals} signals."
 //    println(compute.nodes.take(compute.nNodes).mkString("\n"))
 
     val SurfaceWidthPx  = img.getWidth

@@ -62,15 +62,15 @@ object Catalog {
 //  val InnerWidthReduxMM : Int = 10
 
   val PaperWidthMM      : Int     = 158 + 12
-  val PaperHeightMM     : Int     = 158
-  val MarginTopMM       : Int     =  21
-  val MarginBotMM       : Int     =  21
+  val PaperHeightMM     : Int     = 200
+  val MarginTopMM       : Int     =  25
+  val MarginBotMM       : Int     =  25
   val MarginLeftMM      : Int     =  21
   val MarginRightMM     : Int     =  21
 
-  val ColumnSepMM       : Int     = 21
-  val LineSpacingPt     : Double  = 8.4
-  val FontSizePt        : Double  = 7.0
+  val ColumnSepMM       : Int     = 25
+  val LineSpacingPt     : Double  = 9.6
+  val FontSizePt        : Double  = 8.0
   val InnerWidthReduxMM : Int     = 12
 
   val PointsPerMM       : Double  = 72 / 25.4   // 1 pt = 1/72 inch
@@ -104,6 +104,7 @@ object Catalog {
   }
 
   // N.B.: horizontal line filling is broken if we use single column
+  // finalhyphendemerits -- see https://tex.stackexchange.com/questions/304802/
   def latexParTemplate(text: String): String = stripTemplate(
     s"""@documentclass[10pt,twocolumn]{article}
        |@usepackage[paperheight=${PaperHeightMM}mm,paperwidth=${PaperWidthMM}mm,top=${MarginTopMM}mm,bottom=${MarginBotMM}mm,right=${MarginRightMM}mm,left=${MarginLeftMM}mm,heightrounded]{geometry}
@@ -113,6 +114,7 @@ object Catalog {
        |@usepackage[utf8]{inputenc}
        |@setlength{@columnsep}{${ColumnSepMM}mm}
        |@begin{document}
+       |@finalhyphendemerits=1000000
        |@pagestyle{empty}
        |@fontsize{${FontSizePt}pt}{${LineSpacingPt}pt}@selectfont
        |@noindent
@@ -178,12 +180,12 @@ object Catalog {
   def getParColumn(parIdx: Int): Int = if (parIdx % 3 == 1) 1 else 0
 
   object Lang {
-    case object De extends Lang
-    case object En extends Lang
+    case object de extends Lang
+    case object en extends Lang
   }
   sealed trait Lang
 
-  def getPageRectMM(pageIdx: Int, absLeft: Boolean = false, lang: Lang = Lang.De): Rectangle = {
+  def getPageRectMM(pageIdx: Int, absLeft: Boolean = false, lang: Lang = Lang.de): Rectangle = {
     val x = if (pageIdx == 0 || !absLeft) 0.0 else {
       PaperWidthMM + (pageIdx - 1) * PaperIWidthMM
     }
@@ -193,7 +195,7 @@ object Catalog {
     Rectangle(x, y, w, h)
   }
 
-  def getParRectMM(info: Vec[ParFileInfo], parIdx: Int, absLeft: Boolean = false, lang: Lang = Lang.De): Rectangle = {
+  def getParRectMM(info: Vec[ParFileInfo], parIdx: Int, absLeft: Boolean = false, lang: Lang = Lang.de): Rectangle = {
     val i       = info(parIdx)
     val pageIdx = getParPage(parIdx)
     val idx     = parIdx % 3
