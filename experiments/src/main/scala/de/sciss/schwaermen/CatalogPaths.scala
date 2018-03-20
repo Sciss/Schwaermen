@@ -244,10 +244,15 @@ object CatalogPaths {
           val rOld    = p.rotation
           val p0      = if (p.isCW) p.rotateCCW else if (p.isCCW) p.rotateCW else p
           val p1      = res.headOption.fold(p0)(p0.nextTo)
-          val relRot  = rOld - res.headOption.fold(0)(_.rotation)
+          val relRot  = rOld - res.headOption.fold(r0)(_.rotation)
           val p2      = if (relRot == 0) p1 else if (relRot < 0) p1.rotateCCW else p1.rotateCW
           p2 :: res
         } .reverse
+
+//        if (pages1.nonEmpty) {
+//          assert(pages1.head.isUpright)
+//        }
+
         copy(pages = pages1)
       }
 
@@ -255,6 +260,7 @@ object CatalogPaths {
       val dx  = -s.x
       val dy  = -s.y
       val p1  = f1.pages.map(_.shift(dx, dy))
+
       f1.copy(pages = p1)
     }
 
@@ -846,8 +852,8 @@ object CatalogPaths {
           val hi = (img.getHeight * scale).toInt
           val xi = (w - wi)/2
           val yi = (h - hi)/2
-          g.scale(scale, scale)
           g.translate(xi, yi)
+          g.scale(scale, scale)
 //          g.drawImage(img, xi, yi, wi, hi, peer)
           g.drawImage(img, 0, 0, peer)
 
