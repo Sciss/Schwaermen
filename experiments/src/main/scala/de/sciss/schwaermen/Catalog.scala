@@ -30,14 +30,16 @@ object Catalog {
 //    val t1 = Transform.fromAwt(t0.toAwt)
 //    assert(t0 == t1)
 
-    if (!fLinesOut.isFile || !fOutCat.isFile || !parFile(1).isFile) {
-      preparePar()
+    val lang = Lang.de
+
+    if (!fLinesOut(lang).isFile || !fOutCat.isFile || !parFile(1, lang).isFile) {
+      preparePar(lang)
     } else {
       println("(Skipping preparePar)")
     }
 
     if (!fOutArr.isFile) {
-      renderPages()
+      renderPages(lang)
     } else {
       println("(Skipping renderPages)")
     }
@@ -47,7 +49,8 @@ object Catalog {
   val dirTmp    : File = file("/") / "data" / "temp" / "latex"
   val fOutCat   : File = dir / "par_cat.pdf"
   val fOutArr   : File = dir / "par_arr.pdf"
-  val fLinesOut : File = dir / "par_lines.txt"
+
+  def fLinesOut(lang: Lang): File = dir / s"par-$lang-lines.txt"
 
 //  val PaperWidthMM  : Int = 200
 //  val PaperHeightMM : Int = 200
@@ -90,13 +93,13 @@ object Catalog {
   def HeightParMM(numLines: Int): Double =
     LineSpacingMM * numLines
 
-  def readOrderedParInfo(): Vec[ParFileInfo] = {
-    val info0 = readParInfo()
+  def readOrderedParInfo(lang: Lang): Vec[ParFileInfo] = {
+    val info0 = readParInfo(lang)
     CatalogTexts.parOrder.map(id => info0(id - 1))
   }
 
-  def readParInfo(): Vec[ParFileInfo] = {
-    val s          = readText(fLinesOut)
+  def readParInfo(lang: Lang): Vec[ParFileInfo] = {
+    val s          = readText(fLinesOut(lang))
     val numLinesIt = s.split("\n").iterator.map(_.trim).filter(_.nonEmpty).map(_.toInt)
     numLinesIt.zipWithIndex.map { case (numLines, i) =>
       ParFileInfo(id = i + 1, numLines = numLines)
@@ -185,7 +188,8 @@ object Catalog {
   }
   sealed trait Lang
 
-  def getPageRectMM(pageIdx: Int, absLeft: Boolean = false, lang: Lang = Lang.de): Rectangle = {
+  def getPageRectMM(pageIdx: Int, absLeft: Boolean = false, lang: Lang): Rectangle = {
+    require (lang == Lang.de) // XXX TODO
     val x = if (pageIdx == 0 || !absLeft) 0.0 else {
       PaperWidthMM + (pageIdx - 1) * PaperIWidthMM
     }
@@ -195,7 +199,8 @@ object Catalog {
     Rectangle(x, y, w, h)
   }
 
-  def getParRectMM(info: Vec[ParFileInfo], parIdx: Int, absLeft: Boolean = false, lang: Lang = Lang.de): Rectangle = {
+  def getParRectMM(info: Vec[ParFileInfo], parIdx: Int, absLeft: Boolean = false, lang: Lang): Rectangle = {
+    require (lang == Lang.de) // XXX TODO
     val i       = info(parIdx)
     val pageIdx = getParPage(parIdx)
     val idx     = parIdx % 3
@@ -226,7 +231,7 @@ object Catalog {
     Rectangle(x = x, y = y, width = w, height = h)
   }
 
-  def renderPages(splitPages: Boolean = false, fbox: Boolean = false): Unit = {
+  def renderPages(lang: Lang, splitPages: Boolean = false, fbox: Boolean = false): Unit = {
     val pre = {
       val pw = if (splitPages) PaperWidthMM else TotalPaperWidthMM // /* if (pageIdx == 0) */ PaperWidthMM /* else PaperIWidthMM */
       stripTemplate(s"""@documentclass[10pt]{article}
@@ -243,10 +248,10 @@ object Catalog {
       """@end{document}
         |""")
 
-    val info = readOrderedParInfo()
+    val info = readOrderedParInfo(lang)
 
     def mkGraphics(parIdx: Int, absLeft: Boolean = !splitPages): String = {
-      val r           = getParRectMM(info = info, parIdx = parIdx, absLeft = absLeft)
+      val r           = getParRectMM(info = info, parIdx = parIdx, absLeft = absLeft, lang = lang)
       val trimLeft    = MarginLeftMM
       val trimTop     = MarginTopMM
       val trimBottom  = PaperHeightMM - MarginBotMM - r.height
@@ -261,7 +266,7 @@ object Catalog {
 
       stripTemplate(
         s"""  @node[anchor=north west,inner sep=0] at ($$(current page.north west)+(${r.x}mm,${-r.y}mm)$$) {
-           |    $fboxIn@includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(i.id)}}$fboxOut
+           |    $fboxIn@includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(i.id, lang)}}$fboxOut
            |  };
            |"""
       )
@@ -502,25 +507,25 @@ object Catalog {
     case _ => None // sys.error(s"Could not parse text $n")
   }
 
-  def preparePar(): Unit = {
+  def preparePar(lang: Lang): Unit = {
     require (dir.isDirectory, s"Not a directory: $dir")
-    val resAll = CatalogTexts.parDe.zipWithIndex.map { case (text, i) =>
+    val resAll = CatalogTexts.par(lang).zipWithIndex.map { case (text, i) =>
       val textId = i + 1
       println(s"RENDERING $textId")
-      run(text = text, textId = textId)
+      run(lang = lang, text = text, textId = textId)
     }
     val numLinesAll = resAll.map(_.numLines)
     val numLinesTxt = numLinesAll.mkString("", "\n", "\n")
-    writeText(numLinesTxt, fLinesOut)
+    writeText(numLinesTxt, fLinesOut(lang))
 
     val fOutAll     = resAll.map(_.id)
-    val argsCat     = fOutAll.map(parFile(_).path) :+ "cat" :+ "output" :+ fOutCat.path
+    val argsCat     = fOutAll.map(parFile(_, lang).path) :+ "cat" :+ "output" :+ fOutCat.path
     exec(pdftk, dir, argsCat)
   }
 
   case class ParFileInfo(id: Int, numLines: Int)
 
-  def parFile(id: Int): File = dir / s"par_$id.pdf"
+  def parFile(id: Int, lang: Lang): File = dir / s"par-$lang-$id.pdf"
 
   case class ParsedSVG(transform: Transform, text: ISeq[Text], doc: xml.Elem, group: xml.Elem) {
     def setTransform(t: Transform): ParsedSVG = {
@@ -543,7 +548,7 @@ object Catalog {
     ParsedSVG(transform, text, doc = svgDoc, group = group)
   }
 
-  def run(text: String, textId: Int): ParFileInfo = {
+  def run(lang: Lang, text: String, textId: Int): ParFileInfo = {
     val latex = latexParTemplate(text)
     require (dirTmp.isDirectory, s"Not a directory: $dirTmp")
     val fOutTex = dirTmp / s"par_temp_$textId.tex"
@@ -684,7 +689,7 @@ object Catalog {
 //    }
 
 //    val fOutPDF2 = fOutSVG2.replaceExt("pdf")
-    val fOutPDF2 = parFile(textId)
+    val fOutPDF2 = parFile(textId, lang)
     val argsSVG2 = Seq("--export-pdf", fOutPDF2.path, fOutSVG2.path)
     exec(inkscape, dirTmp, argsSVG2)
 

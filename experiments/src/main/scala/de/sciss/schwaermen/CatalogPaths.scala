@@ -19,6 +19,7 @@ import java.awt.{BasicStroke, Color, RenderingHints}
 import java.io.{DataInputStream, DataOutputStream, FileInputStream, FileOutputStream}
 
 import de.sciss.catmullrom.{CatmullRomSpline, Point2D}
+import de.sciss.dijkstra
 import de.sciss.file._
 import de.sciss.kollflitz.Vec
 import de.sciss.neuralgas.{ComputeGNG, ImagePD}
@@ -33,7 +34,7 @@ import scala.swing.{BorderPanel, Component, Dimension, Frame, Graphics2D, GridPa
 object CatalogPaths {
   def main(args: Array[String]): Unit = {
     val lang    = Lang.de
-    val info    = readOrderedParInfo()
+    val info    = readOrderedParInfo(lang)
     val folds0  = mkFoldSeq(info, lang)
     val edgeMap = CatalogTexts.edges(lang)
 
@@ -536,6 +537,112 @@ object CatalogPaths {
     f6
   }
 
+  def edgeTextSVGFile(srcParIdx: Int, tgtParIdx: Int, lang: Lang): File = {
+    dir / s"edge-$lang-$srcParIdx-$tgtParIdx.svg"
+  }
+
+  def renderEdgeTextSVG(text: String, fOutSVG: File): Unit = {
+    val latex     = latexEdgeTemplate(text)
+    require (dirTmp.isDirectory, s"Not a directory: $dirTmp")
+    val fOutTex   = dirTmp / s"${fOutSVG.base}.tex"
+    val fOutPDF   = fOutTex.replaceExt("pdf")
+    writeText(latex, fOutTex)
+
+    val argPDF = Seq("-interaction=batchmode", fOutTex.path)
+    exec(pdflatex, dirTmp, argPDF)
+
+    val argSVG = Seq("-l", fOutSVG.path, fOutPDF.path)
+    exec(inkscape, dirTmp, argSVG)
+  }
+
+  def findBestPath(srcParId: Int, tgtParId: Int, lang: Lang): Unit = {
+    val info      = Catalog.readOrderedParInfo(lang)
+    val folds0    = mkFoldSeq(info, lang)
+    val (srcParIdx, tgtParIdx) = CatalogTexts.parIdToIndex(srcParId, tgtParId)
+    val folds     = filterFolds(folds0, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
+
+    val edgeMap   = CatalogTexts.edges(lang)
+    val parIdKey  = srcParId -> tgtParId
+    val text      = edgeMap(parIdKey)
+    val edgeSVGF  = edgeTextSVGFile(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+    if (!edgeSVGF.isFile || edgeSVGF.length() == 0L) {
+      renderEdgeTextSVG(text, edgeSVGF)
+    }
+
+    val svg           = Catalog.parseSVG(edgeSVGF)
+    val textNode      = svg.text.head
+    val textLine      = textNode.children.head
+    val textScaleMM   = svg.transform.scaleX / Catalog.ppmmSVG
+    val textExtentMM  = textLine.x.last * textScaleMM
+    val srcPageIdx    = getParPage(srcParIdx)
+    val tgtPageIdx    = getParPage(tgtParIdx)
+    val parRectSrc    = getParRectMM(info, parIdx = srcParIdx, absLeft = false, lang = lang)
+    val parRectTgt    = getParRectMM(info, parIdx = tgtParIdx, absLeft = false, lang = lang)
+
+    def calcY(parIdx: Int, parRect: Rectangle): Double = {
+      // src/tgt might have been swapped, therefore query again
+      val id      = CatalogTexts.parIdxToId(parIdx)
+      val all     = edgeMap.keySet.filter(tup => tup._1 == id || tup._2 == id)
+      val sorted  = all.toList.sorted
+      val idx     = sorted.indexOf(parIdKey)
+      assert(idx >= 0)
+      import numbers.Implicits._
+      idx.linlin(0, sorted.size - 1, parRect.top + LineSpacingMM, parRect.bottom - LineSpacingMM)
+    }
+
+    val srcYRel       = calcY(srcParIdx, parRectSrc)
+    val tgtYRel       = calcY(tgtParIdx, parRectTgt )
+    val srcXRel       = parRectSrc.right
+    val tgtXRel       = parRectTgt .left
+    val srcRelPt      = Point2D(srcXRel, srcYRel)
+    val tgtRelPt      = Point2D(tgtXRel , tgtYRel )
+
+    lazy val printTextExtent: Unit =
+      println(s"Text line for ($srcParId, $tgtParId) has extent ${textExtentMM}mm.")
+
+    def mkAbs(rel: Point2D, pageIdx: Int, pages: List[FoldPage]): Point2D = ???
+
+    folds.zipWithIndex.foreach { case (fold, fi) =>
+      val fDijk = dir / s"dijk-$lang-$srcParIdx-$tgtParIdx-${fold.id}.txt"
+      if (!fDijk.isFile || fDijk.length() == 0L) {
+        printTextExtent
+        println(s"Examining fold ${fi + 1} of ${folds.size}...")
+
+        val gr    = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+
+        val srcAbsPt      = mkAbs(srcRelPt, pageIdx = srcPageIdx, pages = fold.pages)
+        val tgtAbsPt      = mkAbs(tgtRelPt, pageIdx = tgtPageIdx, pages = fold.pages)
+        val srcVertex     = gr.nodes.minBy(pt => pt distSq srcAbsPt)
+        val tgtVertex     = gr.nodes.minBy(pt => pt distSq tgtAbsPt)
+        val srcVertexIdx  = gr.nodes.indexOf(srcVertex)
+        val tgtVertexIdx  = gr.nodes.indexOf(tgtVertex)
+
+        val nDijk = gr.nodes.zipWithIndex.map { case (pt, idx) =>
+          dijkstra.Node(idx, x = pt.x, y = pt.y)
+        }
+        val eDijk = gr.edges.iterator.map { e =>
+          dijkstra.Edge(e.from, e.to)
+        } .toList
+        val gDijk = dijkstra.Graph(nDijk.iterator.zipWithIndex.map(_.swap).toMap, eDijk)
+
+        val t0 = System.currentTimeMillis()
+        val dijkstra.ShortestRoute(route, routeDist) = gDijk.shortestPath(srcVertexIdx, tgtVertexIdx)
+        val t1 = System.currentTimeMillis()
+        println(s"Shortest route done: ${route.size - 1} steps, $routeDist total distance. Took ${(t1-t0)/1000} seconds")
+
+        writeText(route.mkString(" "), fDijk)
+
+//        val intp: Vec[Point2D] = route.grouped(3).map(_.head).sliding(4).flatMap { nodeIds =>
+//          val Seq(p1, p2, p3, p4) = nodeIds.map { id =>
+//            val n = gr.nodes(id)
+//            Point2D(n.x / ppmm, n.y / ppmm)
+//          }
+//          CatmullRomSpline(CatmullRomSpline.Chordal, p1, p2, p3, p4).calcN(8)
+//        } .toIndexedSeq
+      }
+    }
+  }
+
   def viewGNG(fold: Fold, srcParIdx: Int, tgtParIdx: Int, lang: Lang): Unit = {
     val gr = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
 //    val startIdx  = util.Random.nextInt(gr.nodes.size)
@@ -682,8 +789,9 @@ object CatalogPaths {
   }
 
   def testViewFolds(): Unit = {
-    val info    = Catalog.readOrderedParInfo()
-    val folds0  = mkFoldSeq(info, Lang.de)
+    val lang    = Lang.de
+    val info    = Catalog.readOrderedParInfo(lang)
+    val folds0  = mkFoldSeq(info, lang)
     val maxRect = folds0.map(_.surfaceMM).reduce(_ union _).scale(ppmm)
     Swing.onEDT {
       var folds : List[Fold]    = folds0

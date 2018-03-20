@@ -26,6 +26,10 @@ object CatalogTexts {
     s2.trim
   }
 
+  def par(lang: Lang): ISeq[String] =
+    if (lang == Lang.de) parDe
+    else ???
+
   val parDe: ISeq[String] = List(
     """Die Gassen sind eng und mit starkem Gefälle hinunter zum Wasser. Ich gehe noch einmal zurück.
       |Alles ist von einer starken Vertikalität geprägt. Ich ziehe mich an einer Wand hoch, an Seilen
@@ -243,6 +247,8 @@ object CatalogTexts {
     require(res >= 0)
     res
   }
+
+  def parIdxToId(idx: Int): Int = parOrder(idx)
 
   val parOrder: Vec[Int] = Vector(
     13, 14, 15,
