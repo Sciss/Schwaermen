@@ -250,6 +250,14 @@ object CatalogTexts {
 
   def parIdxToId(idx: Int): Int = parOrder(idx)
 
+  /** Guarantees that `res._1 < res._2`. */
+  def parIdxToId(idx1: Int, idx2: Int): (Int, Int) = {
+    require(idx1 != idx2)
+    val id1 = parIdxToId(idx1)
+    val id2 = parIdxToId(idx2)
+    if (id1 < id2) (id1, id2) else (id2, id1)
+  }
+
   val parOrder: Vec[Int] = Vector(
     13, 14, 15,
      7,  8,  9,

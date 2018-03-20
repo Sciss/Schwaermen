@@ -13,7 +13,7 @@
 
 package de.sciss.schwaermen
 
-import java.awt.geom.{AffineTransform, Line2D}
+import java.awt.geom.{AffineTransform, Ellipse2D, Line2D}
 import java.awt.image.BufferedImage
 import java.awt.{BasicStroke, Color, RenderingHints}
 import java.io.{DataInputStream, DataOutputStream, FileInputStream, FileOutputStream}
@@ -555,6 +555,44 @@ object CatalogPaths {
     exec(inkscape, dirTmp, argSVG)
   }
 
+  def calcParEdgePts(srcParIdx: Int, tgtParIdx: Int, lang: Lang): (Point2D, Point2D) =
+    (calcParEdgePt(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang, useSource = true),
+     calcParEdgePt(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang, useSource = false))
+
+  def calcParEdgePt(srcParIdx: Int, tgtParIdx: Int, lang: Lang, useSource: Boolean): Point2D = {
+    val edgeMap   = CatalogTexts.edges(lang)
+    val info      = Catalog.readOrderedParInfo(lang)
+    val parIdKey  = CatalogTexts.parIdxToId(srcParIdx, tgtParIdx)
+    val parIdx    = if (useSource) srcParIdx else tgtParIdx
+    val parRect   = getParRectMM(info, parIdx = parIdx, absLeft = false, lang = lang)
+
+    // src/tgt might have been swapped, therefore query again
+    val id      = CatalogTexts.parIdxToId(parIdx)
+    val all     = edgeMap.keySet.filter(tup => tup._1 == id || tup._2 == id)
+    val sorted  = all.toList.sorted
+    val num     = sorted.size
+    val idx     = sorted.indexOf(parIdKey)
+    if (idx < 0) throw new NoSuchElementException(parIdKey.toString())
+    import numbers.Implicits._
+    val y       = if (num > 1) {
+      idx.linlin(0, sorted.size - 1, parRect.top + LineSpacingMM, parRect.bottom - LineSpacingMM)
+    } else {
+      0.5.linlin(0, 1, parRect.top + LineSpacingMM, parRect.bottom - LineSpacingMM)
+    }
+    val x       = if (useSource) parRect.right else parRect.left
+    Point2D(x, y)
+  }
+
+  def mapPagePt(base: Point2D, pageIdx: Int, pages: List[FoldPage]): Point2D = {
+    val page  = pages.find(_.idx == pageIdx).getOrElse(sys.error(s"pageIdx $pageIdx, pages ${pages.map(_.idx)}"))
+    val r     = page.rectangle
+    if (page.isUpright) {
+      Point2D(r.left  + base.x, r.top    + base.y)
+    } else {
+      Point2D(r.right - base.x, r.bottom - base.y)
+    }
+  }
+
   def findBestPath(srcParId: Int, tgtParId: Int, lang: Lang): Unit = {
     val info      = Catalog.readOrderedParInfo(lang)
     val folds0    = mkFoldSeq(info, lang)
@@ -576,31 +614,11 @@ object CatalogPaths {
     val textExtentMM  = textLine.x.last * textScaleMM
     val srcPageIdx    = getParPage(srcParIdx)
     val tgtPageIdx    = getParPage(tgtParIdx)
-    val parRectSrc    = getParRectMM(info, parIdx = srcParIdx, absLeft = false, lang = lang)
-    val parRectTgt    = getParRectMM(info, parIdx = tgtParIdx, absLeft = false, lang = lang)
 
-    def calcY(parIdx: Int, parRect: Rectangle): Double = {
-      // src/tgt might have been swapped, therefore query again
-      val id      = CatalogTexts.parIdxToId(parIdx)
-      val all     = edgeMap.keySet.filter(tup => tup._1 == id || tup._2 == id)
-      val sorted  = all.toList.sorted
-      val idx     = sorted.indexOf(parIdKey)
-      assert(idx >= 0)
-      import numbers.Implicits._
-      idx.linlin(0, sorted.size - 1, parRect.top + LineSpacingMM, parRect.bottom - LineSpacingMM)
-    }
-
-    val srcYRel       = calcY(srcParIdx, parRectSrc)
-    val tgtYRel       = calcY(tgtParIdx, parRectTgt )
-    val srcXRel       = parRectSrc.right
-    val tgtXRel       = parRectTgt .left
-    val srcRelPt      = Point2D(srcXRel, srcYRel)
-    val tgtRelPt      = Point2D(tgtXRel , tgtYRel )
+    val (srcRelPt, tgtRelPt) = calcParEdgePts(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
 
     lazy val printTextExtent: Unit =
       println(s"Text line for ($srcParId, $tgtParId) has extent ${textExtentMM}mm.")
-
-    def mkAbs(rel: Point2D, pageIdx: Int, pages: List[FoldPage]): Point2D = ???
 
     folds.zipWithIndex.foreach { case (fold, fi) =>
       val fDijk = dir / s"dijk-$lang-$srcParIdx-$tgtParIdx-${fold.id}.txt"
@@ -610,8 +628,8 @@ object CatalogPaths {
 
         val gr    = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
 
-        val srcAbsPt      = mkAbs(srcRelPt, pageIdx = srcPageIdx, pages = fold.pages)
-        val tgtAbsPt      = mkAbs(tgtRelPt, pageIdx = tgtPageIdx, pages = fold.pages)
+        val srcAbsPt      = mapPagePt(srcRelPt, pageIdx = srcPageIdx, pages = fold.pages)
+        val tgtAbsPt      = mapPagePt(tgtRelPt, pageIdx = tgtPageIdx, pages = fold.pages)
         val srcVertex     = gr.nodes.minBy(pt => pt distSq srcAbsPt)
         val tgtVertex     = gr.nodes.minBy(pt => pt distSq tgtAbsPt)
         val srcVertexIdx  = gr.nodes.indexOf(srcVertex)
@@ -793,13 +811,26 @@ object CatalogPaths {
     val info    = Catalog.readOrderedParInfo(lang)
     val folds0  = mkFoldSeq(info, lang)
     val maxRect = folds0.map(_.surfaceMM).reduce(_ union _).scale(ppmm)
+
+    println("KEYS:")
+    CatalogTexts.edges(lang).keySet.map(tup => CatalogTexts.parIdToIndex(tup._1, tup._2)).foreach(println)
+
     Swing.onEDT {
       var folds : List[Fold]    = folds0
       var fold  : Fold          = folds.head
       var img   : BufferedImage = mkFoldImage(info, fold, color = true)
+      var srcParIdx = -1
+      var tgtParIdx = -1
+      var hasEdgePoints = false
+      var srcParEdgePt = Point2D(0, 0)
+      var tgtParEdgePt = Point2D(0, 0)
+
+      def hasPath: Boolean = srcParIdx >= 0 && tgtParIdx > srcParIdx
 
       val ggImage = new Component {
         preferredSize = new Dimension(1600, 800)
+        
+        private[this] val oval = new Ellipse2D.Double
 
         override protected def paintComponent(g: Graphics2D): Unit = {
           super.paintComponent(g)
@@ -810,25 +841,58 @@ object CatalogPaths {
           val sx = w.toDouble / maxRect.width
           val sy = h.toDouble / maxRect.height
           val scale = math.min(sx, sy)
+          val atOrig = g.getTransform
           val wi = (img.getWidth  * scale).toInt
           val hi = (img.getHeight * scale).toInt
           val xi = (w - wi)/2
           val yi = (h - hi)/2
-          g.drawImage(img, xi, yi, wi, hi, peer)
-          g.setColor(Color.yellow)
+          g.scale(scale, scale)
+          g.translate(xi, yi)
+//          g.drawImage(img, xi, yi, wi, hi, peer)
+          g.drawImage(img, 0, 0, peer)
+
+          g.setColor(new Color(0xFF, 0x80, 0))
+
+          if (hasEdgePoints) {
+            val r1 = 4 / scale
+            val r2 = 6 / scale
+            oval.setFrameFromCenter(srcParEdgePt.x, srcParEdgePt.y, srcParEdgePt.x - r1, srcParEdgePt.y - r1)
+            g.fill(oval)
+            oval.setFrameFromCenter(tgtParEdgePt.x, tgtParEdgePt.y, tgtParEdgePt.x - r2, tgtParEdgePt.y - r2)
+            g.fill(oval)
+          }
+
+          g.setTransform(atOrig)
           g.drawString(fold.rotationString, 8, 24)
         }
       }
 
       val ggSelect = new ComboBox(folds.indices) {
         listenTo(selection)
-     }
+      }
 
       def updateImage(): Unit = {
         img.flush()
         val id  = folds0(ggSelect.selection.item).id
         fold    = folds.find(f => id.contains(f.id)).get
         img     = mkFoldImage(info, fold, color = true)
+
+        if (hasPath) {
+          try {
+            val (rel1, rel2) = calcParEdgePts(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+            val pageIdx1 = getParPage(srcParIdx)
+            val pageIdx2 = getParPage(tgtParIdx)
+            srcParEdgePt = mapPagePt(rel1, pageIdx = pageIdx1, pages = fold.pages) * ppmm
+            tgtParEdgePt = mapPagePt(rel2, pageIdx = pageIdx2, pages = fold.pages) * ppmm
+            hasEdgePoints = true
+          } catch {
+            case _: NoSuchElementException =>
+              hasEdgePoints = false
+          }
+        } else {
+          hasEdgePoints = false
+        }
+
         ggImage.repaint()
       }
 
@@ -841,9 +905,9 @@ object CatalogPaths {
       val mTgt = new SpinnerNumberModel(-1, -1, 17, 1)
 
       def setFilter(): Unit = {
-        val srcParIdx = mSrc.getNumber.intValue
-        val tgtParIdx = mTgt.getNumber.intValue
-        if (srcParIdx >= 0 && tgtParIdx > srcParIdx) {
+        srcParIdx = mSrc.getNumber.intValue
+        tgtParIdx = mTgt.getNumber.intValue
+        if (hasPath) {
           folds = filterFolds(folds0, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
           val filtered = folds.map { fF =>
             val idF = fF.id
