@@ -59,18 +59,7 @@ object Catalog {
 //  val ColumnSepMM   : Int     = 25
 //  val LineSpacingPt : Double  = 10.2
 //  val FontSizePt    : Double  = 8.5
-//  val PointsPerMM   : Double  = 72 / 25.4   // 1 pt = 1/72 inch
-//  val LineSpacingMM : Double  = LineSpacingPt / PointsPerMM
-//
-//  val WidthParMM    : Double  = (PaperWidthMM - (MarginLeftMM + MarginRightMM + ColumnSepMM))/2.0
-//
-//  // 'inner'
 //  val InnerWidthReduxMM : Int = 10
-//  val PaperIWidthMM     : Int = PaperWidthMM - InnerWidthReduxMM
-//
-//  val ColSepIMM : Double  = (PaperIWidthMM - (WidthParMM + WidthParMM)) / 2
-//  val MarLeftIMM: Double  = ColSepIMM / 2
-//  val MarLeftOMM: Double  = MarLeftIMM + InnerWidthReduxMM
 
   val PaperWidthMM      : Int     = 158 + 12
   val PaperHeightMM     : Int     = 158
@@ -82,15 +71,14 @@ object Catalog {
   val ColumnSepMM       : Int     = 21
   val LineSpacingPt     : Double  = 8.4
   val FontSizePt        : Double  = 7.0
+  val InnerWidthReduxMM : Int     = 12
+
   val PointsPerMM       : Double  = 72 / 25.4   // 1 pt = 1/72 inch
   val LineSpacingMM     : Double  = LineSpacingPt / PointsPerMM
-
   val WidthParMM        : Double  = (PaperWidthMM - (MarginLeftMM + MarginRightMM + ColumnSepMM))/2.0
 
   // 'inner'
-  val InnerWidthReduxMM : Int     = 12
   val PaperIWidthMM     : Int     = PaperWidthMM - InnerWidthReduxMM
-
   val ColSepIMM         : Double  = (PaperIWidthMM - (WidthParMM + WidthParMM)) / 2
   val MarLeftIMM        : Double  = ColSepIMM / 2
   val MarLeftOMM        : Double  = MarLeftIMM + InnerWidthReduxMM
