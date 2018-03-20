@@ -22,12 +22,13 @@ import de.sciss.catmullrom.{CatmullRomSpline, Point2D}
 import de.sciss.file._
 import de.sciss.kollflitz.Vec
 import de.sciss.neuralgas.{ComputeGNG, ImagePD}
-import de.sciss.{neuralgas, numbers}
 import de.sciss.schwaermen.Catalog._
-import de.sciss.swingplus.ComboBox
+import de.sciss.swingplus.{ComboBox, Spinner}
+import de.sciss.{neuralgas, numbers}
+import javax.swing.SpinnerNumberModel
 
-import scala.swing.event.SelectionChanged
-import scala.swing.{BorderPanel, Component, Dimension, Frame, Graphics2D, Swing}
+import scala.swing.event.{SelectionChanged, ValueChanged}
+import scala.swing.{BorderPanel, Component, Dimension, Frame, Graphics2D, GridPanel, Label, Swing}
 
 object CatalogPaths {
   def main(args: Array[String]): Unit = {
@@ -42,8 +43,8 @@ object CatalogPaths {
     }
 
 //    testDrawPath(folds(6))
-    viewGNG(folds(5))
-//    testViewFolds()
+//    viewGNG(folds(5))
+    testViewFolds()
   }
 
   /*
@@ -195,7 +196,7 @@ object CatalogPaths {
     }
   }
 
-  case class Fold(indices: List[Int], pages: List[FoldPage]) {
+  case class Fold(pages: List[FoldPage]) {
     lazy val surfaceMM: Rectangle = {
       val r = pages.map(_.rectangle)
       val hd :: tl = r
@@ -204,16 +205,22 @@ object CatalogPaths {
 
     lazy val rotations: List[Int] = pages.map(_.rotation)
 
-    lazy val rotationString: String =
+    lazy val rotationString         : String = mkRotString(pageIndices = false)
+    lazy val pagesAndRotationsString: String = mkRotString(pageIndices = true )
+
+    def id: String = pagesAndRotationsString
+
+    private def mkRotString(pageIndices: Boolean): String =
       pages.iterator.foldLeft(List.empty[String] -> Option.empty[FoldPage]) { case ((s, pPrev), p) =>
         val rPrev = pPrev.fold(0)(_.rotation)
-        val s1 =
+        val s0 =
           if (p.rotation == rPrev) "s"
           else if (p.rotation < rPrev) "U"
           else "D"
         val s2 = pPrev.fold(s) { prev =>
           List.fill(p.idx - prev.idx - 1)("X") ::: s
         }
+        val s1 = if (pageIndices) s"${p.idx}$s0" else s0
         (s1 :: s2, Some(p))
       }._1.reverse.mkString("-")
 
@@ -234,7 +241,7 @@ object CatalogPaths {
 
     def loop(idx: Int, rem: List[Int], pred: List[FoldPage], res: List[Fold]): List[Fold] =
       if (idx == NumPages) {
-        val f = Fold(indices, pred)
+        val f = Fold(pages = pred)
         if (f.isValid) res :+ f else res
       } else {
         val r1      = getPageRectMM(pageIdx = idx, absLeft = true, lang = lang)
@@ -445,6 +452,55 @@ object CatalogPaths {
     }
   }
 
+  /** Selects only valid folds for a given path.
+    * Validity:
+    *
+    * - contains page for source, contains page for target
+    * - if source paragraph is on the right column (middle of three paragraphs),
+    *   page must be succeeded to the right (not up or down)
+    * - if target paragraph is on the left column (top or bottom of three paragraphs),
+    *   page must be preceded to the left (not up or down)
+    *
+    * The result is then trimmed so pages start with source page
+    * and end with target page, and made distinct.
+    */
+  def filterFold(folds: List[Fold], srcParIdx: Int, tgtParIdx: Int): List[Fold] = {
+    val srcPageIdx = getParPage(srcParIdx)
+    val tgtPageIdx = getParPage(tgtParIdx)
+
+    val f0 = folds.filter { f =>
+      f.pages.exists(_.idx == srcPageIdx) &&
+      f.pages.exists(_.idx == tgtPageIdx)
+    }
+
+    val f1 = f0.map { f =>
+      val p1 = f.pages.dropWhile(_.idx <  srcPageIdx)
+      val p2 = p1     .takeWhile(_.idx <= tgtPageIdx)
+      f.copy(pages = p2)  // preserve `id`
+    }
+
+    val srcIsRight = getParColumn(srcParIdx) == 1
+    val tgtIsLeft  = getParColumn(tgtParIdx) == 0
+
+    val f2 = if (!srcIsRight) f1 else f1.filter { f =>
+      f.pages match {
+        case p1 :: p2 :: _ if p1.rotation == p2.rotation => true
+        case _ => false
+      }
+    }
+
+    val f3 = if (!tgtIsLeft) f2 else f2.filter { f =>
+      f.pages match {
+        case p1 :: p2 :: _ if p1.rotation == p2.rotation => true
+        case _ => false
+      }
+    }
+
+    val f4 = f3.map(_.normalizeOrigin).distinct
+    ??? // distinct has floating point prob
+    f4
+  }
+
   def viewGNG(fold: Fold): Unit = {
     val gr = readGNG(fold)
 //    val startIdx  = util.Random.nextInt(gr.nodes.size)
@@ -592,11 +648,12 @@ object CatalogPaths {
 
   def testViewFolds(): Unit = {
     val info    = Catalog.readOrderedParInfo()
-    val folds   = mkFoldSeq(info)
-    val maxRect = folds.map(_.surfaceMM).reduce(_ union _).scale(ppmm)
+    val folds0  = mkFoldSeq(info)
+    val maxRect = folds0.map(_.surfaceMM).reduce(_ union _).scale(ppmm)
     Swing.onEDT {
-      var fold: Fold          = folds.head
-      var img : BufferedImage = mkFoldImage(info, fold, color = true)
+      var folds : List[Fold]    = folds0
+      var fold  : Fold          = folds.head
+      var img   : BufferedImage = mkFoldImage(info, fold, color = true)
 
       val ggImage = new Component {
         preferredSize = new Dimension(1600, 800)
@@ -622,20 +679,65 @@ object CatalogPaths {
 
       val ggSelect = new ComboBox(folds.indices) {
         listenTo(selection)
-        reactions += {
-          case SelectionChanged(_) =>
-            img.flush()
-            fold = folds(selection.index)
-            img = mkFoldImage(info, fold, color = true)
-            ggImage.repaint()
+     }
+
+      def updateImage(): Unit = {
+        img.flush()
+        val id  = folds0(ggSelect.selection.item).id
+        fold    = folds.find(f => id.contains(f.id)).get
+        img     = mkFoldImage(info, fold, color = true)
+        ggImage.repaint()
+      }
+
+      ggSelect.reactions += {
+        case SelectionChanged(_) =>
+          updateImage()
+      }
+
+      val mSrc = new SpinnerNumberModel(-1, -1, 17, 1)
+      val mTgt = new SpinnerNumberModel(-1, -1, 17, 1)
+
+      def setFilter(): Unit = {
+        val srcParIdx = mSrc.getNumber.intValue
+        val tgtParIdx = mTgt.getNumber.intValue
+        if (srcParIdx >= 0 && tgtParIdx > srcParIdx) {
+          folds           = filterFold(folds0, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
+          val filtered    = folds.map { fF =>
+            val idF = fF.id
+            val i   = folds0.indexWhere(_.id.contains(idF))
+            i
+          }
+          ggSelect.items  = filtered
+          updateImage()
         }
+      }
+
+      val ggSrc = new Spinner(mSrc) {
+        reactions += {
+          case ValueChanged(_) => setFilter()
+        }
+      }
+
+      val ggTgt = new Spinner(mTgt) {
+        reactions += {
+          case ValueChanged(_) => setFilter()
+        }
+      }
+
+      val pEast = new GridPanel(3, 2) {
+        contents += new Label("Fold Idx:")
+        contents += ggSelect
+        contents += new Label("Src Par Idx:")
+        contents += ggSrc
+        contents += new Label("Tgt Par Idx:")
+        contents += ggTgt
       }
 
       new Frame {
         title     = "Folds"
         contents  = new BorderPanel {
-          add(ggSelect, BorderPanel.Position.North )
           add(ggImage , BorderPanel.Position.Center)
+          add(pEast   , BorderPanel.Position.East  )
         }
         pack().centerOnScreen()
         open()

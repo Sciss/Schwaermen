@@ -170,7 +170,8 @@ object Catalog {
       copy(x = x - left, y = y - top, width = width + left + right, height = height + top + bottom)
   }
 
-  def getParPage(parIdx: Int): Int = parIdx / 3
+  def getParPage  (parIdx: Int): Int = parIdx / 3
+  def getParColumn(parIdx: Int): Int = if (parIdx % 3 == 1) 1 else 0
 
   object Lang {
     case object De extends Lang
