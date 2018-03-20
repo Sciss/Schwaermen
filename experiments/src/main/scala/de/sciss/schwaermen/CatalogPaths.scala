@@ -31,14 +31,19 @@ import scala.swing.{BorderPanel, Component, Dimension, Frame, Graphics2D, Swing}
 
 object CatalogPaths {
   def main(args: Array[String]): Unit = {
-    if (!fOutGNG.isFile) {
-      runGNG()
-    } else {
-      println("(Skipping runGNG)")
+    val info  = readOrderedParInfo()
+    val folds = mkFoldSeq(info)
+    folds.foreach { fold =>
+      val fOutGNG = gngFile(fold)
+      if (!fOutGNG.isFile) {
+        println(s"runGNG(${fOutGNG.name})")
+        runGNG(info, fold, fOutGNG)
+      }
     }
-//    viewGNG()
-//    testDrawPath()
-    testViewFolds()
+
+//    testDrawPath(folds(6))
+    viewGNG(folds(5))
+//    testViewFolds()
   }
 
   /*
@@ -71,7 +76,7 @@ object CatalogPaths {
 //  lazy val PageIWidthPx : Int = math.round(ppmm * PaperIWidthMM).toInt
 //  lazy val PageIHeightPx: Int = PageHeightPx
 
-  lazy val fOutGNG : File = Catalog.dir / "gng.bin"
+//  lazy val fOutGNG : File = Catalog.dir / "gng.bin"
 
   lazy val GNG_MaxNodes  = 6561 // 8192
 
@@ -81,7 +86,10 @@ object CatalogPaths {
     def swap = Edge(to, from)
   }
 
-  case class GraphGNG(surfaceWidth: Int, surfaceHeight: Int, nodes: Vec[Point2D], edges: Vec[Edge])
+  case class GraphGNG(fold: Fold, nodes: Vec[Point2D], edges: Vec[Edge]) {
+    lazy val surfaceWidthPx : Int = (fold.surfaceMM.width  * ppmm).toInt
+    lazy val surfaceHeightPx: Int = (fold.surfaceMM.height * ppmm).toInt
+  }
 
   def latexEdgeTemplate(text: String): String = stripTemplate(
     s"""@documentclass[10pt]{article}
@@ -188,7 +196,7 @@ object CatalogPaths {
   }
 
   case class Fold(indices: List[Int], pages: List[FoldPage]) {
-    lazy val surface: Rectangle = {
+    lazy val surfaceMM: Rectangle = {
       val r = pages.map(_.rectangle)
       val hd :: tl = r
       tl.foldLeft(hd)(_ union _)
@@ -210,7 +218,7 @@ object CatalogPaths {
       }._1.reverse.mkString("-")
 
     def normalizeOrigin: Fold = {
-      val s   = surface
+      val s   = surfaceMM
       val dx  = -s.x
       val dy  = -s.y
       val p1  = pages.map(_.shift(dx, dy))
@@ -324,11 +332,11 @@ object CatalogPaths {
     }
   }
 
-  def testDrawPath(): Unit = {
+  def testDrawPath(fold: Fold): Unit = {
     val text = CatalogTexts.edgesDe.head._2
     val latex = latexEdgeTemplate(text)
     require (dirTmp.isDirectory, s"Not a directory: $dirTmp")
-    val fOutTex = dirTmp / s"edge_temp.tex"
+    val fOutTex = dirTmp / s"edge_${fold.rotationString}.tex"
     val fOutPDF = fOutTex.replaceExt("pdf")
     writeText(latex, fOutTex)
 
@@ -341,7 +349,7 @@ object CatalogPaths {
 
     val svg = Catalog.parseSVG(fOutSVG)
 
-    val gr    = readGNG()
+    val gr    = readGNG(fold)
     val route = testRoute
     val intp: Vec[Point2D] = route.grouped(3).map(_.head).sliding(4).flatMap { nodeIds =>
       val Seq(p1, p2, p3, p4) = nodeIds.map { id =>
@@ -407,13 +415,17 @@ object CatalogPaths {
     exec(inkscape, dirTmp, argsSVG2)
   }
 
-  def readGNG(): GraphGNG = {
+  def gngFile(fold: Fold): File =
+    Catalog.dir / s"gng-${fold.rotationString}.bin"
+
+  def readGNG(fold: Fold): GraphGNG = {
+    val fOutGNG = gngFile(fold)
     val fis = new FileInputStream(fOutGNG)
     try {
       val dis = new DataInputStream(fis)
       require (dis.readInt() == GNG_COOKIE)
-      val surfaceWidthPx  = dis.readShort()
-      val surfaceHeightPx = dis.readShort()
+      /* val surfaceWidthPx  = */ dis.readShort()
+      /* val surfaceHeightPx = */ dis.readShort()
       val nNodes = dis.readInt()
       val nodes = Vector.fill(nNodes) {
         val x = dis.readFloat()
@@ -426,23 +438,23 @@ object CatalogPaths {
         val to   = dis.readInt()
         Edge(from, to)
       }
-      GraphGNG(surfaceWidthPx, surfaceHeightPx, nodes, edges)
+      GraphGNG(fold, nodes, edges)
 
     } finally {
       fis.close()
     }
   }
 
-  def viewGNG(): Unit = {
-    val gr = readGNG()
+  def viewGNG(fold: Fold): Unit = {
+    val gr = readGNG(fold)
 //    val startIdx  = util.Random.nextInt(gr.nodes.size)
 //    val stopIdx   = {
 //      val i = util.Random.nextInt(gr.nodes.size - 1)
 //      if (i >= startIdx) i + 1 else i
 //    }
     val rnd       = new util.Random(108L)
-    val left      = gr.nodes.iterator.zipWithIndex.filter(_._1.x < gr.surfaceWidth * 1/3).map(_._2).toIndexedSeq
-    val right     = gr.nodes.iterator.zipWithIndex.filter(_._1.x > gr.surfaceWidth * 2/3).map(_._2).toIndexedSeq
+    val left      = gr.nodes.iterator.zipWithIndex.filter(_._1.x < gr.surfaceWidthPx * 1/3).map(_._2).toIndexedSeq
+    val right     = gr.nodes.iterator.zipWithIndex.filter(_._1.x > gr.surfaceWidthPx * 2/3).map(_._2).toIndexedSeq
     val startIdx  = left (rnd.nextInt(left .size))
     val stopIdx   = right(rnd.nextInt(right.size))
     println(s"startIdx $startIdx, stopIdx $stopIdx")
@@ -485,8 +497,8 @@ object CatalogPaths {
           super.paintComponent(g)
           val w     = peer.getWidth
           val h     = peer.getHeight
-          val sx    = w.toDouble / gr.surfaceWidth
-          val sy    = h.toDouble / gr.surfaceHeight
+          val sx    = w.toDouble / gr.surfaceWidthPx
+          val sy    = h.toDouble / gr.surfaceHeightPx
           val scale = math.min(sx, sy)
           g.setColor(Color.white)
           g.fillRect(0, 0, w, h)
@@ -524,6 +536,7 @@ object CatalogPaths {
 //      val dp = math.max(dx, dy)
 
       new Frame {
+        title = fold.rotationString
         contents = comp
         preferredSize = new Dimension(1600, 400)
         pack().centerOnScreen()
@@ -533,8 +546,8 @@ object CatalogPaths {
   }
 
   def mkFoldImage(info: Vec[ParFileInfo], fold: Fold, color: Boolean = false): BufferedImage = {
-    val w   = math.round(ppmm * fold.surface.width ).toInt
-    val h   = math.round(ppmm * fold.surface.height).toInt
+    val w   = math.round(ppmm * fold.surfaceMM.width ).toInt
+    val h   = math.round(ppmm * fold.surfaceMM.height).toInt
     val img = new BufferedImage(w, h, if (color) BufferedImage.TYPE_INT_ARGB else BufferedImage.TYPE_BYTE_BINARY)
     val g   = img.createGraphics()
     val c0  = Color.white
@@ -580,7 +593,7 @@ object CatalogPaths {
   def testViewFolds(): Unit = {
     val info    = Catalog.readOrderedParInfo()
     val folds   = mkFoldSeq(info)
-    val maxRect = folds.map(_.surface).reduce(_ union _).scale(ppmm)
+    val maxRect = folds.map(_.surfaceMM).reduce(_ union _).scale(ppmm)
     Swing.onEDT {
       var fold: Fold          = folds.head
       var img : BufferedImage = mkFoldImage(info, fold, color = true)
@@ -630,29 +643,14 @@ object CatalogPaths {
     }
   }
 
-  def runGNG(): Unit = {
-    val info                = Catalog.readOrderedParInfo()
-    val SurfaceWidthPx      = PageWidthPx  * 6
-    val SurfaceHeightPx     = PageHeightPx * 1
-    println(s"surface = $SurfaceWidthPx x $SurfaceHeightPx")
-    val img                 = new BufferedImage(SurfaceWidthPx, SurfaceHeightPx, BufferedImage.TYPE_BYTE_BINARY)
-    val gImg                = img.createGraphics()
-    gImg.setColor(Color.white)
-    gImg.fillRect(0, 0, SurfaceWidthPx, SurfaceHeightPx)
-    gImg.setColor(Color.black)
-    val MarPx = math.round(PadMarMM * ppmm).toInt
-    gImg.fillRect(MarPx, MarPx, SurfaceWidthPx - (MarPx + MarPx), SurfaceHeightPx - (MarPx + MarPx))
-    gImg.setColor(Color.white)
-    info.indices.foreach { parIdx =>
-      val pi  = Catalog.getParPage(parIdx)
-      val r   = Catalog.getParRectMM(info, parIdx = parIdx).border(PadMarMM) scale ppmm
-      val px  = pi * PageWidthPx
-      val xi  = math.round(r.x).toInt
-      val yi  = math.round(r.y).toInt
-      val wi  = math.round(r.x + r.width ).toInt - xi
-      val hi  = math.round(r.y + r.height).toInt - yi
-      gImg.fillRect(xi + px, yi, wi, hi)
-    }
+  def runGNG(info: Vec[ParFileInfo], fold: Fold, fOutGNG: File): Unit = {
+//    val info          = Catalog.readOrderedParInfo()
+//    val SurfaceWidthPx      = PageWidthPx  * 6
+//    val SurfaceHeightPx     = PageHeightPx * 1
+//    println(s"surface = $SurfaceWidthPx x $SurfaceHeightPx")
+//    val folds         = mkFoldSeq  (info)
+//    val fold          = folds(2)
+    val img           = mkFoldImage(info, fold)
 
     val c             = new ComputeGNG
     val pd            = new ImagePD(img, true)
@@ -701,6 +699,9 @@ object CatalogPaths {
 
     println(s"Done. Took ${(System.currentTimeMillis() - t0)/1000} seconds, and ${c.numSignals} signals.")
 //    println(compute.nodes.take(compute.nNodes).mkString("\n"))
+
+    val SurfaceWidthPx  = img.getWidth
+    val SurfaceHeightPx = img.getHeight
 
     val fos = new FileOutputStream(fOutGNG)
     try {
