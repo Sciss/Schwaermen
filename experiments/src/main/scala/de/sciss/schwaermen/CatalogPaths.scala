@@ -38,9 +38,9 @@ object CatalogPaths {
     runAllGNG(lang)
     runAllBestPath(lang)
 
-    testDrawPath(srcParIdx = 6, tgtParIdx = 12, lang = lang)
+//    testDrawPath(srcParIdx = 6, tgtParIdx = 12, lang = lang)
 //    viewGNG(folds(5))
-//    testViewFolds()
+    testViewFolds()
   }
 
   def runAllGNG(lang: Lang): Unit = {
@@ -420,7 +420,8 @@ object CatalogPaths {
       val _bp         = readBestPath(fDijk)
       val ep          = calcPathEndPoints(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
       val route       = (ep.srcPreIterator ++ _bp.iterator.map(gr.nodes) ++ ep.tgtPtIterator).toIndexedSeq
-      val intp        = interpolate(route, last = ep.post)
+      val intp0       = interpolate(route, last = ep.post)
+      val intp        = intp0.map(_ * (1.0 / ppmmGNG))
       val pathCursor  = new PathCursor(intp)
       pathCursor
     }
@@ -438,12 +439,14 @@ object CatalogPaths {
     val chopped     = textNode.chop(0)
     var lastTextX   = 0.0
     val textNodesOut = chopped.map { t =>
-      val x0 = t.children.head.x.head
+      val ts = t.children.head
+      val x0 = ts.x.head
       pathCursor.advance((x0 - lastTextX) * textScaleMM)
       lastTextX = x0
       val t1 = t.mapChildren { tSpan =>
         tSpan.setLocation(0.0 :: Nil, 0.0)
       }
+      println(s"'${ts.text}' @ ${pathCursor.location}")
       val t2 = t1.setTransform(pathCursor.transform(1.0 / textScaleMM))
       t2
     }
@@ -700,6 +703,7 @@ object CatalogPaths {
     }
   }
 
+  /** Units are in pixels re ppmmGNG */
   case class PathEndPoints(srcPt: Point2D, tgtPt: Point2D, pre: List[Point2D], post: List[Point2D]) {
     def srcPtIterator: Iterator[Point2D] = Iterator.single(srcPt)
     def tgtPtIterator: Iterator[Point2D] = Iterator.single(tgtPt)
@@ -967,7 +971,7 @@ object CatalogPaths {
           }
 
           g.setTransform(atOrig)
-          g.drawString(fold.rotationString, 8, 24)
+          g.drawString(fold.id, 8, 24)
         }
       }
 
