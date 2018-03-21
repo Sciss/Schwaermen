@@ -137,6 +137,11 @@ object Catalog {
     def right : Double = x + width
     def bottom: Double = y + height
 
+    def topLeft     : Point2D = Point2D(left  , top   )
+    def topRight    : Point2D = Point2D(right , top   )
+    def bottomLeft  : Point2D = Point2D(left  , bottom)
+    def bottomRight : Point2D = Point2D(right , bottom)
+
     def scale(scalar: Double): Rectangle =
       copy(x = x* scalar, y = y * scalar, width = width * scalar, height = height * scalar)
 
@@ -173,6 +178,9 @@ object Catalog {
     def overlaps(that: Rectangle): Boolean = (this intersect that).nonEmpty
 
     def contains(that: Rectangle): Boolean = (this union that) == this
+
+    def contains(pt: Point2D): Boolean =
+      pt.x >= left && pt.x < right && pt.y >= top && pt.y < bottom
 
     // let's use LaTeX order
     def border(left: Double, bottom: Double, right: Double, top: Double): Rectangle =
@@ -363,6 +371,18 @@ object Catalog {
 
     def toAttrValue: String =
       s"matrix(${a.toFloat},${b.toFloat},${c.toFloat},${d.toFloat},${e.toFloat},${f.toFloat})"
+
+    def prepend(that: Transform): Transform = {
+      val awt = toAwt
+      awt.preConcatenate(that.toAwt)
+      Transform.fromAwt(awt)
+    }
+
+    def append(that: Transform): Transform = {
+      val awt = toAwt
+      awt.concatenate(that.toAwt)
+      Transform.fromAwt(awt)
+    }
   }
 
   case class TSpan(id: String, y: Double, x: ISeq[Double], text: String, node: xml.Elem) {

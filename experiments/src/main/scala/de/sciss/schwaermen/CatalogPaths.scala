@@ -38,9 +38,9 @@ object CatalogPaths {
     runAllGNG(lang)
     runAllBestPath(lang)
 
-//    testDrawPath(srcParIdx = 6, tgtParIdx = 12, lang = lang)
+    testDrawPath(srcParIdx = 6, tgtParIdx = 13, lang = lang)
 //    viewGNG(folds(5))
-    testViewFolds()
+//    testViewFolds()
   }
 
   def runAllGNG(lang: Lang): Unit = {
@@ -378,10 +378,10 @@ object CatalogPaths {
       math.atan2(d.y, d.x)
     }
 
-    def transform(scale: Double = 1.0): Transform = {
-      val loc = location
-      val r   = rotation
-      val at  = AffineTransform.getTranslateInstance(loc.x * scale, loc.y * scale)
+    def transform(scale: Double = 1.0 /* , rot: Double = 0.0 */): Transform = {
+      val loc = location * scale
+      val r   = rotation // + rot
+      val at  = AffineTransform.getTranslateInstance(loc.x, loc.y)
       at.rotate(r)
       Transform.fromAwt(at)
     }
@@ -413,6 +413,8 @@ object CatalogPaths {
     val textLine    = textNode.children.head
     val textScaleMM = svg.transform.scaleX / Catalog.ppmmSVG
     val textExtent  = textLine.x.last * textScaleMM
+
+    val pagesUp     = (0 until NumPages).map(getPageRectMM(_, absLeft = true, lang = lang))
 
     val pathCursors = folds.map { fold =>
       val gr          = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
@@ -446,8 +448,24 @@ object CatalogPaths {
       val t1 = t.mapChildren { tSpan =>
         tSpan.setLocation(0.0 :: Nil, 0.0)
       }
-      println(s"'${ts.text}' @ ${pathCursor.location}")
-      val t2 = t1.setTransform(pathCursor.transform(1.0 / textScaleMM))
+      val loc = pathCursor.location
+      val pagesHit = fold.pages.collect {
+        case p if p.rectangle.contains(loc) => p // .idx
+      }
+      val page1   = pagesHit.head
+      val pageUp  = pagesUp(page1.idx)
+      val tP = {
+        val anchor  = if (page1.isUpright) page1.rectangle.topLeft else page1.rectangle.bottomRight
+        val shift   = pageUp.topLeft + (anchor * -1)
+        val at      = AffineTransform.getTranslateInstance(shift.x, shift.y)
+        if (!page1.isUpright) at.rotate(math.Pi)
+        Transform.fromAwt(at)
+      }
+
+      println(s"'${ts.text}' @ $loc} -- pages ${pagesHit.map(_.idx).mkString("[", ", ", "]")}")
+      val tF = pathCursor.transform(scale = 1.0 / textScaleMM)
+      val tA = ??? : Transform // tF.prepend(tP)
+      val t2 = t1.setTransform(tA)
       t2
     }
 
