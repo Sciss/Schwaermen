@@ -13,7 +13,7 @@
 
 package de.sciss.schwaermen
 
-import java.awt.geom.{AffineTransform, Ellipse2D, Line2D}
+import java.awt.geom.{AffineTransform, Ellipse2D, Line2D, Path2D}
 import java.awt.image.BufferedImage
 import java.awt.{BasicStroke, Color, RenderingHints}
 import java.io.{DataInputStream, DataOutputStream, FileInputStream, FileOutputStream}
@@ -28,8 +28,8 @@ import de.sciss.swingplus.{ComboBox, Spinner}
 import de.sciss.{neuralgas, numbers}
 import javax.swing.SpinnerNumberModel
 
-import scala.swing.event.{SelectionChanged, ValueChanged}
-import scala.swing.{BorderPanel, Component, Dimension, Frame, Graphics2D, GridPanel, Label, Swing}
+import scala.swing.event.{ButtonClicked, SelectionChanged, ValueChanged}
+import scala.swing.{BorderPanel, Component, Dimension, Frame, Graphics2D, GridPanel, Label, Swing, ToggleButton}
 
 object CatalogPaths {
   def main(args: Array[String]): Unit = {
@@ -40,7 +40,7 @@ object CatalogPaths {
 
 //    testDrawPath(folds(6))
 //    viewGNG(folds(5))
-//    testViewFolds()
+    testViewFolds()
   }
 
   def runAllGNG(lang: Lang): Unit = {
@@ -612,6 +612,15 @@ object CatalogPaths {
     }
   }
 
+  def mkDijkF(fold: Fold, lang: Lang, srcParIdx: Int, tgtParIdx: Int): File =
+    dir / s"dijk-$lang-$srcParIdx-$tgtParIdx-${fold.id}.txt"
+
+  def readBestPath(fDijk: File): List[Int] = {
+    val s = readText(fDijk).trim
+    val arr = s.split(' ')
+    arr.iterator.map(_.toInt).toList
+  }
+
   def findBestPath(srcParId: Int, tgtParId: Int, lang: Lang): Unit = {
     val info      = Catalog.readOrderedParInfo(lang)
     val folds0    = mkFoldSeq(info, lang)
@@ -640,7 +649,7 @@ object CatalogPaths {
       println(s"Text line for ($srcParId, $tgtParId) has extent ${textExtentMM}mm.")
 
     folds.zipWithIndex.foreach { case (fold, fi) =>
-      val fDijk = dir / s"dijk-$lang-$srcParIdx-$tgtParIdx-${fold.id}.txt"
+      val fDijk = mkDijkF(fold, lang, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
       if (!fDijk.isFile || fDijk.length() == 0L) {
         printTextExtent
         println(s"Examining fold ${fi + 1} of ${folds.size}...")
@@ -841,15 +850,21 @@ object CatalogPaths {
       var srcParIdx = -1
       var tgtParIdx = -1
       var hasEdgePoints = false
-      var srcParEdgePt = Point2D(0, 0)
-      var tgtParEdgePt = Point2D(0, 0)
+      var bestPath      = List.empty[Int]
+      var gr: GraphGNG  = null
+      var srcParEdgePt  = Point2D(0, 0)
+      var tgtParEdgePt  = Point2D(0, 0)
+      var showPath      = true
+      var showMesh      = true
 
       def hasPath: Boolean = srcParIdx >= 0 && tgtParIdx > srcParIdx
 
       val ggImage = new Component {
         preferredSize = new Dimension(1600, 800)
 
-        private[this] val oval = new Ellipse2D.Double
+        private[this] val oval    = new Ellipse2D .Double
+        private[this] val gp      = new Path2D    .Double
+        private[this] val orange  = Color.yellow // new Color(0xFF, 0x80, 0)
 
         override protected def paintComponent(g: Graphics2D): Unit = {
           super.paintComponent(g)
@@ -870,15 +885,46 @@ object CatalogPaths {
 //          g.drawImage(img, xi, yi, wi, hi, peer)
           g.drawImage(img, 0, 0, peer)
 
-          g.setColor(new Color(0xFF, 0x80, 0))
-
           if (hasEdgePoints) {
+            g.setColor(orange)
             val r1 = 4 / scale
             val r2 = 6 / scale
             oval.setFrameFromCenter(srcParEdgePt.x, srcParEdgePt.y, srcParEdgePt.x - r1, srcParEdgePt.y - r1)
             g.fill(oval)
             oval.setFrameFromCenter(tgtParEdgePt.x, tgtParEdgePt.y, tgtParEdgePt.x - r2, tgtParEdgePt.y - r2)
             g.fill(oval)
+          }
+
+          if (bestPath.nonEmpty) {
+            if (showMesh) {
+              g.setColor(Color.cyan)
+              gp.reset()
+              gr.edges.foreach { e =>
+                val n1 = gr.nodes(e.from)
+                val n2 = gr.nodes(e.to  )
+                gp.moveTo(n1.x, n1.y)
+                gp.lineTo(n2.x, n2.y)
+              }
+              g.setStroke(new BasicStroke((1.0 / scale).toFloat))
+              g.draw(gp)
+            }
+
+            if (showPath) {
+              g.setColor(orange)
+              gp.reset()
+              var move = true
+              bestPath.foreach { nodeIdx =>
+                val pt = gr.nodes(nodeIdx)
+                if (move) {
+                  gp.moveTo(pt.x, pt.y)
+                  move = false
+                } else {
+                  gp.lineTo(pt.x, pt.y)
+                }
+              }
+              g.setStroke(new BasicStroke((2.0 / scale).toFloat))
+              g.draw(gp)
+            }
           }
 
           g.setTransform(atOrig)
@@ -890,11 +936,15 @@ object CatalogPaths {
         listenTo(selection)
       }
 
+      def repaintCanvas(): Unit = ggImage.repaint()
+
       def updateImage(): Unit = {
         img.flush()
-        val id  = folds0(ggSelect.selection.item).id
-        fold    = folds.find(f => id.contains(f.id)).get
-        img     = mkFoldImage(info, fold, color = true)
+        val id        = folds0(ggSelect.selection.item).id
+        fold          = folds.find(f => id.contains(f.id)).get
+        img           = mkFoldImage(info, fold, color = true)
+        hasEdgePoints = false
+        bestPath      = Nil
 
         if (hasPath) {
           try {
@@ -908,11 +958,18 @@ object CatalogPaths {
             case _: NoSuchElementException =>
               hasEdgePoints = false
           }
-        } else {
-          hasEdgePoints = false
+
+          if (hasEdgePoints) {
+            val fDijk = mkDijkF(fold = fold, lang = lang, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
+            if (fDijk.isFile) {
+              val _bp   = readBestPath(fDijk)
+              gr        = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+              bestPath  = _bp
+            }
+          }
         }
 
-        ggImage.repaint()
+        repaintCanvas()
       }
 
       ggSelect.reactions += {
@@ -933,9 +990,6 @@ object CatalogPaths {
           val filtered = folds.map { fF =>
             val idF = fF.id
             val i = folds0.indexWhere(_.id.contains(idF))
-            if (i < 0) {
-              println("AQUI")
-            }
             i
           }
           ggSelect.items = filtered
@@ -958,13 +1012,35 @@ object CatalogPaths {
         }
       }
 
-      val pEast = new GridPanel(3, 2) {
+      val ggPath = new ToggleButton("Path") {
+        selected = showPath
+        listenTo(this)
+        reactions += {
+          case ButtonClicked(_) =>
+            showPath = selected
+            repaintCanvas()
+        }
+      }
+
+      val ggMesh = new ToggleButton("Mesh") {
+        selected = showMesh
+        listenTo(this)
+        reactions += {
+          case ButtonClicked(_) =>
+            showMesh = selected
+            repaintCanvas()
+        }
+      }
+
+      val pEast = new GridPanel(4, 2) {
         contents += new Label("Fold Idx:")
         contents += ggSelect
         contents += new Label("Src Par Idx:")
         contents += ggSrc
         contents += new Label("Tgt Par Idx:")
         contents += ggTgt
+        contents += ggPath
+        contents += ggMesh
       }
 
       new Frame {
@@ -1032,6 +1108,8 @@ object CatalogPaths {
 
     println(s" Done. Took ${(System.currentTimeMillis() - t0)/1000} seconds.") // ", and ${c.numSignals} signals."
 //    println(compute.nodes.take(compute.nNodes).mkString("\n"))
+
+    // XXX TODO --- sanitise: remove edges that cross boundaries
 
     val SurfaceWidthPx  = img.getWidth
     val SurfaceHeightPx = img.getHeight
