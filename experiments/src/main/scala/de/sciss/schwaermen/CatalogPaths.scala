@@ -33,7 +33,17 @@ import scala.swing.{BorderPanel, Component, Dimension, Frame, Graphics2D, GridPa
 
 object CatalogPaths {
   def main(args: Array[String]): Unit = {
-    val lang    = Lang.de
+    val lang = Lang.de
+
+    runAllGNG(lang)
+    runAllBestPath(lang)
+
+//    testDrawPath(folds(6))
+//    viewGNG(folds(5))
+//    testViewFolds()
+  }
+
+  def runAllGNG(lang: Lang): Unit = {
     val info    = readOrderedParInfo(lang)
     val folds0  = mkFoldSeq(info, lang)
     val edgeMap = CatalogTexts.edges(lang)
@@ -49,10 +59,14 @@ object CatalogPaths {
         }
       }
     }
+  }
 
-//    testDrawPath(folds(6))
-//    viewGNG(folds(5))
-    testViewFolds()
+  def runAllBestPath(lang: Lang): Unit = {
+    val edgeMap = CatalogTexts.edges(lang)
+
+    edgeMap.foreach { case ((srcParId, tgtParId), _) =>
+      findBestPath(srcParId = srcParId, tgtParId = tgtParId, lang = lang)
+    }
   }
 
   /*
@@ -74,13 +88,13 @@ object CatalogPaths {
 
    */
 
-  lazy val ppi       : Double  = 150.0       // for the GNG
-  lazy val ppmm      : Double  = ppi / 25.4  // for the GNG
+  lazy val ppiGNG    : Double  = 150.0       // for the GNG
+  lazy val ppmmGNG   : Double  = ppiGNG / 25.4  // for the GNG
   lazy val PadParMM  : Int     = 5 // 2
   lazy val PadMarMM  : Int     = 5 // 2
 
-  lazy val PageWidthPx  : Int = math.round(ppmm * PaperWidthMM ).toInt
-  lazy val PageHeightPx : Int = math.round(ppmm * PaperHeightMM).toInt
+  lazy val PageWidthPx  : Int = math.round(ppmmGNG * PaperWidthMM ).toInt
+  lazy val PageHeightPx : Int = math.round(ppmmGNG * PaperHeightMM).toInt
 
 //  lazy val PageIWidthPx : Int = math.round(ppmm * PaperIWidthMM).toInt
 //  lazy val PageIHeightPx: Int = PageHeightPx
@@ -96,13 +110,13 @@ object CatalogPaths {
   }
 
   case class GraphGNG(fold: Fold, nodes: Vec[Point2D], edges: Vec[Edge]) {
-    lazy val surfaceWidthPx : Int = (fold.surfaceMM.width  * ppmm).toInt
-    lazy val surfaceHeightPx: Int = (fold.surfaceMM.height * ppmm).toInt
+    lazy val surfaceWidthPx : Int = (fold.surfaceMM.width  * ppmmGNG).toInt
+    lazy val surfaceHeightPx: Int = (fold.surfaceMM.height * ppmmGNG).toInt
   }
 
   def latexEdgeTemplate(text: String): String = stripTemplate(
     s"""@documentclass[10pt]{article}
-       |@usepackage[paperheight=${LineSpacingPt * 3 / ppmm}mm,paperwidth=300mm,top=0mm,bottom=0mm,right=0mm,left=0mm]{geometry}
+       |@usepackage[paperheight=${LineSpacingPt * 3 / ppmmGNG}mm,paperwidth=300mm,top=0mm,bottom=0mm,right=0mm,left=0mm]{geometry}
        |@usepackage[ngerman]{babel}
        |@usepackage{Alegreya}
        |@usepackage[T1]{fontenc}
@@ -216,10 +230,9 @@ object CatalogPaths {
 
     lazy val rotations: List[Int] = pages.map(_.rotation)
 
-    lazy val rotationString         : String = mkRotString(pageIndices = false)
-    lazy val pagesAndRotationsString: String = mkRotString(pageIndices = true )
+    lazy val rotationString: String = mkRotString(pageIndices = false)
 
-    def id: String = pagesAndRotationsString
+    val id: String = mkRotString(pageIndices = true )
 
     private def mkRotString(pageIndices: Boolean): String =
       pages.iterator.foldLeft(List.empty[String] -> Option.empty[FoldPage]) { case ((s, pPrev), p) =>
@@ -240,14 +253,14 @@ object CatalogPaths {
       val r0 = pages.headOption.fold(0)(_.rotation)
       val f1 = if (r0 == 0) this else {
         // val action: FoldPage => FoldPage = if (r0 < 0) _.rotateCW else _.rotateCCW
-        val pages1 = pages.foldLeft(List.empty[FoldPage]) { (res, p) =>
+        val pages1 = pages.foldLeft(List.empty[FoldPage] -> Option.empty[Int]) { case ((res, predRot), p) =>
           val rOld    = p.rotation
           val p0      = if (p.isCW) p.rotateCCW else if (p.isCCW) p.rotateCW else p
           val p1      = res.headOption.fold(p0)(p0.nextTo)
-          val relRot  = rOld - res.headOption.fold(r0)(_.rotation)
+          val relRot  = rOld - predRot.getOrElse(r0)
           val p2      = if (relRot == 0) p1 else if (relRot < 0) p1.rotateCCW else p1.rotateCW
-          p2 :: res
-        } .reverse
+          (p2 :: res) -> Some(rOld)
+        } ._1.reverse
 
 //        if (pages1.nonEmpty) {
 //          assert(pages1.head.isUpright)
@@ -396,7 +409,7 @@ object CatalogPaths {
     val intp: Vec[Point2D] = route.grouped(3).map(_.head).sliding(4).flatMap { nodeIds =>
       val Seq(p1, p2, p3, p4) = nodeIds.map { id =>
         val n = gr.nodes(id)
-        Point2D(n.x / ppmm, n.y / ppmm)
+        Point2D(n.x / ppmmGNG, n.y / ppmmGNG)
       }
       CatmullRomSpline(CatmullRomSpline.Chordal, p1, p2, p3, p4).calcN(8)
     } .toIndexedSeq
@@ -621,7 +634,7 @@ object CatalogPaths {
     val srcPageIdx    = getParPage(srcParIdx)
     val tgtPageIdx    = getParPage(tgtParIdx)
 
-    val (srcRelPt, tgtRelPt) = calcParEdgePts(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+    val (srcRelPtMM, tgtRelPtMM) = calcParEdgePts(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
 
     lazy val printTextExtent: Unit =
       println(s"Text line for ($srcParId, $tgtParId) has extent ${textExtentMM}mm.")
@@ -634,10 +647,10 @@ object CatalogPaths {
 
         val gr    = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
 
-        val srcAbsPt      = mapPagePt(srcRelPt, pageIdx = srcPageIdx, pages = fold.pages)
-        val tgtAbsPt      = mapPagePt(tgtRelPt, pageIdx = tgtPageIdx, pages = fold.pages)
-        val srcVertex     = gr.nodes.minBy(pt => pt distSq srcAbsPt)
-        val tgtVertex     = gr.nodes.minBy(pt => pt distSq tgtAbsPt)
+        val srcAbsPtPx    = mapPagePt(srcRelPtMM, pageIdx = srcPageIdx, pages = fold.pages) * ppmmGNG
+        val tgtAbsPtPx    = mapPagePt(tgtRelPtMM, pageIdx = tgtPageIdx, pages = fold.pages) * ppmmGNG
+        val srcVertex     = gr.nodes.minBy(_ distSq srcAbsPtPx)
+        val tgtVertex     = gr.nodes.minBy(_ distSq tgtAbsPtPx)
         val srcVertexIdx  = gr.nodes.indexOf(srcVertex)
         val tgtVertexIdx  = gr.nodes.indexOf(tgtVertex)
 
@@ -768,15 +781,15 @@ object CatalogPaths {
   }
 
   def mkFoldImage(info: Vec[ParFileInfo], fold: Fold, color: Boolean = false): BufferedImage = {
-    val w   = math.round(ppmm * fold.surfaceMM.width ).toInt
-    val h   = math.round(ppmm * fold.surfaceMM.height).toInt
+    val w   = math.round(ppmmGNG * fold.surfaceMM.width ).toInt
+    val h   = math.round(ppmmGNG * fold.surfaceMM.height).toInt
     val img = new BufferedImage(w, h, if (color) BufferedImage.TYPE_INT_ARGB else BufferedImage.TYPE_BYTE_BINARY)
     val g   = img.createGraphics()
     val c0  = Color.white
     val c1  = Color.black
 
     def fillRectMM(r: Rectangle): Unit = {
-      val rs = r.scale(ppmm)
+      val rs = r.scale(ppmmGNG)
       val xi = math.round(rs.x).toInt
       val yi = math.round(rs.y).toInt
       val wi = math.round(rs.x + rs.width ).toInt - xi
@@ -816,7 +829,7 @@ object CatalogPaths {
     val lang    = Lang.de
     val info    = Catalog.readOrderedParInfo(lang)
     val folds0  = mkFoldSeq(info, lang)
-    val maxRect = folds0.map(_.surfaceMM).reduce(_ union _).scale(ppmm)
+    val maxRect = folds0.map(_.surfaceMM).reduce(_ union _).scale(ppmmGNG)
 
     println("KEYS:")
     CatalogTexts.edges(lang).keySet.map(tup => CatalogTexts.parIdToIndex(tup._1, tup._2)).foreach(println)
@@ -835,7 +848,7 @@ object CatalogPaths {
 
       val ggImage = new Component {
         preferredSize = new Dimension(1600, 800)
-        
+
         private[this] val oval = new Ellipse2D.Double
 
         override protected def paintComponent(g: Graphics2D): Unit = {
@@ -888,8 +901,8 @@ object CatalogPaths {
             val (rel1, rel2) = calcParEdgePts(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
             val pageIdx1 = getParPage(srcParIdx)
             val pageIdx2 = getParPage(tgtParIdx)
-            srcParEdgePt = mapPagePt(rel1, pageIdx = pageIdx1, pages = fold.pages) * ppmm
-            tgtParEdgePt = mapPagePt(rel2, pageIdx = pageIdx2, pages = fold.pages) * ppmm
+            srcParEdgePt = mapPagePt(rel1, pageIdx = pageIdx1, pages = fold.pages) * ppmmGNG
+            tgtParEdgePt = mapPagePt(rel2, pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
             hasEdgePoints = true
           } catch {
             case _: NoSuchElementException =>
@@ -904,7 +917,9 @@ object CatalogPaths {
 
       ggSelect.reactions += {
         case SelectionChanged(_) =>
-          updateImage()
+          Swing.onEDT { // avoid deadlock in IntelliJ debugger
+            updateImage()
+          }
       }
 
       val mSrc = new SpinnerNumberModel(-1, -1, 17, 1)
@@ -918,6 +933,9 @@ object CatalogPaths {
           val filtered = folds.map { fF =>
             val idF = fF.id
             val i = folds0.indexWhere(_.id.contains(idF))
+            if (i < 0) {
+              println("AQUI")
+            }
             i
           }
           ggSelect.items = filtered
