@@ -38,9 +38,9 @@ object CatalogPaths {
     runAllGNG(lang)
     runAllBestPath(lang)
 
-//    testDrawPath(folds(6))
+    testDrawPath(srcParIdx = 6, tgtParIdx = 12, lang = lang)
 //    viewGNG(folds(5))
-    testViewFolds()
+//    testViewFolds()
   }
 
   def runAllGNG(lang: Lang): Unit = {
@@ -76,9 +76,9 @@ object CatalogPaths {
     - for each possible page-folding configuration:
     - create a GNG from the possible space occupied by the edges
       around the paragraphs
-    - turn it into a MST
+    - turn it into a MST  ---- (no)
     - locate the possible starting and stopping points
-    - find the path
+    - find the path ---- (ideally ShortestPathACO, otherwise A*, Dijkstra)
     - create a bezier along it
     - make sure we don't overlap the paragraphs, otherwise
       rerun with stronger boundary padding
@@ -394,42 +394,46 @@ object CatalogPaths {
     }.toIndexedSeq
   }
 
-  def testDrawPath(fold: Fold, srcParIdx: Int, tgtParIdx: Int, lang: Lang): Unit = {
-    val text = CatalogTexts.edgesDe.head._2
-    val latex = latexEdgeTemplate(text)
-    require (dirTmp.isDirectory, s"Not a directory: $dirTmp")
-    val fOutTex = dirTmp / s"edge_${fold.rotationString}.tex"
-    val fOutPDF = fOutTex.replaceExt("pdf")
-    writeText(latex, fOutTex)
+  def testDrawPath(srcParIdx: Int, tgtParIdx: Int, lang: Lang): Unit = {
+    val info        = readOrderedParInfo(lang)
+    val folds0      = mkFoldSeq(info, lang)
+    val folds       = filterFolds(folds0, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
+    println(s"srcParIdx = $srcParIdx, tgtParIdx = $tgtParIdx, folds.size = ${folds.size}")
+    require (folds.nonEmpty, s"folds0.size = ${folds0.size}")
+    val fOutSVG     = dirTmp / s"edge-$lang-$srcParIdx-$tgtParIdx-test.svg"
 
-    val argPDF = Seq("-interaction=batchmode", fOutTex.path)
-    exec(pdflatex, dirTmp, argPDF)
+//    val edgeMap   = CatalogTexts.edges(lang)
+//    val parId     = CatalogTexts.parIdxToId(srcParIdx, tgtParIdx)
+//    val text      = edgeMap(parId)
 
-    val fOutSVG = fOutPDF.replaceExt("svg")
-    val argSVG = Seq("-l", fOutSVG.path, fOutPDF.path)
-    exec(inkscape, dirTmp, argSVG)
-
-    val svg = Catalog.parseSVG(fOutSVG)
-
-    val gr    = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
-    val route = testRoute
-//    val intp: Vec[Point2D] = route.grouped(3).map(_.head).sliding(4).flatMap { nodeIds =>
-//      val Seq(p1, p2, p3, p4) = nodeIds.map { id =>
-//        val n = gr.nodes(id)
-//        Point2D(n.x / ppmmGNG, n.y / ppmmGNG)
-//      }
-//      CatmullRomSpline(CatmullRomSpline.Chordal, p1, p2, p3, p4).calcN(8)
-//    } .toIndexedSeq
-    val intp = interpolate(route.iterator.map(gr.nodes).toIndexedSeq, last = ???)
+    val edgeSVGF    = edgeTextSVGFile(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+    val svg         = Catalog.parseSVG(edgeSVGF)
 
     val textNode    = svg.text.head
     val textLine    = textNode.children.head
     val textScaleMM = svg.transform.scaleX / Catalog.ppmmSVG
     val textExtent  = textLine.x.last * textScaleMM
-    val pathCursor  = new PathCursor(intp)
-    val pathExtent  = pathCursor.extent // intp.sliding(2, 1).map { case Seq(a, b) => (a dist b) / ppmm } .sum
 
-    println(f"textExtent = $textExtent%1.1fmm, pathExtent = $pathExtent%1.1fmm.")
+    val pathCursors = folds.map { fold =>
+      val gr          = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+      val fDijk       = mkDijkF(fold, lang, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
+      val _bp         = readBestPath(fDijk)
+      val ep          = calcPathEndPoints(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+      val route       = (ep.srcPreIterator ++ _bp.iterator.map(gr.nodes) ++ ep.tgtPtIterator).toIndexedSeq
+      val intp        = interpolate(route, last = ep.post)
+      val pathCursor  = new PathCursor(intp)
+      pathCursor
+    }
+
+    val longerCursors = pathCursors.filter(_.extent > textExtent)
+    val pathCursor    =
+      if (longerCursors.nonEmpty) longerCursors.minBy(_.extent)
+      else                        pathCursors  .maxBy(_.extent)
+
+    val foldIdx       = pathCursors.indexOf(pathCursor)
+    val fold          = folds(foldIdx)
+
+    println(f"textExtent = $textExtent%1.1fmm, pathExtent = ${pathCursor.extent}%1.1fmm, fold = ${fold.id}")
 
     val chopped     = textNode.chop(0)
     var lastTextX   = 0.0
@@ -470,12 +474,11 @@ object CatalogPaths {
       svg1.copy(text = textNodesOut, group = g1, doc = d1)
     }
 
-    val fOutSVG2 = fOutSVG.parent / s"${fOutSVG.base}-out.svg"
-    writeSVG(svg2.doc, fOutSVG2)
+    writeSVG(svg2.doc, fOutSVG)
 
-    val fOutPDF2 = fOutSVG2.replaceExt("pdf")
-    val argsSVG2 = Seq("--export-pdf", fOutPDF2.path, fOutSVG2.path)
-    exec(inkscape, dirTmp, argsSVG2)
+    val fOutPDF = fOutSVG.replaceExt("pdf")
+    val argsSVG = Seq("--export-pdf", fOutPDF.path, fOutSVG.path)
+    exec(inkscape, dirTmp, argsSVG)
   }
 
   def gngFile(fold: Fold, srcParIdx: Int, tgtParIdx: Int, lang: Lang): File =
@@ -697,6 +700,29 @@ object CatalogPaths {
     }
   }
 
+  case class PathEndPoints(srcPt: Point2D, tgtPt: Point2D, pre: List[Point2D], post: List[Point2D]) {
+    def srcPtIterator: Iterator[Point2D] = Iterator.single(srcPt)
+    def tgtPtIterator: Iterator[Point2D] = Iterator.single(tgtPt)
+
+    def srcPreIterator: Iterator[Point2D] = pre.iterator ++ srcPtIterator
+  }
+
+  def calcPathEndPoints(fold: Fold, srcParIdx: Int, tgtParIdx: Int, lang: Lang): PathEndPoints = {
+    val (rel1, rel2)    = calcParEdgePts(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+    val pageIdx1        = getParPage(srcParIdx)
+    val pageIdx2        = getParPage(tgtParIdx)
+    val rel1I           = rel1 + Point2D(-4, 0) // 4 mm to the left
+    val rel2I           = rel2 + Point2D(+4, 0) // 4 mm to the right
+    val rel3I           = rel2 + Point2D(+18, 0) // 4 mm to the right
+    val srcParEdgePt    = mapPagePt(rel1 , pageIdx = pageIdx1, pages = fold.pages) * ppmmGNG
+    val tgtParEdgePt    = mapPagePt(rel2 , pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
+    val srcParEdgePtI   = mapPagePt(rel1I, pageIdx = pageIdx1, pages = fold.pages) * ppmmGNG
+    val tgtParEdgePtI   = mapPagePt(rel2I, pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
+    val tgtParEdgePtI1  = mapPagePt(rel3I, pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
+    PathEndPoints(srcPt = srcParEdgePt, tgtPt = tgtParEdgePt,
+      pre = srcParEdgePtI :: Nil, post = tgtParEdgePtI :: tgtParEdgePtI1 :: Nil)
+  }
+
   def viewGNG(fold: Fold, srcParIdx: Int, tgtParIdx: Int, lang: Lang): Unit = {
     val gr = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
 //    val startIdx  = util.Random.nextInt(gr.nodes.size)
@@ -846,6 +872,7 @@ object CatalogPaths {
     val lang    = Lang.de
     val info    = Catalog.readOrderedParInfo(lang)
     val folds0  = mkFoldSeq(info, lang)
+    println(s"FOLDS.SIZE = ${folds0.size}")
     val maxRect = folds0.map(_.surfaceMM).reduce(_ union _).scale(ppmmGNG)
 
     println("KEYS:")
@@ -857,14 +884,10 @@ object CatalogPaths {
       var img   : BufferedImage = mkFoldImage(info, fold, color = true)
       var srcParIdx = -1
       var tgtParIdx = -1
+      var endPoints: PathEndPoints = null
       var hasEdgePoints = false
       var bestPath      = Vec.empty[Point2D]
       var gr: GraphGNG  = null
-      var srcParEdgePt  = Point2D(0, 0)
-      var tgtParEdgePt  = Point2D(0, 0)
-      var srcParEdgePtI = Point2D(0, 0) // interpolation handles
-      var tgtParEdgePtI = Point2D(0, 0) // interpolation handles
-      var tgtParEdgePtI1= Point2D(0, 0) // interpolation handles
       var showPath      = true
       var showMesh      = true
       var useSplines    = true
@@ -901,9 +924,10 @@ object CatalogPaths {
             g.setColor(orange)
             val r1 = 4 / scale
             val r2 = 6 / scale
-            oval.setFrameFromCenter(srcParEdgePt.x, srcParEdgePt.y, srcParEdgePt.x - r1, srcParEdgePt.y - r1)
+            val e = endPoints
+            oval.setFrameFromCenter(e.srcPt.x, e.srcPt.y, e.srcPt.x - r1, e.srcPt.y - r1)
             g.fill(oval)
-            oval.setFrameFromCenter(tgtParEdgePt.x, tgtParEdgePt.y, tgtParEdgePt.x - r2, tgtParEdgePt.y - r2)
+            oval.setFrameFromCenter(e.tgtPt.x, e.tgtPt.y, e.tgtPt.x - r2, e.tgtPt.y - r2)
             g.fill(oval)
           }
 
@@ -927,7 +951,7 @@ object CatalogPaths {
               var move = true
               val pts0 = bestPath
               val pts = if (!useSplines) pts0 else {
-                interpolate(pts0, last = tgtParEdgePtI :: tgtParEdgePtI1 :: Nil) // XXX TODO --- prepend and append extra points
+                interpolate(pts0, last = endPoints.post) // XXX TODO --- prepend and append extra points
               }
               pts.foreach { pt =>
                 if (move) {
@@ -963,21 +987,10 @@ object CatalogPaths {
 
         if (hasPath) {
           try {
-            val (rel1, rel2)  = calcParEdgePts(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
-            val pageIdx1      = getParPage(srcParIdx)
-            val pageIdx2      = getParPage(tgtParIdx)
-            val rel1I         = rel1 + Point2D(-4, 0) // 4 mm to the left
-            val rel2I         = rel2 + Point2D(+4, 0) // 4 mm to the right
-            val rel3I         = rel2 + Point2D(+18, 0) // 4 mm to the right
-            srcParEdgePt      = mapPagePt(rel1 , pageIdx = pageIdx1, pages = fold.pages) * ppmmGNG
-            tgtParEdgePt      = mapPagePt(rel2 , pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
-            srcParEdgePtI     = mapPagePt(rel1I, pageIdx = pageIdx1, pages = fold.pages) * ppmmGNG
-            tgtParEdgePtI     = mapPagePt(rel2I, pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
-            tgtParEdgePtI1    = mapPagePt(rel3I, pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
-            hasEdgePoints     = true
+            endPoints     = calcPathEndPoints(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+            hasEdgePoints = true
           } catch {
             case _: NoSuchElementException =>
-              hasEdgePoints = false
           }
 
           if (hasEdgePoints) {
@@ -985,7 +998,7 @@ object CatalogPaths {
             if (fDijk.isFile) {
               val _bp   = readBestPath(fDijk)
               gr        = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
-              val pts   = srcParEdgePtI +: _bp.iterator.map(gr.nodes).toIndexedSeq
+              val pts   = (endPoints.pre ++ _bp.iterator.map(gr.nodes)).toIndexedSeq
               bestPath  = pts
             }
           }
@@ -1009,6 +1022,7 @@ object CatalogPaths {
         tgtParIdx = mTgt.getNumber.intValue
         if (hasPath) {
           folds = filterFolds(folds0, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
+          println(s"srcParIdx = $srcParIdx, tgtParIdx = $tgtParIdx, folds.size = ${folds.size}")
           val filtered = folds.map { fF =>
             val idF = fF.id
             val i = folds0.indexWhere(_.id.contains(idF))
