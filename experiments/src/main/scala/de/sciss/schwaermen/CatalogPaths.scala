@@ -387,6 +387,13 @@ object CatalogPaths {
     }
   }
 
+  def interpolate(path: Vec[Point2D], last: List[Point2D]): Vec[Point2D] = {
+    (path.grouped(3).map(_.head) ++ last).sliding(4).flatMap {
+      case Seq(p1, p2, p3, p4) =>
+        CatmullRomSpline(CatmullRomSpline.Chordal, p1, p2, p3, p4).calcN(8)
+    }.toIndexedSeq
+  }
+
   def testDrawPath(fold: Fold, srcParIdx: Int, tgtParIdx: Int, lang: Lang): Unit = {
     val text = CatalogTexts.edgesDe.head._2
     val latex = latexEdgeTemplate(text)
@@ -406,13 +413,14 @@ object CatalogPaths {
 
     val gr    = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
     val route = testRoute
-    val intp: Vec[Point2D] = route.grouped(3).map(_.head).sliding(4).flatMap { nodeIds =>
-      val Seq(p1, p2, p3, p4) = nodeIds.map { id =>
-        val n = gr.nodes(id)
-        Point2D(n.x / ppmmGNG, n.y / ppmmGNG)
-      }
-      CatmullRomSpline(CatmullRomSpline.Chordal, p1, p2, p3, p4).calcN(8)
-    } .toIndexedSeq
+//    val intp: Vec[Point2D] = route.grouped(3).map(_.head).sliding(4).flatMap { nodeIds =>
+//      val Seq(p1, p2, p3, p4) = nodeIds.map { id =>
+//        val n = gr.nodes(id)
+//        Point2D(n.x / ppmmGNG, n.y / ppmmGNG)
+//      }
+//      CatmullRomSpline(CatmullRomSpline.Chordal, p1, p2, p3, p4).calcN(8)
+//    } .toIndexedSeq
+    val intp = interpolate(route.iterator.map(gr.nodes).toIndexedSeq, last = ???)
 
     val textNode    = svg.text.head
     val textLine    = textNode.children.head
@@ -850,12 +858,16 @@ object CatalogPaths {
       var srcParIdx = -1
       var tgtParIdx = -1
       var hasEdgePoints = false
-      var bestPath      = List.empty[Int]
+      var bestPath      = Vec.empty[Point2D]
       var gr: GraphGNG  = null
       var srcParEdgePt  = Point2D(0, 0)
       var tgtParEdgePt  = Point2D(0, 0)
+      var srcParEdgePtI = Point2D(0, 0) // interpolation handles
+      var tgtParEdgePtI = Point2D(0, 0) // interpolation handles
+      var tgtParEdgePtI1= Point2D(0, 0) // interpolation handles
       var showPath      = true
       var showMesh      = true
+      var useSplines    = true
 
       def hasPath: Boolean = srcParIdx >= 0 && tgtParIdx > srcParIdx
 
@@ -913,8 +925,11 @@ object CatalogPaths {
               g.setColor(orange)
               gp.reset()
               var move = true
-              bestPath.foreach { nodeIdx =>
-                val pt = gr.nodes(nodeIdx)
+              val pts0 = bestPath
+              val pts = if (!useSplines) pts0 else {
+                interpolate(pts0, last = tgtParEdgePtI :: tgtParEdgePtI1 :: Nil) // XXX TODO --- prepend and append extra points
+              }
+              pts.foreach { pt =>
                 if (move) {
                   gp.moveTo(pt.x, pt.y)
                   move = false
@@ -944,16 +959,22 @@ object CatalogPaths {
         fold          = folds.find(f => id.contains(f.id)).get
         img           = mkFoldImage(info, fold, color = true)
         hasEdgePoints = false
-        bestPath      = Nil
+        bestPath      = Vector.empty
 
         if (hasPath) {
           try {
-            val (rel1, rel2) = calcParEdgePts(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
-            val pageIdx1 = getParPage(srcParIdx)
-            val pageIdx2 = getParPage(tgtParIdx)
-            srcParEdgePt = mapPagePt(rel1, pageIdx = pageIdx1, pages = fold.pages) * ppmmGNG
-            tgtParEdgePt = mapPagePt(rel2, pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
-            hasEdgePoints = true
+            val (rel1, rel2)  = calcParEdgePts(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+            val pageIdx1      = getParPage(srcParIdx)
+            val pageIdx2      = getParPage(tgtParIdx)
+            val rel1I         = rel1 + Point2D(-4, 0) // 4 mm to the left
+            val rel2I         = rel2 + Point2D(+4, 0) // 4 mm to the right
+            val rel3I         = rel2 + Point2D(+18, 0) // 4 mm to the right
+            srcParEdgePt      = mapPagePt(rel1 , pageIdx = pageIdx1, pages = fold.pages) * ppmmGNG
+            tgtParEdgePt      = mapPagePt(rel2 , pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
+            srcParEdgePtI     = mapPagePt(rel1I, pageIdx = pageIdx1, pages = fold.pages) * ppmmGNG
+            tgtParEdgePtI     = mapPagePt(rel2I, pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
+            tgtParEdgePtI1    = mapPagePt(rel3I, pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
+            hasEdgePoints     = true
           } catch {
             case _: NoSuchElementException =>
               hasEdgePoints = false
@@ -964,7 +985,8 @@ object CatalogPaths {
             if (fDijk.isFile) {
               val _bp   = readBestPath(fDijk)
               gr        = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
-              bestPath  = _bp
+              val pts   = srcParEdgePtI +: _bp.iterator.map(gr.nodes).toIndexedSeq
+              bestPath  = pts
             }
           }
         }
@@ -1012,27 +1034,21 @@ object CatalogPaths {
         }
       }
 
-      val ggPath = new ToggleButton("Path") {
-        selected = showPath
-        listenTo(this)
-        reactions += {
-          case ButtonClicked(_) =>
-            showPath = selected
-            repaintCanvas()
+      def mkToggle(label: String)(getter: => Boolean)(setter: Boolean => Unit): Component =
+        new ToggleButton(label) {
+          selected = getter
+          listenTo(this)
+          reactions += {
+            case ButtonClicked(_) =>
+              setter(selected)
+              repaintCanvas()
+          }
         }
-      }
+      val ggPath = mkToggle("Path"    )(showPath  )(showPath    = _)
+      val ggMesh = mkToggle("Mesh"    )(showMesh  )(showMesh    = _)
+      val ggIntp = mkToggle("Splines" )(useSplines)(useSplines  = _)
 
-      val ggMesh = new ToggleButton("Mesh") {
-        selected = showMesh
-        listenTo(this)
-        reactions += {
-          case ButtonClicked(_) =>
-            showMesh = selected
-            repaintCanvas()
-        }
-      }
-
-      val pEast = new GridPanel(4, 2) {
+      val pEast = new GridPanel(5, 2) {
         contents += new Label("Fold Idx:")
         contents += ggSelect
         contents += new Label("Src Par Idx:")
@@ -1041,6 +1057,7 @@ object CatalogPaths {
         contents += ggTgt
         contents += ggPath
         contents += ggMesh
+        contents += ggIntp
       }
 
       new Frame {
