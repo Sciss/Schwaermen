@@ -33,27 +33,25 @@ import scala.swing.{BorderPanel, Component, Dimension, Frame, Graphics2D, GridPa
 
 object CatalogPaths {
   def main(args: Array[String]): Unit = {
-    val lang = Lang.de
+    implicit val lang: Lang = Lang.de
 
-    runAllGNG(lang)
-    runAllBestPath(lang)
-
-    implicit val ui: UniqueIDs = new UniqueIDs
-    testDrawPath(srcParIdx = 6, tgtParIdx = 17, lang = lang)
+    runAllGNG()
+    runAllBestPath()
+    renderPaths()
 //    viewGNG(folds(5))
 //    testViewFolds()
   }
 
-  def runAllGNG(lang: Lang): Unit = {
+  def runAllGNG()(implicit lang: Lang): Unit = {
     val info    = readOrderedParInfo(lang)
-    val folds0  = mkFoldSeq(info, lang)
+    val folds0  = mkFoldSeq(info)
     val edgeMap = CatalogTexts.edges(lang)
 
     edgeMap.foreach { case ((srcParId, tgtParId), _) =>
       val (srcParIdx, tgtParIdx) = CatalogTexts.parIdToIndex(srcParId, tgtParId)
       val folds = filterFolds(folds0, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
       folds.foreach { fold =>
-        val fOutGNG = gngFile(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+        val fOutGNG = gngFile(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
         if (!fOutGNG.isFile) {
           println(s"runGNG(${fOutGNG.name})")
           runGNG(info, fold, fOutGNG)
@@ -62,11 +60,11 @@ object CatalogPaths {
     }
   }
 
-  def runAllBestPath(lang: Lang): Unit = {
+  def runAllBestPath()(implicit lang: Lang): Unit = {
     val edgeMap = CatalogTexts.edges(lang)
 
     edgeMap.foreach { case ((srcParId, tgtParId), _) =>
-      findBestPath(srcParId = srcParId, tgtParId = tgtParId, lang = lang)
+      findBestPath(srcParId = srcParId, tgtParId = tgtParId)
     }
   }
 
@@ -100,7 +98,7 @@ object CatalogPaths {
   lazy val PageHeightPx : Int = math.round(ppmmGNG * PaperHeightMM).toInt
 
   // page bleeding plus font size to approximate maximum char box
-  lazy val BleedLineMM: Double = 3 + FontSizeMM
+  lazy val BleedLineMM: Double = BleedMM + FontSizeMM
 
 //  lazy val PageIWidthPx : Int = math.round(ppmm * PaperIWidthMM).toInt
 //  lazy val PageIHeightPx: Int = PageHeightPx
@@ -288,7 +286,7 @@ object CatalogPaths {
     }
   }
 
-  def mkFoldSeq(info: Vec[ParFileInfo], lang: Lang): List[Fold] = {
+  def mkFoldSeq(info: Vec[ParFileInfo])(implicit lang: Lang): List[Fold] = {
     val langFoldWay = if (lang == Lang.de) 1 else 0
     val all = foldIndices.flatMap { indices =>
       def loop(idx: Int, rem: List[Int], pred: List[FoldPage], res: List[Fold]): List[Fold] =
@@ -296,10 +294,10 @@ object CatalogPaths {
           val f = Fold(pages = pred)
           if (f.isValid && f.pages.head.idx == 0 && f.pages.last.idx == NumPages - 1) res :+ f else res
         } else {
-          val r1      = getPageRectMM(pageIdx = idx, absLeft = true, lang = lang)
+          val r1      = getPageRectMM(pageIdx = idx, absLeft = true)
           val parIdx0 = idx * 3
           val par1    = List(parIdx0, parIdx0+1, parIdx0+2).map(parIdx =>
-            getParRectMM(info, parIdx = parIdx, absLeft = true, lang = lang)
+            getParRectMM(info, parIdx = parIdx, absLeft = true)
           )
           val p0      = FoldPage(idx = idx, rectangle = r1, par = par1)
           val p1      = pred.lastOption.fold(p0)(p0.nextTo)
@@ -403,13 +401,39 @@ object CatalogPaths {
     }.toIndexedSeq
   }
 
-  def testDrawPath(srcParIdx: Int, tgtParIdx: Int, lang: Lang)(implicit ui: UniqueIDs): Unit = {
+  def renderPaths()(implicit lang: Lang): Unit = {
+    implicit val ui: UniqueIDs = new UniqueIDs
+    val edgeMap     = CatalogTexts.edges(lang)
+    val parIndices  = edgeMap.keySet.map(tup => CatalogTexts.parIdToIndex(tup._1, tup._2)).toList.sorted
+    val svgAll      = parIndices.map {
+      case (srcParIdx, tgtParIdx) =>
+        val svg = renderPath(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
+        svg
+    }
+
+    val textNodesAll = svgAll.flatMap(_.text)
+
+    val svgMerged = {
+      val svg1 = svgAll.head
+      val g1 = svg1.group .copy(child = textNodesAll.map(_.node))
+      val d1 = svg1.doc   .copy(child = g1 :: Nil)
+      svg1.copy(text = textNodesAll, group = g1, doc = d1)
+    }
+
+    val fOutSVG = dir / s"edges-$lang.svg"
+    writeSVG(svgMerged.doc, fOutSVG)
+    val fOutPDF = fOutSVG.replaceExt("pdf")
+    // cf. http://tavmjong.free.fr/INKSCAPE/MANUAL/html/CommandLine-General.html
+    val argsSVG = Seq("--export-pdf", fOutPDF.path, "--export-margin", BleedMM.toString, fOutSVG.path)
+    exec(inkscape, dirTmp, argsSVG)
+  }
+
+  def renderPath(srcParIdx: Int, tgtParIdx: Int)(implicit lang: Lang, ui: UniqueIDs): ParsedSVG = {
     val info        = readOrderedParInfo(lang)
-    val folds0      = mkFoldSeq(info, lang)
+    val folds0      = mkFoldSeq(info)
     val folds       = filterFolds(folds0, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
-    println(s"srcParIdx = $srcParIdx, tgtParIdx = $tgtParIdx, folds.size = ${folds.size}")
+//    println(s"srcParIdx = $srcParIdx, tgtParIdx = $tgtParIdx, folds.size = ${folds.size}")
     require (folds.nonEmpty, s"folds0.size = ${folds0.size}")
-    val fOutSVG     = dirTmp / s"edge-$lang-$srcParIdx-$tgtParIdx-test.svg"
 
     val rnd       = new util.Random((srcParIdx.toLong << 32) | tgtParIdx)
 
@@ -418,7 +442,7 @@ object CatalogPaths {
 //    val parId     = CatalogTexts.parIdxToId(srcParIdx, tgtParIdx)
 //    val text      = edgeMap(parId)
 
-    val edgeSVGF    = edgeTextSVGFile(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+    val edgeSVGF    = edgeTextSVGFile(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
     val svg         = Catalog.parseSVG(edgeSVGF)
 
     val textNode    = svg.text.head
@@ -426,13 +450,13 @@ object CatalogPaths {
     val textScaleMM = svg.transform.scaleX / Catalog.ppmmSVG
     val textExtent  = textLine.x.last * textScaleMM
 
-    val pagesUp     = (0 until NumPages).map(getPageRectMM(_, absLeft = true, lang = lang))
+    val pagesUp     = (0 until NumPages).map(getPageRectMM(_, absLeft = true))
 
     val pathCursors = folds.map { fold =>
-      val gr          = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
-      val fDijk       = mkDijkF(fold, lang, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
+      val gr          = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
+      val fDijk       = mkDijkF(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
       val _bp         = readBestPath(fDijk)
-      val ep          = calcPathEndPoints(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+      val ep          = calcPathEndPoints(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
 //      println(s"ep.srcPt ${ep.srcPt * (1.0 / ppmmGNG)}; ep.tgtPt ${ep.tgtPt * (1.0 / ppmmGNG)}")
       val route       = (ep.srcPreIterator ++ _bp.iterator.map(gr.nodes) ++ ep.tgtPtIterator).toIndexedSeq
       val intp0       = interpolate(route, last = ep.post)
@@ -511,17 +535,17 @@ object CatalogPaths {
       putTextOnPath(chopped) ++
       putTextOnPath(postChip, preStep = ChipStepMM, postStep = ChipStepMM)
 
-    val logFirstPt  = {
-      val t = textNodesOut.head
-      val tt = t.transform
-      tt(Point2D(0, 0))
-    }
-    val logLastPt   = {
-      val t = textNodesOut.last
-      val tt = t.transform
-      tt(Point2D(0, 0))
-    }
-    println(s"pathCursor.pos = ${pathCursor.pos}; first pt = ${logFirstPt * textScaleMM}, last pt = ${logLastPt * textScaleMM}")
+//    val logFirstPt  = {
+//      val t = textNodesOut.head
+//      val tt = t.transform
+//      tt(Point2D(0, 0))
+//    }
+//    val logLastPt   = {
+//      val t = textNodesOut.last
+//      val tt = t.transform
+//      tt(Point2D(0, 0))
+//    }
+//    println(s"pathCursor.pos = ${pathCursor.pos}; first pt = ${logFirstPt * textScaleMM}, last pt = ${logLastPt * textScaleMM}")
 
     val widthOut  = TotalPaperWidthMM /* PaperWidthMM */ * ppmmSVG
     val heightOut = PaperHeightMM * ppmmSVG
@@ -549,18 +573,14 @@ object CatalogPaths {
       svg1.copy(text = textNodesOut, group = g1, doc = d1)
     }
 
-    writeSVG(svg2.doc, fOutSVG)
-
-    val fOutPDF = fOutSVG.replaceExt("pdf")
-    val argsSVG = Seq("--export-pdf", fOutPDF.path, fOutSVG.path)
-    exec(inkscape, dirTmp, argsSVG)
+    svg2
   }
 
-  def gngFile(fold: Fold, srcParIdx: Int, tgtParIdx: Int, lang: Lang): File =
+  def gngFile(fold: Fold, srcParIdx: Int, tgtParIdx: Int)(implicit lang: Lang): File =
     Catalog.dir / s"gng-$lang-$srcParIdx-$tgtParIdx-${fold.id}.bin"
 
-  def readGNG(fold: Fold, srcParIdx: Int, tgtParIdx: Int, lang: Lang): GraphGNG = {
-    val fOutGNG = gngFile(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+  def readGNG(fold: Fold, srcParIdx: Int, tgtParIdx: Int)(implicit lang: Lang): GraphGNG = {
+    val fOutGNG = gngFile(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
     val fis = new FileInputStream(fOutGNG)
     try {
       val dis = new DataInputStream(fis)
@@ -642,9 +662,11 @@ object CatalogPaths {
     f6
   }
 
-  def edgeTextSVGFile(srcParIdx: Int, tgtParIdx: Int, lang: Lang): File = {
+  def edgeTextSVGFile(srcParIdx: Int, tgtParIdx: Int)(implicit lang: Lang): File =
     dir / s"edge-$lang-$srcParIdx-$tgtParIdx.svg"
-  }
+
+//  def edgePathSVGFile(srcParIdx: Int, tgtParIdx: Int, lang: Lang): File =
+//    dir / s"edge-path-$lang-$srcParIdx-$tgtParIdx.svg"
 
   def renderEdgeTextSVG(text: String, fOutSVG: File): Unit = {
     val latex     = latexEdgeTemplate(text)
@@ -660,16 +682,16 @@ object CatalogPaths {
     exec(inkscape, dirTmp, argSVG)
   }
 
-  def calcParEdgePts(srcParIdx: Int, tgtParIdx: Int, lang: Lang): (Point2D, Point2D) =
-    (calcParEdgePt(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang, useSource = true),
-     calcParEdgePt(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang, useSource = false))
+  def calcParEdgePts(srcParIdx: Int, tgtParIdx: Int)(implicit lang: Lang): (Point2D, Point2D) =
+    (calcParEdgePt(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, useSource = true),
+     calcParEdgePt(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, useSource = false))
 
-  def calcParEdgePt(srcParIdx: Int, tgtParIdx: Int, lang: Lang, useSource: Boolean): Point2D = {
+  def calcParEdgePt(srcParIdx: Int, tgtParIdx: Int, useSource: Boolean)(implicit lang: Lang): Point2D = {
     val edgeMap   = CatalogTexts.edges(lang)
     val info      = Catalog.readOrderedParInfo(lang)
     val parIdKey  = CatalogTexts.parIdxToId(srcParIdx, tgtParIdx)
     val parIdx    = if (useSource) srcParIdx else tgtParIdx
-    val parRect   = getParRectMM(info, parIdx = parIdx, absLeft = false, lang = lang)
+    val parRect   = getParRectMM(info, parIdx = parIdx, absLeft = false)
 
     // src/tgt might have been swapped, therefore query again
     val id      = CatalogTexts.parIdxToId(parIdx)
@@ -698,7 +720,7 @@ object CatalogPaths {
     }
   }
 
-  def mkDijkF(fold: Fold, lang: Lang, srcParIdx: Int, tgtParIdx: Int): File =
+  def mkDijkF(fold: Fold, srcParIdx: Int, tgtParIdx: Int)(implicit lang: Lang): File =
     dir / s"dijk-$lang-$srcParIdx-$tgtParIdx-${fold.id}.txt"
 
   def readBestPath(fDijk: File): List[Int] = {
@@ -707,16 +729,16 @@ object CatalogPaths {
     arr.iterator.map(_.toInt).toList
   }
 
-  def findBestPath(srcParId: Int, tgtParId: Int, lang: Lang): Unit = {
+  def findBestPath(srcParId: Int, tgtParId: Int)(implicit lang: Lang): Unit = {
     val info      = Catalog.readOrderedParInfo(lang)
-    val folds0    = mkFoldSeq(info, lang)
+    val folds0    = mkFoldSeq(info)
     val (srcParIdx, tgtParIdx) = CatalogTexts.parIdToIndex(srcParId, tgtParId)
     val folds     = filterFolds(folds0, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
 
     val edgeMap   = CatalogTexts.edges(lang)
     val parIdKey  = srcParId -> tgtParId
     val text      = edgeMap(parIdKey)
-    val edgeSVGF  = edgeTextSVGFile(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+    val edgeSVGF  = edgeTextSVGFile(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
     if (!edgeSVGF.isFile || edgeSVGF.length() == 0L) {
       renderEdgeTextSVG(text, edgeSVGF)
     }
@@ -729,18 +751,18 @@ object CatalogPaths {
     val srcPageIdx    = getParPage(srcParIdx)
     val tgtPageIdx    = getParPage(tgtParIdx)
 
-    val (srcRelPtMM, tgtRelPtMM) = calcParEdgePts(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+    val (srcRelPtMM, tgtRelPtMM) = calcParEdgePts(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
 
     lazy val printTextExtent: Unit =
       println(s"Text line for ($srcParId, $tgtParId) has extent ${textExtentMM}mm.")
 
     folds.zipWithIndex.foreach { case (fold, fi) =>
-      val fDijk = mkDijkF(fold, lang, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
+      val fDijk = mkDijkF(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
       if (!fDijk.isFile || fDijk.length() == 0L) {
         printTextExtent
         println(s"Examining fold ${fi + 1} of ${folds.size}...")
 
-        val gr    = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+        val gr    = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
 
         val srcAbsPtPx    = mapPagePt(srcRelPtMM, pageIdx = srcPageIdx, pages = fold.pages) * ppmmGNG
         val tgtAbsPtPx    = mapPagePt(tgtRelPtMM, pageIdx = tgtPageIdx, pages = fold.pages) * ppmmGNG
@@ -783,8 +805,8 @@ object CatalogPaths {
     def srcPreIterator: Iterator[Point2D] = pre.iterator ++ srcPtIterator
   }
 
-  def calcPathEndPoints(fold: Fold, srcParIdx: Int, tgtParIdx: Int, lang: Lang): PathEndPoints = {
-    val (rel1, rel2)    = calcParEdgePts(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+  def calcPathEndPoints(fold: Fold, srcParIdx: Int, tgtParIdx: Int)(implicit lang: Lang): PathEndPoints = {
+    val (rel1, rel2)    = calcParEdgePts(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
     val pageIdx1        = getParPage(srcParIdx)
     val pageIdx2        = getParPage(tgtParIdx)
     val rel1I           = rel1 + Point2D(-4, 0) // 4 mm to the left
@@ -799,8 +821,8 @@ object CatalogPaths {
       pre = srcParEdgePtI :: srcParEdgePt :: Nil, post = tgtParEdgePt :: tgtParEdgePtI :: /* tgtParEdgePtI1 :: */ Nil)
   }
 
-  def viewGNG(fold: Fold, srcParIdx: Int, tgtParIdx: Int, lang: Lang): Unit = {
-    val gr = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+  def viewGNG(fold: Fold, srcParIdx: Int, tgtParIdx: Int)(implicit lang: Lang): Unit = {
+    val gr = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
 //    val startIdx  = util.Random.nextInt(gr.nodes.size)
 //    val stopIdx   = {
 //      val i = util.Random.nextInt(gr.nodes.size - 1)
@@ -945,9 +967,9 @@ object CatalogPaths {
   }
 
   def testViewFolds(): Unit = {
-    val lang    = Lang.de
+    implicit val lang: Lang = Lang.de
     val info    = Catalog.readOrderedParInfo(lang)
-    val folds0  = mkFoldSeq(info, lang)
+    val folds0  = mkFoldSeq(info)
     println(s"FOLDS.SIZE = ${folds0.size}")
     val maxRect = folds0.map(_.surfaceMM).reduce(_ union _).scale(ppmmGNG)
 
@@ -1063,17 +1085,17 @@ object CatalogPaths {
 
         if (hasPath) {
           try {
-            endPoints     = calcPathEndPoints(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+            endPoints     = calcPathEndPoints(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
             hasEdgePoints = true
           } catch {
             case _: NoSuchElementException =>
           }
 
           if (hasEdgePoints) {
-            val fDijk = mkDijkF(fold = fold, lang = lang, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
+            val fDijk = mkDijkF(fold = fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
             if (fDijk.isFile) {
               val _bp   = readBestPath(fDijk)
-              gr        = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+              gr        = readGNG(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
               val pts   = (endPoints.pre ++ _bp.iterator.map(gr.nodes)).toIndexedSeq
               bestPath  = pts
             }

@@ -30,16 +30,16 @@ object Catalog {
 //    val t1 = Transform.fromAwt(t0.toAwt)
 //    assert(t0 == t1)
 
-    val lang = Lang.de
+    implicit val lang: Lang = Lang.de
 
     if (!fLinesOut(lang).isFile || !fOutCat.isFile || !parFile(1, lang).isFile) {
-      preparePar(lang)
+      preparePar()
     } else {
       println("(Skipping preparePar)")
     }
 
     if (!fOutArr.isFile) {
-      renderPages(lang)
+      renderPages()
     } else {
       println("(Skipping renderPages)")
     }
@@ -80,6 +80,8 @@ object Catalog {
   val LineSpacingMM     : Double  = LineSpacingPt / PointsPerMM
   val FontSizeMM        : Double  = FontSizePt    / PointsPerMM
   val WidthParMM        : Double  = (PaperWidthMM - (MarginLeftMM + MarginRightMM + ColumnSepMM))/2.0
+
+  val BleedMM           : Int     = 3
 
   // 'inner'
   val PaperIWidthMM     : Int     = PaperWidthMM - InnerWidthReduxMM
@@ -199,7 +201,7 @@ object Catalog {
   }
   sealed trait Lang
 
-  def getPageRectMM(pageIdx: Int, absLeft: Boolean = false, lang: Lang): Rectangle = {
+  def getPageRectMM(pageIdx: Int, absLeft: Boolean = false)(implicit lang: Lang): Rectangle = {
     require (lang == Lang.de) // XXX TODO
     val x = if (pageIdx == 0 || !absLeft) 0.0 else {
       PaperWidthMM + (pageIdx - 1) * PaperIWidthMM
@@ -210,7 +212,7 @@ object Catalog {
     Rectangle(x, y, w, h)
   }
 
-  def getParRectMM(info: Vec[ParFileInfo], parIdx: Int, absLeft: Boolean = false, lang: Lang): Rectangle = {
+  def getParRectMM(info: Vec[ParFileInfo], parIdx: Int, absLeft: Boolean = false)(implicit lang: Lang): Rectangle = {
     require (lang == Lang.de) // XXX TODO
     val i       = info(parIdx)
     val pageIdx = getParPage(parIdx)
@@ -231,8 +233,8 @@ object Catalog {
       case 0 => MarginTopMM
       case 1 =>
         // (PaperHeightMM - h)/2
-        val rPred = getParRectMM(info = info, parIdx = parIdx - 1, absLeft = absLeft, lang = lang)
-        val rSucc = getParRectMM(info = info, parIdx = parIdx + 1, absLeft = absLeft, lang = lang)
+        val rPred = getParRectMM(info = info, parIdx = parIdx - 1, absLeft = absLeft)
+        val rSucc = getParRectMM(info = info, parIdx = parIdx + 1, absLeft = absLeft)
         val cy    = (rPred.cy + rSucc.cy)/2
         cy - h/2 - LineSpacingMM
 
@@ -242,7 +244,7 @@ object Catalog {
     Rectangle(x = x, y = y, width = w, height = h)
   }
 
-  def renderPages(lang: Lang, splitPages: Boolean = false, fbox: Boolean = false): Unit = {
+  def renderPages(splitPages: Boolean = false, fbox: Boolean = false)(implicit lang: Lang): Unit = {
     val pre = {
       val pw = if (splitPages) PaperWidthMM else TotalPaperWidthMM // /* if (pageIdx == 0) */ PaperWidthMM /* else PaperIWidthMM */
       stripTemplate(s"""@documentclass[10pt]{article}
@@ -262,7 +264,7 @@ object Catalog {
     val info = readOrderedParInfo(lang)
 
     def mkGraphics(parIdx: Int, absLeft: Boolean = !splitPages): String = {
-      val r           = getParRectMM(info = info, parIdx = parIdx, absLeft = absLeft, lang = lang)
+      val r           = getParRectMM(info = info, parIdx = parIdx, absLeft = absLeft)
       val trimLeft    = MarginLeftMM
       val trimTop     = MarginTopMM
       val trimBottom  = PaperHeightMM - MarginBotMM - r.height
@@ -558,12 +560,12 @@ object Catalog {
     case _ => None // sys.error(s"Could not parse text $n")
   }
 
-  def preparePar(lang: Lang): Unit = {
+  def preparePar()(implicit lang: Lang): Unit = {
     require (dir.isDirectory, s"Not a directory: $dir")
     val resAll = CatalogTexts.par(lang).zipWithIndex.map { case (text, i) =>
       val textId = i + 1
       println(s"RENDERING $textId")
-      run(lang = lang, text = text, textId = textId)
+      run(text = text, textId = textId)
     }
     val numLinesAll = resAll.map(_.numLines)
     val numLinesTxt = numLinesAll.mkString("", "\n", "\n")
@@ -599,7 +601,7 @@ object Catalog {
     ParsedSVG(transform, text, doc = svgDoc, group = group)
   }
 
-  def run(lang: Lang, text: String, textId: Int): ParFileInfo = {
+  def run(text: String, textId: Int)(implicit lang: Lang): ParFileInfo = {
     implicit val ui: UniqueIDs = new UniqueIDs
 
     val latex = latexParTemplate(text)
