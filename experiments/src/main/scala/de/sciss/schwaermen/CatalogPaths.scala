@@ -343,14 +343,17 @@ object CatalogPaths {
         val c   = location
         val p1  = pt(ptIdx1)
         val d   = c dist p1
+
         if (rem < d) {
           _pos  += rem
           rem    = 0.0
         } else {
           _pos  += d
+          val old  = ptIdx
           ptIdx  = math.min(pt.size - 1, ptIdx + 1)
           ptOff  = _pos
           rem   -= d
+          if (ptIdx == old) return
         }
       }
     }
@@ -369,8 +372,8 @@ object CatalogPaths {
       val p0  = pt(ptIdx)
       val p1  = pt(ptIdx1)
       val len = currLen
-      val x   = _pos.linlin(ptOff, ptOff + len, p0.x, p1.x)
-      val y   = _pos.linlin(ptOff, ptOff + len, p0.y, p1.y)
+      val x   = if (len == 0) p0.x else _pos.linlin(ptOff, ptOff + len, p0.x, p1.x)
+      val y   = if (len == 0) p0.y else _pos.linlin(ptOff, ptOff + len, p0.y, p1.y)
       Point2D(x, y)
     }
 
@@ -427,6 +430,7 @@ object CatalogPaths {
       val fDijk       = mkDijkF(fold, lang, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
       val _bp         = readBestPath(fDijk)
       val ep          = calcPathEndPoints(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
+      println(s"ep.srcPt ${ep.srcPt * (1.0 / ppmmGNG)}; ep.tgtPt ${ep.tgtPt * (1.0 / ppmmGNG)}")
       val route       = (ep.srcPreIterator ++ _bp.iterator.map(gr.nodes) ++ ep.tgtPtIterator).toIndexedSeq
       val intp0       = interpolate(route, last = ep.post)
       val intp        = intp0.map(_ * (1.0 / ppmmGNG))
@@ -497,6 +501,18 @@ object CatalogPaths {
       putTextOnPath(preChip, postStep = ChipStepMM) ++
       putTextOnPath(chopped) ++
       putTextOnPath(postChip, preStep = ChipStepMM, postStep = ChipStepMM)
+
+    val logFirstPt  = {
+      val t = textNodesOut.head
+      val tt = t.transform
+      tt(Point2D(0, 0))
+    }
+    val logLastPt   = {
+      val t = textNodesOut.last
+      val tt = t.transform
+      tt(Point2D(0, 0))
+    }
+    println(s"pathCursor.pos = ${pathCursor.pos}; first pt = ${logFirstPt * textScaleMM}, last pt = ${logLastPt * textScaleMM}")
 
     val widthOut  = TotalPaperWidthMM /* PaperWidthMM */ * ppmmSVG
     val heightOut = PaperHeightMM * ppmmSVG
@@ -764,14 +780,14 @@ object CatalogPaths {
     val pageIdx2        = getParPage(tgtParIdx)
     val rel1I           = rel1 + Point2D(-4, 0) // 4 mm to the left
     val rel2I           = rel2 + Point2D(+4, 0) // 4 mm to the right
-    val rel3I           = rel2 + Point2D(+18, 0) // 4 mm to the right
+//    val rel3I           = rel2 + Point2D(+8, 0) // 8 mm to the right
     val srcParEdgePt    = mapPagePt(rel1 , pageIdx = pageIdx1, pages = fold.pages) * ppmmGNG
     val tgtParEdgePt    = mapPagePt(rel2 , pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
     val srcParEdgePtI   = mapPagePt(rel1I, pageIdx = pageIdx1, pages = fold.pages) * ppmmGNG
     val tgtParEdgePtI   = mapPagePt(rel2I, pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
-    val tgtParEdgePtI1  = mapPagePt(rel3I, pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
+//    val tgtParEdgePtI1  = mapPagePt(rel3I, pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
     PathEndPoints(srcPt = srcParEdgePt, tgtPt = tgtParEdgePt,
-      pre = srcParEdgePtI :: Nil, post = tgtParEdgePtI :: tgtParEdgePtI1 :: Nil)
+      pre = srcParEdgePtI :: srcParEdgePt :: Nil, post = tgtParEdgePt :: tgtParEdgePtI :: /* tgtParEdgePtI1 :: */ Nil)
   }
 
   def viewGNG(fold: Fold, srcParIdx: Int, tgtParIdx: Int, lang: Lang): Unit = {

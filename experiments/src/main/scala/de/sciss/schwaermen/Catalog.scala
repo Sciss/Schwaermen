@@ -442,7 +442,7 @@ object Catalog {
     def setTransform(t: Transform): Text = {
       val ts = t.toAttrValue
       val n1 = setAttr(node, "transform", ts)
-      copy(node = n1)
+      copy(transform = t, node = n1)
     }
 
     def splitAt(idx: Int): (Text, Text) = {
@@ -581,7 +581,7 @@ object Catalog {
     def setTransform(t: Transform): ParsedSVG = {
       val ts  = t.toAttrValue
       val n1  = setAttr(group, "transform", ts)
-      setGroup(n1)
+      setGroup(n1).copy(transform = t)
     }
 
     def setGroup(g: xml.Elem): ParsedSVG = {
