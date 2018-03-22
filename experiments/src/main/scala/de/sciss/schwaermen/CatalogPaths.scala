@@ -38,6 +38,7 @@ object CatalogPaths {
     runAllGNG(lang)
     runAllBestPath(lang)
 
+    implicit val ui: UniqueIDs = new UniqueIDs
     testDrawPath(srcParIdx = 6, tgtParIdx = 17, lang = lang)
 //    viewGNG(folds(5))
 //    testViewFolds()
@@ -396,7 +397,7 @@ object CatalogPaths {
     }.toIndexedSeq
   }
 
-  def testDrawPath(srcParIdx: Int, tgtParIdx: Int, lang: Lang): Unit = {
+  def testDrawPath(srcParIdx: Int, tgtParIdx: Int, lang: Lang)(implicit ui: UniqueIDs): Unit = {
     val info        = readOrderedParInfo(lang)
     val folds0      = mkFoldSeq(info, lang)
     val folds       = filterFolds(folds0, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
@@ -449,8 +450,8 @@ object CatalogPaths {
     val numChipPost = numChip - numChipPre
 
     val chopped     = textNode.chop(0)
-    val preChip     = List.tabulate(numChipPre )(i => chopped.head.chip(i))
-    val postChip    = List.tabulate(numChipPost)(i => chopped.last.chip(i + numChipPre))
+    val preChip     = List.fill(numChipPre )(chopped.head.chip())
+    val postChip    = List.fill(numChipPost)(chopped.last.chip())
     var lastTextX   = 0.0
 
     def putTextOnPath(tx: List[Text], preStep: Double = 0.0, postStep: Double = 0.0): List[Text] = {

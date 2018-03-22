@@ -389,15 +389,24 @@ object Catalog {
     }
   }
 
+  class UniqueIDs {
+    private[this] var count = 0
+
+    def apply(): Int = {
+      count += 1
+      count
+    }
+  }
+
   case class TSpan(id: String, y: Double, x: ISeq[Double], text: String, node: xml.Elem) {
     def start: Point2D = Point2D(x.head, y)
 
     def size: Int = x.size
 
-    def apply(idx: Int): TSpan = slice(idx, idx + 1)
+    def apply(idx: Int)(implicit ui: UniqueIDs): TSpan = slice(idx, idx + 1)
 
-    def slice(from: Int, until: Int): TSpan = {
-      val id1 = s"$id-$from-$until"
+    def slice(from: Int, until: Int)(implicit ui: UniqueIDs): TSpan = {
+      val id1 = s"$id-slice${ui()}"
       val x1  = x.slice(from, until)
       val t1  = text.substring(from, until)
       val n1  = setId(node, id1)
@@ -406,8 +415,8 @@ object Catalog {
       copy(id = id1, y = y, x = x1, text = t1, node = n3)
     }
 
-    def setText(t1: String, uniqueID: Int): TSpan = {
-      val id1 = s"$id-$uniqueID"
+    def setText(t1: String)(implicit ui: UniqueIDs): TSpan = {
+      val id1 = s"$id-text${ui()}"
       val n1  = setId(node, id1)
       val n3  = n1.copy(child = new xml.Text(t1) :: Nil)
       copy(id = id1, text = t1, node = n3)
@@ -451,10 +460,10 @@ object Catalog {
 
     def size: Int = children.size
 
-    def apply(idx: Int): Text = slice(idx, idx + 1)
+    def apply(idx: Int)(implicit ui: UniqueIDs): Text = slice(idx, idx + 1)
 
-    def slice(from: Int, until: Int): Text = {
-      val id1 = s"$id-$from-$until"
+    def slice(from: Int, until: Int)(implicit ui: UniqueIDs): Text = {
+      val id1 = s"$id-slice${ui()}"
       val c1  = node.child.slice(from, until)
       val n1  = node.copy(child = c1)
       val n2  = setId(n1, id1)
@@ -462,11 +471,11 @@ object Catalog {
       copy(id = id1, children = c3, node = n2)
     }
 
-    def chop(idx: Int): List[Text] = {
+    def chop(idx: Int)(implicit ui: UniqueIDs): List[Text] = {
       val t1  = apply(idx)
       val ts  = t1.children.head
       List.tabulate(ts.size) { i =>
-        val id2 = s"${t1.id}-ch$i"
+        val id2 = s"${t1.id}-chop${ui()}"
         val ts1 = ts(i)
         val n1  = node.copy(child = ts1.node)
         val n2  = setId(n1, id2)
@@ -474,11 +483,11 @@ object Catalog {
       }
     }
 
-    def chip(uniqueID: Int): Text = {
+    def chip()(implicit ui: UniqueIDs): Text = {
       require (children.size == 1)
       val child   = children.head
-      val c1      = child.setText(".", uniqueID)
-      val id1     = s"$id-$uniqueID"
+      val c1      = child.setText(".")
+      val id1     = s"$id-chip${ui()}"
       val n1      = node.copy(child = c1.node)
       val n2      = setId(n1, id1)
       copy(id = id1, children = c1 :: Nil, node = n2)
@@ -590,6 +599,8 @@ object Catalog {
   }
 
   def run(lang: Lang, text: String, textId: Int): ParFileInfo = {
+    implicit val ui: UniqueIDs = new UniqueIDs
+
     val latex = latexParTemplate(text)
     require (dirTmp.isDirectory, s"Not a directory: $dirTmp")
     val fOutTex = dirTmp / s"par_temp_$textId.tex"
