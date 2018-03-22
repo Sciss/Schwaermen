@@ -93,6 +93,8 @@ object CatalogPaths {
   lazy val PadParMM  : Int     = 5 // 2
   lazy val PadMarMM  : Int     = 5 // 2
 
+  lazy val ChipStepMM: Double  = 1.5
+
   lazy val PageWidthPx  : Int = math.round(ppmmGNG * PaperWidthMM ).toInt
   lazy val PageHeightPx : Int = math.round(ppmmGNG * PaperHeightMM).toInt
 
@@ -402,6 +404,9 @@ object CatalogPaths {
     require (folds.nonEmpty, s"folds0.size = ${folds0.size}")
     val fOutSVG     = dirTmp / s"edge-$lang-$srcParIdx-$tgtParIdx-test.svg"
 
+    val rnd       = new util.Random((srcParIdx.toLong << 32) | tgtParIdx)
+
+
 //    val edgeMap   = CatalogTexts.edges(lang)
 //    val parId     = CatalogTexts.parIdxToId(srcParIdx, tgtParIdx)
 //    val text      = edgeMap(parId)
@@ -435,50 +440,62 @@ object CatalogPaths {
 
     val foldIdx       = pathCursors.indexOf(pathCursor)
     val fold          = folds(foldIdx)
+    val pathExtent    = pathCursor.extent
 
-    println(f"textExtent = $textExtent%1.1fmm, pathExtent = ${pathCursor.extent}%1.1fmm, fold = ${fold.id}")
+    println(f"textExtent = $textExtent%1.1fmm, pathExtent = $pathExtent%1.1fmm, fold = ${fold.id}")
+
+    val numChip     = math.max(0, ((pathExtent - textExtent) / ChipStepMM).toInt)
+    val numChipPre  = rnd.nextInt(numChip + 1)
+    val numChipPost = numChip - numChipPre
 
     val chopped     = textNode.chop(0)
+    val preChip     = List.tabulate(numChipPre )(i => chopped.head.chip(i))
+    val postChip    = List.tabulate(numChipPost)(i => chopped.last.chip(i + numChipPre))
     var lastTextX   = 0.0
-    val textNodesOut = chopped.map { t =>
-      val ts = t.children.head
-      val x0 = ts.x.head
-      pathCursor.advance((x0 - lastTextX) * textScaleMM)
-      lastTextX = x0
-      val t1 = t.mapChildren { tSpan =>
-        tSpan.setLocation(0.0 :: Nil, 0.0)
-      }
-      val loc = pathCursor.location
-      val pagesHit = fold.pages.collect {
-        case p if p.rectangle.contains(loc) => p // .idx
-      }
-      val page1   = pagesHit.head
-      val pageUp  = pagesUp(page1.idx)
-      val tP = {
-        val page1R  = page1.rectangle
-//        val shift   = pageUp.topLeft + (page1R.topLeft * -1)
-        val shift0  = pageUp.topLeft + (page1R.topLeft * -1)
-        val shift   = shift0 // loc + shift0
-        val at      = new AffineTransform
-        if (!page1.isUpright) {
-          val c = page1.rectangle.center * (1.0 / textScaleMM)
-          //          val c = pageUp.center * (1.0 / textScaleMM)
-          at.preConcatenate(AffineTransform.getRotateInstance(math.Pi, c.x, c.y))
-        }
-        at.preConcatenate(AffineTransform.getTranslateInstance(shift.x / textScaleMM, shift.y / textScaleMM))
-//        at.concatenate(AffineTransform.getRotateInstance(pathCursor.rotation))
-        Transform.fromAwt(at)
-      }
 
-      println(s"'${ts.text}' @ $loc} -- pages ${pagesHit.map(_.idx).mkString("[", ", ", "]")}")
-      val tF = pathCursor.transform(scale = 1.0 / textScaleMM)
-//      val tA = tF.prepend(tP).prepend(Transform.scale(1.0 / textScaleMM))
-      val tA = tF.prepend(tP) // .prepend(Transform.scale(1.0 / textScaleMM))
-//      val tA = tP // .prepend(Transform.scale(1.0 / textScaleMM))
-//      val tA = tF.prepend(Transform.scale(1.0 / textScaleMM)).prepend(tP)
-      val t2 = t1.setTransform(tA)
-      t2
+    def putTextOnPath(tx: List[Text], preStep: Double = 0.0, postStep: Double = 0.0): List[Text] = {
+      var preStep1 = preStep
+      tx.map { t =>
+        val ts = t.children.head
+        val x0 = ts.x.head
+        pathCursor.advance((x0 - lastTextX) * textScaleMM + preStep1)
+        preStep1  = 0.0
+        lastTextX = x0
+        val t1 = t.mapChildren { tSpan =>
+          tSpan.setLocation(0.0 :: Nil, 0.0)
+        }
+        val loc = pathCursor.location
+        val pagesHit = fold.pages.collect {
+          case p if p.rectangle.contains(loc) => p // .idx
+        }
+        val page1   = pagesHit.head
+        val pageUp  = pagesUp(page1.idx)
+        val tP = {
+          val page1R  = page1.rectangle
+          val shift   = pageUp.topLeft + (page1R.topLeft * -1)
+          val at      = new AffineTransform
+          if (!page1.isUpright) {
+            val c = page1.rectangle.center * (1.0 / textScaleMM)
+            at.preConcatenate(AffineTransform.getRotateInstance(math.Pi, c.x, c.y))
+          }
+          at.preConcatenate(AffineTransform.getTranslateInstance(shift.x / textScaleMM, shift.y / textScaleMM))
+          Transform.fromAwt(at)
+        }
+
+        println(s"'${ts.text}' @ $loc} -- pages ${pagesHit.map(_.idx).mkString("[", ", ", "]")}")
+        val tF = pathCursor.transform(scale = 1.0 / textScaleMM)
+        val tA = tF.prepend(tP)
+        val t2 = t1.setTransform(tA)
+
+        if (postStep != 0.0) pathCursor.advance(postStep)
+        t2
+      }
     }
+
+    val textNodesOut =
+      putTextOnPath(preChip, postStep = ChipStepMM) ++
+      putTextOnPath(chopped) ++
+      putTextOnPath(postChip, preStep = ChipStepMM, postStep = ChipStepMM)
 
     val widthOut  = TotalPaperWidthMM /* PaperWidthMM */ * ppmmSVG
     val heightOut = PaperHeightMM * ppmmSVG
@@ -1148,7 +1165,8 @@ object CatalogPaths {
     c.utilityGNG      = 8f
     c.autoStopB       = false
     c.reset()
-    c.getRNG.setSeed(108L)
+//    c.getRNG.setSeed(108L)
+    c.getRNG.setSeed(fold.id.hashCode)
     c.addNode(null)
     c.addNode(null)
 

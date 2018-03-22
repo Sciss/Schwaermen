@@ -406,6 +406,13 @@ object Catalog {
       copy(id = id1, y = y, x = x1, text = t1, node = n3)
     }
 
+    def setText(t1: String, uniqueID: Int): TSpan = {
+      val id1 = s"$id-$uniqueID"
+      val n1  = setId(node, id1)
+      val n3  = n1.copy(child = new xml.Text(t1) :: Nil)
+      copy(id = id1, text = t1, node = n3)
+    }
+
     def setLocation(x: ISeq[Double], y: Double): TSpan = {
       val xs = x.mkString(" ")
       val ys = y.toString
@@ -455,16 +462,26 @@ object Catalog {
       copy(id = id1, children = c3, node = n2)
     }
 
-    def chop(idx: Int): ISeq[Text] = {
+    def chop(idx: Int): List[Text] = {
       val t1  = apply(idx)
       val ts  = t1.children.head
-      ISeq.tabulate(ts.size) { i =>
+      List.tabulate(ts.size) { i =>
         val id2 = s"${t1.id}-ch$i"
         val ts1 = ts(i)
         val n1  = node.copy(child = ts1.node)
         val n2  = setId(n1, id2)
         t1.copy(id = id2, children = ts1 :: Nil, node = n2)
       }
+    }
+
+    def chip(uniqueID: Int): Text = {
+      require (children.size == 1)
+      val child   = children.head
+      val c1      = child.setText(".", uniqueID)
+      val id1     = s"$id-$uniqueID"
+      val n1      = node.copy(child = c1.node)
+      val n2      = setId(n1, id1)
+      copy(id = id1, children = c1 :: Nil, node = n2)
     }
   }
 
