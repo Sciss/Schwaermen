@@ -382,7 +382,7 @@ object CatalogPaths {
       val loc = location * scale
       val r   = rotation // + rot
       val at  = AffineTransform.getTranslateInstance(loc.x, loc.y)
-      at.rotate(r)
+      if (r != 0) at.rotate(r)
       Transform.fromAwt(at)
     }
   }
@@ -455,16 +455,27 @@ object CatalogPaths {
       val page1   = pagesHit.head
       val pageUp  = pagesUp(page1.idx)
       val tP = {
-        val anchor  = if (page1.isUpright) page1.rectangle.topLeft else page1.rectangle.bottomRight
-        val shift   = pageUp.topLeft + (anchor * -1)
-        val at      = AffineTransform.getTranslateInstance(shift.x, shift.y)
-        if (!page1.isUpright) at.rotate(math.Pi)
+        val page1R  = page1.rectangle
+//        val shift   = pageUp.topLeft + (page1R.topLeft * -1)
+        val shift0  = pageUp.topLeft + (page1R.topLeft * -1)
+        val shift   = shift0 // loc + shift0
+        val at      = new AffineTransform
+        if (!page1.isUpright) {
+          val c = page1.rectangle.center * (1.0 / textScaleMM)
+          //          val c = pageUp.center * (1.0 / textScaleMM)
+          at.preConcatenate(AffineTransform.getRotateInstance(math.Pi, c.x, c.y))
+        }
+        at.preConcatenate(AffineTransform.getTranslateInstance(shift.x / textScaleMM, shift.y / textScaleMM))
+//        at.concatenate(AffineTransform.getRotateInstance(pathCursor.rotation))
         Transform.fromAwt(at)
       }
 
       println(s"'${ts.text}' @ $loc} -- pages ${pagesHit.map(_.idx).mkString("[", ", ", "]")}")
       val tF = pathCursor.transform(scale = 1.0 / textScaleMM)
-      val tA = ??? : Transform // tF.prepend(tP)
+//      val tA = tF.prepend(tP).prepend(Transform.scale(1.0 / textScaleMM))
+      val tA = tF.prepend(tP) // .prepend(Transform.scale(1.0 / textScaleMM))
+//      val tA = tP // .prepend(Transform.scale(1.0 / textScaleMM))
+//      val tA = tF.prepend(Transform.scale(1.0 / textScaleMM)).prepend(tP)
       val t2 = t1.setTransform(tA)
       t2
     }

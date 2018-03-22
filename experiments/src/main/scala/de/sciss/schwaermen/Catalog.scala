@@ -142,6 +142,8 @@ object Catalog {
     def bottomLeft  : Point2D = Point2D(left  , bottom)
     def bottomRight : Point2D = Point2D(right , bottom)
 
+    def center      : Point2D = Point2D(cx, cy)
+
     def scale(scalar: Double): Rectangle =
       copy(x = x* scalar, y = y * scalar, width = width * scalar, height = height * scalar)
 
@@ -355,6 +357,8 @@ object Catalog {
       apply(in.getScaleX, in.getShearY, in.getShearX, in.getScaleY, in.getTranslateX, in.getTranslateY)
 
     def identity: Transform = fromAwt(new AffineTransform)
+
+    def scale(d: Double): Transform = fromAwt(AffineTransform.getScaleInstance(d, d))
   }
   case class Transform(a: Double, b: Double, c: Double, d: Double, e: Double, f: Double) {
     private[this] lazy val at = new AffineTransform(a, b, c, d, e, f)
