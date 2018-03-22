@@ -99,6 +99,9 @@ object CatalogPaths {
   lazy val PageWidthPx  : Int = math.round(ppmmGNG * PaperWidthMM ).toInt
   lazy val PageHeightPx : Int = math.round(ppmmGNG * PaperHeightMM).toInt
 
+  // page bleeding plus font size to approximate maximum char box
+  lazy val BleedLineMM: Double = 3 + FontSizeMM
+
 //  lazy val PageIWidthPx : Int = math.round(ppmm * PaperIWidthMM).toInt
 //  lazy val PageIHeightPx: Int = PageHeightPx
 
@@ -430,7 +433,7 @@ object CatalogPaths {
       val fDijk       = mkDijkF(fold, lang, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
       val _bp         = readBestPath(fDijk)
       val ep          = calcPathEndPoints(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, lang = lang)
-      println(s"ep.srcPt ${ep.srcPt * (1.0 / ppmmGNG)}; ep.tgtPt ${ep.tgtPt * (1.0 / ppmmGNG)}")
+//      println(s"ep.srcPt ${ep.srcPt * (1.0 / ppmmGNG)}; ep.tgtPt ${ep.tgtPt * (1.0 / ppmmGNG)}")
       val route       = (ep.srcPreIterator ++ _bp.iterator.map(gr.nodes) ++ ep.tgtPtIterator).toIndexedSeq
       val intp0       = interpolate(route, last = ep.post)
       val intp        = intp0.map(_ * (1.0 / ppmmGNG))
@@ -460,7 +463,7 @@ object CatalogPaths {
 
     def putTextOnPath(tx: List[Text], preStep: Double = 0.0, postStep: Double = 0.0): List[Text] = {
       var preStep1 = preStep
-      tx.map { t =>
+      tx.flatMap { t =>
         val ts = t.children.head
         val x0 = ts.x.head
         pathCursor.advance((x0 - lastTextX) * textScaleMM + preStep1)
@@ -470,30 +473,36 @@ object CatalogPaths {
           tSpan.setLocation(0.0 :: Nil, 0.0)
         }
         val loc = pathCursor.location
-        val pagesHit = fold.pages.collect {
-          case p if p.rectangle.contains(loc) => p // .idx
-        }
-        val page1   = pagesHit.head
-        val pageUp  = pagesUp(page1.idx)
-        val tP = {
-          val page1R  = page1.rectangle
-          val shift   = pageUp.topLeft + (page1R.topLeft * -1)
-          val at      = new AffineTransform
-          if (!page1.isUpright) {
-            val c = page1.rectangle.center * (1.0 / textScaleMM)
-            at.preConcatenate(AffineTransform.getRotateInstance(math.Pi, c.x, c.y))
+        val pagesHit = fold.pages.iterator.collect {
+          case p if p.rectangle.border(BleedLineMM).contains(loc) =>
+            p.rotation -> p
+        } .toMap.valuesIterator.toList.sortBy(_.idx)
+
+//        println(s"pagesHit.size = ${pagesHit.size}")
+
+        val t2Sq = pagesHit.map { pageHit =>
+          val pageUp  = pagesUp(pageHit.idx)
+          val tP = {
+            val page1R  = pageHit.rectangle
+            val shift   = pageUp.topLeft + (page1R.topLeft * -1)
+            val at      = new AffineTransform
+            if (!pageHit.isUpright) {
+              val c = pageHit.rectangle.center * (1.0 / textScaleMM)
+              at.preConcatenate(AffineTransform.getRotateInstance(math.Pi, c.x, c.y))
+            }
+            at.preConcatenate(AffineTransform.getTranslateInstance(shift.x / textScaleMM, shift.y / textScaleMM))
+            Transform.fromAwt(at)
           }
-          at.preConcatenate(AffineTransform.getTranslateInstance(shift.x / textScaleMM, shift.y / textScaleMM))
-          Transform.fromAwt(at)
+
+  //        println(s"'${ts.text}' @ $loc} -- pages ${pagesHit.map(_.idx).mkString("[", ", ", "]")}")
+          val tF = pathCursor.transform(scale = 1.0 / textScaleMM)
+          val tA = tF.prepend(tP)
+          val t2 = t1.setTransform(tA)
+
+          t2
         }
-
-        println(s"'${ts.text}' @ $loc} -- pages ${pagesHit.map(_.idx).mkString("[", ", ", "]")}")
-        val tF = pathCursor.transform(scale = 1.0 / textScaleMM)
-        val tA = tF.prepend(tP)
-        val t2 = t1.setTransform(tA)
-
         if (postStep != 0.0) pathCursor.advance(postStep)
-        t2
+        t2Sq
       }
     }
 

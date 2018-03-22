@@ -78,6 +78,7 @@ object Catalog {
 
   val PointsPerMM       : Double  = 72 / 25.4   // 1 pt = 1/72 inch
   val LineSpacingMM     : Double  = LineSpacingPt / PointsPerMM
+  val FontSizeMM        : Double  = FontSizePt    / PointsPerMM
   val WidthParMM        : Double  = (PaperWidthMM - (MarginLeftMM + MarginRightMM + ColumnSepMM))/2.0
 
   // 'inner'
