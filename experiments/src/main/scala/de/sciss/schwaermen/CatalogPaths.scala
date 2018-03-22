@@ -404,7 +404,8 @@ object CatalogPaths {
   def renderPaths()(implicit lang: Lang): Unit = {
     implicit val ui: UniqueIDs = new UniqueIDs
     val edgeMap     = CatalogTexts.edges(lang)
-    val parIndices  = edgeMap.keySet.map(tup => CatalogTexts.parIdToIndex(tup._1, tup._2)).toList.sorted
+    val parIndices0 = edgeMap.keySet.map(tup => CatalogTexts.parIdToIndex(tup._1, tup._2)).toList.sorted
+    val parIndices  = parIndices0 // .slice(0, 1)
     val svgAll      = parIndices.map {
       case (srcParIdx, tgtParIdx) =>
         val svg = renderPath(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
@@ -426,6 +427,10 @@ object CatalogPaths {
     // cf. http://tavmjong.free.fr/INKSCAPE/MANUAL/html/CommandLine-General.html
     val argsSVG = Seq("--export-pdf", fOutPDF.path, "--export-margin", BleedMM.toString, fOutSVG.path)
     exec(inkscape, dirTmp, argsSVG)
+
+    val fOutStamp = dirTmp / s"${fOutSVG.base}-test-stamp.pdf"
+    val argsStamp = Seq(fOutArr.path, "stamp", fOutPDF.path, "output", fOutStamp.path)
+    exec("pdftk", dirTmp, argsStamp)
   }
 
   def renderPath(srcParIdx: Int, tgtParIdx: Int)(implicit lang: Lang, ui: UniqueIDs): ParsedSVG = {
@@ -474,7 +479,7 @@ object CatalogPaths {
     val fold          = folds(foldIdx)
     val pathExtent    = pathCursor.extent
 
-    println(f"textExtent = $textExtent%1.1fmm, pathExtent = $pathExtent%1.1fmm, fold = ${fold.id}")
+    println(f"($srcParIdx, $tgtParIdx) textExtent = $textExtent%1.1fmm, pathExtent = $pathExtent%1.1fmm, fold = ${fold.id}")
 
     val numChip     = math.max(0, ((pathExtent - textExtent) / ChipStepMM).toInt)
     val numChipPre  = rnd.nextInt(numChip + 1)

@@ -244,11 +244,13 @@ object Catalog {
     Rectangle(x = x, y = y, width = w, height = h)
   }
 
-  def renderPages(splitPages: Boolean = false, fbox: Boolean = false)(implicit lang: Lang): Unit = {
+  def renderPages(splitPages: Boolean = false, fbox: Boolean = false, bleed: Boolean = true)(implicit lang: Lang): Unit = {
+    val bleedVal = if (bleed) BleedMM else 0
+
     val pre = {
       val pw = if (splitPages) PaperWidthMM else TotalPaperWidthMM // /* if (pageIdx == 0) */ PaperWidthMM /* else PaperIWidthMM */
       stripTemplate(s"""@documentclass[10pt]{article}
-                       |@usepackage[paperheight=${PaperHeightMM}mm,paperwidth=${pw}mm,top=0mm,bottom=0mm,left=0mm,right=0mm]{geometry}
+                       |@usepackage[paperheight=${PaperHeightMM + bleedVal*2}mm,paperwidth=${pw + bleedVal*2}mm,top=0mm,bottom=0mm,left=0mm,right=0mm]{geometry}
                        |@usepackage{tikz}
                        |@usepackage{graphicx}
                        |@usetikzlibrary{calc}
@@ -278,7 +280,7 @@ object Catalog {
       val fboxOut = if (fbox) "}"      else ""
 
       stripTemplate(
-        s"""  @node[anchor=north west,inner sep=0] at ($$(current page.north west)+(${r.x}mm,${-r.y}mm)$$) {
+        s"""  @node[anchor=north west,inner sep=0] at ($$(current page.north west)+(${r.x + bleedVal}mm,${-(r.y + bleedVal)}mm)$$) {
            |    $fboxIn@includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(i.id, lang)}}$fboxOut
            |  };
            |"""
