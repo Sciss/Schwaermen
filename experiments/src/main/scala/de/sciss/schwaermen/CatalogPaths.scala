@@ -38,7 +38,7 @@ object CatalogPaths {
     runAllGNG(lang)
     runAllBestPath(lang)
 
-    testDrawPath(srcParIdx = 6, tgtParIdx = 13, lang = lang)
+    testDrawPath(srcParIdx = 6, tgtParIdx = 17, lang = lang)
 //    viewGNG(folds(5))
 //    testViewFolds()
   }
