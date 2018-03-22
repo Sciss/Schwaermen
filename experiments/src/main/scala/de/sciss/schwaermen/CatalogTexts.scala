@@ -45,7 +45,7 @@ object CatalogTexts {
       |Objektträger oder Glas. Ein Exemplar wird hergestellt, der \emph{Ausschnitt} des doppelten
       |Arms wird zu einem Objekt. Was passiert mit dem Leben? Das Leben war ja vormalig separat in
       |jedem der Arme. Inwieweit vereint sich das Leben in den zusammengequetschten Armen, wo es doch
-      |auf zwei unterschiedliche Linien zurückverfolgt werden kann? Tim Ingold erinnert an Deleuze's
+      |auf zwei unterschiedliche Linien zurückverfolgt werden kann? Tim Ingold erinnert an Deleuzes
       |Verwendung der Haecceitas oder des \emph{Bündels} von Linien zur Bezeichnung des lebendigen
       |Organismus. Die Traurigkeit der Unwiederholbarkeit: In einer Erfahrung vereint, die jedoch nie
       |stattfand, ausser in der Erinnerung.
@@ -340,6 +340,54 @@ object CatalogTexts {
     |{1-18}
     |
     |Die Größenverhältnisse in der Installation und Ausstellung zu verstehen, verlangt eine bestimmten Pose des Besuchers und seiner Partnerin.
+    |
+    |{2-7}
+    |
+    |Das Leben war vormalig separat in mir und dem Gefährt, das ein Spielstein am Haltepunkt zum Stehen bringt.
+    |
+    |{2-8}
+    |
+    |Zwei menschliche Arme wurden in kurzer Zeit verarbeitet, indem eine Schicht gequetscht, geschnitten und dann offensichtlich abgelöst wird.
+    |
+    |{2-9}
+    |
+    |Man hört den Ton in jedem der Arme unterschiedlicher Größe nur, wenn sie wiederholt zusammengebracht und getrennt werden.
+    |
+    |{2-10}
+    |
+    |Mit einer konkaven Linse werden zwei unterschiedliche Linien kreisförmig bewegt und in einem Knotenpunkt zu Deleuzes Organismus zurückverfolgt.
+    |
+    |{2-11}
+    |
+    |Entspringt unser Subjekt sich parallel oder sequenziell bewegenden, zusammengelegten, zusammengequetschten Armen, deren Magnetismus nicht mehr individueller Kontrolle gehorcht?
+    |
+    |{2-12}
+    |
+    |Alle Experimente werden zusammengelegt, nebeneinander, dicht beieinander, und brauchen letztendlich doch alle unterschiedlich lange, bis sie seziert sind.
+    |
+    |{2-13}
+    |
+    |Inwieweit vereint sich die auditive Ähnlichkeit der Wörter, die vom vielen Herumtragen einem Bündels überlassen wurden, zur Haecceitas? 
+    |
+    |{2-14}
+    |
+    |Die Traurigkeit der Unwiederholbarkeit wird zerlegt, auseinandergeschraubt, und unter Verwendung von Porzellan statt Bienenwachs als Exemplar wieder hergestellt.
+    |
+    |{2-15}
+    |
+    |Im doppelten Arm scheint eine Ambivalenz zu stecken, welche dann als Guattaris Löwenmähne vereint auf einem Objektträger bleibt.
+    |
+    |{2-16}
+    |
+    |Zur Bezeichnung von Linien (Fluchtlinien) führen zwei, vier, acht, jedoch nie einhundertacht Punkte zu einem Ausschnitt des Lebens.
+    |
+    |{2-17}
+    |
+    |Unaufhörliche, verzahnte Erinnerungen erinnern an Klicken von Glas, das für wenige Sekunden in enger Nachbarschaft zur Raummitte stattfand.
+    |
+    |{2-18}
+    |
+    |Bei Miniaturisierung handelt es sich um eine lebendige Erfahrung, das was passiert, wenn man die Schlitze der Bienenkörbe organisiert.
     |""")
 
 //  println(edgesDe.mkString("\n"))

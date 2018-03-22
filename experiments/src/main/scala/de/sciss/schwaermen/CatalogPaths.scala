@@ -394,8 +394,8 @@ object CatalogPaths {
     }
   }
 
-  def interpolate(path: Vec[Point2D], last: List[Point2D]): Vec[Point2D] = {
-    (path.grouped(3).map(_.head) ++ last).sliding(4).flatMap {
+  def interpolate(path: Vec[Point2D], first: List[Point2D], last: List[Point2D]): Vec[Point2D] = {
+    (first ++ path.grouped(3).map(_.head) ++ last).sliding(4).flatMap {
       case Seq(p1, p2, p3, p4) =>
         CatmullRomSpline(CatmullRomSpline.Chordal, p1, p2, p3, p4).calcN(8)
     }.toIndexedSeq
@@ -405,7 +405,7 @@ object CatalogPaths {
     implicit val ui: UniqueIDs = new UniqueIDs
     val edgeMap     = CatalogTexts.edges(lang)
     val parIndices0 = edgeMap.keySet.map(tup => CatalogTexts.parIdToIndex(tup._1, tup._2)).toList.sorted
-    val parIndices  = parIndices0 // .slice(0, 1)
+    val parIndices  = parIndices0 // .slice(3, 4)
     val svgAll      = parIndices.map {
       case (srcParIdx, tgtParIdx) =>
         val svg = renderPath(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
@@ -463,8 +463,8 @@ object CatalogPaths {
       val _bp         = readBestPath(fDijk)
       val ep          = calcPathEndPoints(fold, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
 //      println(s"ep.srcPt ${ep.srcPt * (1.0 / ppmmGNG)}; ep.tgtPt ${ep.tgtPt * (1.0 / ppmmGNG)}")
-      val route       = (ep.srcPreIterator ++ _bp.iterator.map(gr.nodes) ++ ep.tgtPtIterator).toIndexedSeq
-      val intp0       = interpolate(route, last = ep.post)
+      val route       = (ep.srcPtIterator ++ _bp.iterator.map(gr.nodes) /* ++ ep.tgtPtIterator */).toIndexedSeq
+      val intp0       = interpolate(route, first = ep.pre, last = ep.post)
       val intp        = intp0.map(_ * (1.0 / ppmmGNG))
       val pathCursor  = new PathCursor(intp)
       pathCursor
@@ -481,6 +481,8 @@ object CatalogPaths {
 
     println(f"($srcParIdx, $tgtParIdx) textExtent = $textExtent%1.1fmm, pathExtent = $pathExtent%1.1fmm, fold = ${fold.id}")
 
+    val shrink      = math.min(1.0, pathExtent / textExtent)
+
     val numChip     = math.max(0, ((pathExtent - textExtent) / ChipStepMM).toInt)
     val numChipPre  = rnd.nextInt(numChip + 1)
     val numChipPost = numChip - numChipPre
@@ -495,7 +497,7 @@ object CatalogPaths {
       tx.flatMap { t =>
         val ts = t.children.head
         val x0 = ts.x.head
-        pathCursor.advance((x0 - lastTextX) * textScaleMM + preStep1)
+        pathCursor.advance(((x0 - lastTextX) * textScaleMM + preStep1) * shrink)
         preStep1  = 0.0
         lastTextX = x0
         val t1 = t.mapChildren { tSpan =>
@@ -525,12 +527,13 @@ object CatalogPaths {
 
   //        println(s"'${ts.text}' @ $loc} -- pages ${pagesHit.map(_.idx).mkString("[", ", ", "]")}")
           val tF = pathCursor.transform(scale = 1.0 / textScaleMM)
-          val tA = tF.prepend(tP)
+          val tA0 = tF.prepend(tP)
+          val tA = if (shrink == 1.0) tA0 else tA0.append(Transform.scale(shrink))
           val t2 = t1.setTransform(tA)
 
           t2
         }
-        if (postStep != 0.0) pathCursor.advance(postStep)
+        if (postStep != 0.0) pathCursor.advance(postStep * shrink)
         t2Sq
       }
     }
@@ -711,7 +714,7 @@ object CatalogPaths {
     } else {
       0.5.linlin(0, 1, parRect.top + LineSpacingMM, parRect.bottom - LineSpacingMM)
     }
-    val x       = if (useSource) parRect.right else parRect.left
+    val x       = if (useSource) parRect.right + 1 else parRect.left - 1
     Point2D(x, y)
   }
 
@@ -823,7 +826,7 @@ object CatalogPaths {
     val tgtParEdgePtI   = mapPagePt(rel2I, pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
 //    val tgtParEdgePtI1  = mapPagePt(rel3I, pageIdx = pageIdx2, pages = fold.pages) * ppmmGNG
     PathEndPoints(srcPt = srcParEdgePt, tgtPt = tgtParEdgePt,
-      pre = srcParEdgePtI :: srcParEdgePt :: Nil, post = tgtParEdgePt :: tgtParEdgePtI :: /* tgtParEdgePtI1 :: */ Nil)
+      pre = srcParEdgePtI :: Nil, post = tgtParEdgePt :: tgtParEdgePtI :: /* tgtParEdgePtI1 :: */ Nil)
   }
 
   def viewGNG(fold: Fold, srcParIdx: Int, tgtParIdx: Int)(implicit lang: Lang): Unit = {
@@ -1054,7 +1057,7 @@ object CatalogPaths {
               var move = true
               val pts0 = bestPath
               val pts = if (!useSplines) pts0 else {
-                interpolate(pts0, last = endPoints.post) // XXX TODO --- prepend and append extra points
+                interpolate(pts0, first = Nil, last = endPoints.post) // XXX TODO --- prepend and append extra points
               }
               pts.foreach { pt =>
                 if (move) {
