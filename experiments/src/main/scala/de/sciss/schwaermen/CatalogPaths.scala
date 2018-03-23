@@ -408,7 +408,7 @@ object CatalogPaths {
     val parIndices  = parIndices0 // .slice(3, 4)
     val svgAll      = parIndices.map {
       case (srcParIdx, tgtParIdx) =>
-        val svg = renderPath(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
+        val svg = renderPath(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx, yOffset = LineSpacingMM/2)
         svg
     }
 
@@ -433,7 +433,8 @@ object CatalogPaths {
     exec("pdftk", dirTmp, argsStamp)
   }
 
-  def renderPath(srcParIdx: Int, tgtParIdx: Int)(implicit lang: Lang, ui: UniqueIDs): ParsedSVG = {
+  def renderPath(srcParIdx: Int, tgtParIdx: Int, yOffset: Double = 0.0)
+                (implicit lang: Lang, ui: UniqueIDs): ParsedSVG = {
     val info        = readOrderedParInfo(lang)
     val folds0      = mkFoldSeq(info)
     val folds       = filterFolds(folds0, srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
@@ -465,7 +466,7 @@ object CatalogPaths {
 //      println(s"ep.srcPt ${ep.srcPt * (1.0 / ppmmGNG)}; ep.tgtPt ${ep.tgtPt * (1.0 / ppmmGNG)}")
       val route       = (ep.srcPtIterator ++ _bp.iterator.map(gr.nodes) /* ++ ep.tgtPtIterator */).toIndexedSeq
       val intp0       = interpolate(route, first = ep.pre, last = ep.post)
-      val intp        = intp0.map(_ * (1.0 / ppmmGNG))
+      val intp        = intp0.map(_ * (1.0 / ppmmGNG) + Point2D(0.0, yOffset))
       val pathCursor  = new PathCursor(intp)
       pathCursor
     }

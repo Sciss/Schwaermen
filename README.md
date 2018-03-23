@@ -7,7 +7,9 @@ Unless specified differently in the sub-projects, all code and materials (except
 [GNU General Public License](http://github.com/Sciss/ImperfectReconstruction/blob/master/LICENSE) v2+ and comes with absolutely no warranties.
 To contact the author, send an email to `contact at sciss.de`.
 
-All text fragments contained in this project (C)opyright 2017 by Gertrude Grossegger. All rights reserved.
+All text fragments contained in the main project (C)opyright 2017 by Gertrude Grossegger.
+All text contained in the catalog project (C)opyright 2018 by Hanns Holger Rutz.
+All rights reserved.
 No reuse or changes permitted without explicit written consent.
 
 ## building
