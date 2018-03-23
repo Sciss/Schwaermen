@@ -387,7 +387,55 @@ object CatalogTexts {
     |
     |{2-18}
     |
-    |Bei Miniaturisierung handelt es sich um eine lebendige Erfahrung, das was passiert, wenn man die Schlitze der Bienenkörbe organisiert.
+    |Bei Miniaturisierung handelt es sich um eine lebendige Erfahrung dessen, was beim Organisieren der Schlitze der Bienenkörbe passiert.
+    |
+    |{3-7}
+    |
+    |Die Bebauung ist in Metall eingefasst, das sich in den Weg stellt. In meinem Gedächtnis zerspringt ein Glas.
+    |
+    |{3-8}
+    |
+    |Existierende Karten haben einen kleinen Maßstab, der Zuschauer von "`Laborfilmen"' traurig macht und verunsichert. Was damit gemeint ist?
+    |
+    |{3-9}
+    |
+    |Eine Falle von wenigen Zentimeter Durchmesser taucht auf, in Gang gesetzt durch einen kleineren, vor mir liegenden Plan.
+    |
+    |{3-10}
+    |
+    |Die Iris wird vom Text gebildet, der in einer Unschärfezone ganz nah, von oben in der Vogelperspektive erscheint.
+    |
+    |{3-11}
+    |
+    |Der steil abfallende Weg entspringt der Assoziation von Bewegung und Subjekt, verfolgt mich im Geiste mit dem Finger.
+    |
+    |{3-12}
+    |
+    |Theoretisch sind Mikrocomputer schwierig bis unmöglich auf der Karte zu verfolgen, in ihrem Zeitverhalten unmerkbar und teilweise senkrecht.
+    |
+    |{3-13}
+    |
+    |Länger und immer steiler, als ich ursprünglich dachte, habe ich mit der bereits abgenutzten Ansicht dieser Textabschnitte experimentiert.
+    |
+    |{3-14}
+    |
+    |Wenig später geht es wieder weiter, andere Arbeiten entstehen, wo jede Reuse in ihrem eigenen Klanggedächtnis bergab geht.
+    |
+    |{3-15}
+    |
+    |Eine Stelle, an der im wörtlichen Sinne lokale Individuierung doch wieder gegen das Multiple von Sandkorn-Rücksichten gesetzt wird.
+    |
+    |{3-16}
+    |
+    |Es ist zu weit, die Computerwelt führt durch eine Gruppe von drei Elementen, benötigt einen viel längeren Weg.
+    |
+    |{3-17}
+    |
+    |In vielleicht einer Stunde meldet sich ein Pool an summenden Bienen einmal zu Wort, keinen festen Raumpositionen zugeordnet.
+    |
+    |{3-18}
+    |
+    |Ich sehe den Weg, wenngleich durch Türmung zum Volumen und dunkel geworden, lässt er sich eine Präzision anmerken.
     |""")
 
 //  println(edgesDe.mkString("\n"))
