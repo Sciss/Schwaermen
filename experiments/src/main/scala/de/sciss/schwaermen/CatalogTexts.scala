@@ -48,7 +48,7 @@ object CatalogTexts {
       |auf zwei unterschiedliche Linien zurückverfolgt werden kann? Tim Ingold erinnert an Deleuzes
       |Verwendung der Haecceitas oder des \emph{Bündels} von Linien zur Bezeichnung des lebendigen
       |Organismus. Die Traurigkeit der Unwiederholbarkeit: In einer Erfahrung vereint, die jedoch nie
-      |stattfand, ausser in der Erinnerung.
+      |stattfand, außer in der Erinnerung.
       |""",
     """Ein Plan liegt vor mir oder in meinem Gedächtnis. Ein Glas zerspringt auf dem Boden, doch
       |lässt es sich wenig später wieder in ein Metall einfassen. Die Karte hat einen kleinen
@@ -153,7 +153,7 @@ object CatalogTexts {
       |von dieser Darstellung angetan war. Ich hätte es erneut drucken können, aber es wäre nicht
       |dasselbe Blatt gewesen, das vom vielen Herumtragen bereits abgenutzt war.
       |""",
-    """Am Schluß ist wieder alles zerlegt, aufgerollt, auseinandergeschraubt, gepolstert und in
+    """Am Schluss ist wieder alles zerlegt, aufgerollt, auseinandergeschraubt, gepolstert und in
       |Kisten verpackt. Wie geht es weiter? Neue und andere Arbeiten entstehen, die Elemente
       |aufgreifen und fortführen. Das vernetzte Mikrocomputercluster taucht erneut in
       |\emph{wr\_t\_ng m\_ch\_n\_} auf, wo jeder Teil sein eigenes Klanggedächtnis hat. Die Reusen
@@ -324,7 +324,7 @@ object CatalogTexts {
     |
     |{1-14}
     |
-    |Am Schluß sind alle Dinge eng aufgerollt, mit geringsten Amplituden gepolstert und innerhalb von Kisten ohne Griffmöglichkeiten montiert.
+    |Am Schluss sind alle Dinge eng aufgerollt, mit geringsten Amplituden gepolstert und innerhalb von Kisten ohne Griffmöglichkeiten montiert.
     |
     |{1-15}
     |
@@ -456,7 +456,7 @@ object CatalogTexts {
     |
     |{4-11}
     |
-    |Als komplexe Zeitmultiplexer mischen sich Funktionen, Linen und Plots zusammen, bewegen und ergeben Schritt für Schritt synthetische Formen.
+    |Als komplexe Zeitmultiplexer mischen sich Funktionen, Linien und Plots zusammen, bewegen und ergeben Schritt für Schritt synthetische Formen.
     |
     |{4-12}
     |
@@ -572,7 +572,7 @@ object CatalogTexts {
     |
     |{6-16}
     |
-    |Zum einen läßt sich eine Unordnung in der Relaismatrix formulieren, zum anderen braucht man fünf Ringe zum Laufen.
+    |Zum einen lässt sich eine Unordnung in der Relaismatrix formulieren, zum anderen braucht man fünf Ringe zum Laufen.
     |
     |{6-17}
     |
@@ -584,7 +584,7 @@ object CatalogTexts {
     |
     |{7-13}
     |
-    |Zwischen den Körben wandern Gefährte und Gefährten, die ich trotz Zugehörigkeit mir gegenüber sicher in einiger Enfernung verpasse.
+    |Zwischen den Körben wandern Gefährte und Gefährten, die ich trotz Zugehörigkeit mir gegenüber sicher in einiger Entfernung verpasse.
     |
     |{7-14}
     |
@@ -592,7 +592,7 @@ object CatalogTexts {
     |
     |{7-15}
     |
-    |Dies zu stoppen, behauptet immer das Heroische für sich, ganz gleich welche Zweifel das Verhandensein der Punkte erzeugt.
+    |Dies zu stoppen, behauptet immer das Heroische für sich, ganz gleich welche Zweifel das Vorhandensein der Punkte erzeugt.
     |
     |{7-16}
     |
@@ -616,7 +616,7 @@ object CatalogTexts {
     |
     |{8-15}
     |
-    |Die Läuse vereinen sich zur Zurfriedenheit von Michel Serres, andererseits wurden sie von unbekannten Schwärmen aufgesucht und verarbeitet.
+    |Die Läuse vereinen sich zur Zufriedenheit von Michel Serres, andererseits wurden sie von unbekannten Schwärmen aufgesucht und verarbeitet.
     |
     |{8-16}
     |
@@ -637,6 +637,46 @@ object CatalogTexts {
     |{9-14}
     |
     |Dabei führen komplexe Klänge aus Ultraschalllautsprechern an einer Stelle zu einem Kontakt mit Kugeln, die den Raum ausfüllen.
+    |
+    |{9-15}
+    |
+    |Eine Kiste führt an Kisten vorbei, wird gesucht und vom Multiplen bedroht, wird eingelassen und lässt sich ein.
+    |
+    |{9-16}
+    |
+    |Ich bitte die Kugel, sich links und rechts und spielend zu leeren. Zwölf Leute machen fünf Terminals aus.
+    |
+    |{9-17}
+    |
+    |Wobei man mit einem Ton oder mit einem Stab jedoch darin, davon, oder dadurch sein Sein ausmachen kann.
+    |
+    |{9-18}
+    |
+    |Durch zwei Dimensionen, wie Roland Barthe feststellen wird, werde ich die Bewegung ebenso gerade wie mich selbst machen.
+    |
+    |{10-13}
+    |
+    |Es gibt das Graphische der Buchstaben auch auf den Bienenkörben, in ihrer Kreisförmigkeit eingebettet, nur noch leicht gekrümmt.
+    |
+    |{10-14}
+    |
+    |Nicht-semantische Sensoren sind für uns nur durch einen kleinen Schlitz in unserem Augapfel sichtbar beziehungsweise als Andeutung verpackt.
+    |
+    |{10-15}
+    |
+    |Das unendliche des Textes wird in seiner Genese nun immer und nur durch eine Skizze in Wertigkeiten überführt.
+    |
+    |{10-16}
+    |
+    |Nicht genug erscheinen in den frühen drei Ebenen horizontale Wörter als Leitungen, die sich meist in Dreiecken brechen.
+    |
+    |{10-17}
+    |
+    |In ihrem Inneren verschwinden Klänge als Bienen, tauchen hin und wieder als Körbe auf und als Textläufe hervor.
+    |
+    |{10-18}
+    |
+    |Wo der Schirm verschwindet, treten die Lautsprecher zum hervor, wodurch das eine dazu neigt das andere zu brauchen.
     |""")
 
 //  println(edgesDe.mkString("\n"))
