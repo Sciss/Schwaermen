@@ -677,6 +677,54 @@ object CatalogTexts {
     |{10-18}
     |
     |Wo der Schirm verschwindet, treten die Lautsprecher zum hervor, wodurch das eine dazu neigt das andere zu brauchen.
+    |
+    |{11-13}
+    |
+    |In welchem Korb dasselbe Blatt gewesen ist, darüber gibt es immer zahlreiche Tatsachenvermutungen, wir können gar nicht anders.
+    |
+    |{11-14}
+    |
+    |Wenn man nur einen Schritt untersucht, taucht ein Teil davon vielleicht wieder als paralleles oder sequenzielles Bündel auf.
+    |
+    |{11-15}
+    |
+    |Während sich bei Deleuze das Schwärmen in parallelen Programmtexten entwickelt, haben wir tatsächlich keine Kontrolle über ihre Zielrichtungen.
+    |
+    |{11-16}
+    |
+    |Ein Rhythmus kann sich vor den anderen setzen, acht Anschlüsse belegen, doch befinden wir uns immer im Text.
+    |
+    |{11-17}
+    |
+    |Zwar gibt es meist nur ein Programmieren im Schwarm, doch das können wir nur in der Installation sein.
+    |
+    |{11-18}
+    |
+    |Es schwärmen die Simultaneitäten, wir sind vor uns nicht mehr sicher und nur zu einem All-Over Computer geworden.
+    |
+    |{12-13}
+    |
+    |Drei graphische Bäume dienten mir als geknotete Partner, wobei ich einzig in der Startzeit vom Entstehen angetan war.
+    |
+    |{12-14}
+    |
+    |Nachdem ich diesmal bei mehreren Knoten stand und sie erneut zu erweitern suchte, startete die Aktualisierung ähnlicher Pakete.
+    |
+    |{12-15}
+    |
+    |Was wird gemeint sein durch die Aufgabe der IP Adresse? Wird der Schwarm durch sie vielleicht versuchen einzudringen?
+    |
+    |{12-16}
+    |
+    |Drei Punkte bilden drei Möglichkeiten: Geradeaus, hinauf, hinunter, jedoch nur ein Weg auf der Landkarte wird so unterschieden.
+    |
+    |{12-17}
+    |
+    |Indem sie in einem fort am Emittieren ist, ergab sich zunächst ein Problem, das es zu immergrünen heißt.
+    |
+    |{12-18}
+    |
+    |Wenngleich durch die Bildschirme nicht allein Durchmesser sondern Rauminstallationen entstehen, sind sie noch als Erzeuger von Videos entstanden.
     |""")
 
 //  println(edgesDe.mkString("\n"))
