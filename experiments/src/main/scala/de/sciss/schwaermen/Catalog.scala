@@ -43,6 +43,8 @@ object Catalog {
     } else {
       println("(Skipping renderPages)")
     }
+
+    CatalogPaths.main(args)
   }
 
   val dir       : File = file("/") / "data" / "projects" / "Schwaermen" / "catalog" / "hhr"
@@ -111,23 +113,26 @@ object Catalog {
 
   // N.B.: horizontal line filling is broken if we use single column
   // finalhyphendemerits -- see https://tex.stackexchange.com/questions/304802/
-  def latexParTemplate(text: String): String = stripTemplate(
-    s"""@documentclass[10pt,twocolumn]{article}
-       |@usepackage[paperheight=${PaperHeightMM}mm,paperwidth=${PaperWidthMM}mm,top=${MarginTopMM}mm,bottom=${MarginBotMM}mm,right=${MarginRightMM}mm,left=${MarginLeftMM}mm,heightrounded]{geometry}
-       |@usepackage[ngerman]{babel}
-       |@usepackage{Alegreya}
-       |@usepackage[T1]{fontenc}
-       |@usepackage[utf8]{inputenc}
-       |@setlength{@columnsep}{${ColumnSepMM}mm}
-       |@begin{document}
-       |@finalhyphendemerits=1000000
-       |@pagestyle{empty}
-       |@fontsize{${FontSizePt}pt}{${LineSpacingPt}pt}@selectfont
-       |@noindent
-       |$text
-       |@end{document}
-       |"""
+  def latexParTemplate(text: String)(implicit lang: Lang): String = {
+    val babel = if (lang == Lang.de) "ngerman" else "UKenglish"
+    stripTemplate(
+      s"""@documentclass[10pt,twocolumn]{article}
+         |@usepackage[paperheight=${PaperHeightMM}mm,paperwidth=${PaperWidthMM}mm,top=${MarginTopMM}mm,bottom=${MarginBotMM}mm,right=${MarginRightMM}mm,left=${MarginLeftMM}mm,heightrounded]{geometry}
+         |@usepackage[$babel]{babel}
+         |@usepackage{Alegreya}
+         |@usepackage[T1]{fontenc}
+         |@usepackage[utf8]{inputenc}
+         |@setlength{@columnsep}{${ColumnSepMM}mm}
+         |@begin{document}
+         |@finalhyphendemerits=1000000
+         |@pagestyle{empty}
+         |@fontsize{${FontSizePt}pt}{${LineSpacingPt}pt}@selectfont
+         |@noindent
+         |$text
+         |@end{document}
+         |"""
     )
+  }
 
   def stripTemplate(s: String): String = s.stripMargin.replace('@', '\\')
 

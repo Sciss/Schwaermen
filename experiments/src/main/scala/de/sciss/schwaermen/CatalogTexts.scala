@@ -99,8 +99,8 @@ object CatalogTexts {
       |Teil mit klassischerer, narrativer, linearer Struktur, der erste experimenteller. Beim
       |Verlassen des Vorführraums spüre ich, dass die Arbeit Naya nicht gefallen hat. Sie sucht nach
       |Formulierungen, je mehr sie sich äußert, desto deutlicher ist, dass es ihr gar nicht gefallen
-      |hat. Sicher, viele Dinge sind in kurzer Zeit entstanden, vielleicht es eine weitere
-      |Überarbeitung gebraucht, trotzdem war ich zufrieden. Jetzt bin ich enttäuscht und traurig.
+      |hat. Sicher, viele Dinge sind in kurzer Zeit entstanden, vielleicht hätte es weitere
+      |Überarbeitungen gebraucht, trotzdem war ich zufrieden. Jetzt bin ich enttäuscht und traurig.
       |Verunsichert, dass bei Zuschauern dieser Eindruck nachhaltig zurückbleibt. Jemand sagt, ihr
       |gefielen keine "`Laborfilme"'. Was damit gemeint ist? Es geht offensichtlich um die Ablösung
       |einer Schicht, die dem Film noch anhaftet.
