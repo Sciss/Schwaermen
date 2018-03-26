@@ -212,7 +212,8 @@ object CatalogTexts {
   }
 
   val bugWords: Set[String] = Set(
-    "gefielen", "Laborfilme", "identifiziert", "befinden", "konfiguriert", "gegenläufige", "flachem", "flach"
+    "befinden", "flach", /* "flache", "flachem", */ "gefielen", "gegenläufige", "identifizier",
+    /* "identifizieren", "identifiziert", */ "konfiguriert", "Laborfilme"
   )
 
   val bugMap: Map[String, String] = bugWords.iterator.map { w =>
@@ -436,6 +437,206 @@ object CatalogTexts {
     |{3-18}
     |
     |Ich sehe den Weg, wenngleich durch Türmung zum Volumen und dunkel geworden, lässt er sich eine Präzision anmerken.
+    |
+    |{4-7}
+    |
+    |Ich realisiere, dass der Hintergrund des flachen, fahl beleuchteten Schirms zwar die Macht jedoch nur endliche Energie hat.
+    |
+    |{4-8}
+    |
+    |Jemand sagt, ihr gefielen die blau-weißen geometrischen Strichzeichnungen nicht, von denen der nachhaltige Eindruck eines umherschwimmenden Ensembles zurückblieb.
+    |
+    |{4-9}
+    |
+    |Durch Interaktion zweier Coulomb Kugeln aus der Frühzeit verband sich die eigenwillige Reinheit der Klänge mit  chaotischen Kreisen.
+    |
+    |{4-10}
+    |
+    |In Skizzen erscheint ein Funktionsgenerator, ein Ding mit Augapfel und einem merkwürdigen Gesamtbild von sich ineinander verwandelnden Glyphen.
+    |
+    |{4-11}
+    |
+    |Als komplexe Zeitmultiplexer mischen sich Funktionen, Linen und Plots zusammen, bewegen und ergeben Schritt für Schritt synthetische Formen.
+    |
+    |{4-12}
+    |
+    |Zu unterschiedlichen Zeitpunkten kommen mir Gedanken zeitgleicher Worte, die bei ihrer Ankunft schließlich im Kreis zu kollidieren suchen.
+    |
+    |{4-13}
+    |
+    |Wann immer sich geometrische Bäume formen, kann man sich leicht vorstellen, dass sie rot und grün bewegt werden.
+    |
+    |{4-14}
+    |
+    |Erneut erscheinen Schallwände mit kleinen Reusen versehen, haben begonnen modulare Serien aufzugreifen, die noch im Werden begriffen sind.
+    |
+    |{4-15}
+    |
+    |Ameisen-Kribbelkram entschwindet in den Raum, dringt in Bildschirme ein, ergibt überraschende Klänge der Größe 40 mal 30 Zentimeter.
+    |
+    |{4-16}
+    |
+    |Sechzehn geometrische Funktionen zu drei Dreiecken, ödipale Klänge in untätigen Verstärkerkanälen, nicht genug zum Einfärben der abgenutzten Schraubterminals.
+    |
+    |{4-17}
+    |
+    |Feste Klangebenen gehen unaufhörlich vorüber und gehen unaufhörlich zusammen, rühren mit eingeschalteten Generatoren in räumlicher Distanz zueinander herum.
+    |
+    |{4-18}
+    |
+    |Alles Stillhalten war fasziniert von der Miniaturisierung geometrischer Klänge und von deren rahmenlosen Sich-Abheben von umgebenden ökonomischen Funktionen.
+    |
+    |{5-7}
+    |
+    |Ich versetze mich außerhalb einer Lichtquelle, werde eine dunkle Gestalt im Plural. Mein `wir' hetzt als Gefolge umher.
+    |
+    |{5-8}
+    |
+    |Der Performer sucht nach Formulierungen zur Farbe des Lichtes, das zu rotieren und regelmäßige narrative Kreise erzeugen würde.
+    |
+    |{5-9}
+    |
+    |Kugeln und Kabel bewegen sich still im Raum, beschleunigen sich etwas, werden eher zu Performern denn zum Performten.
+    |
+    |{5-10}
+    |
+    |Als Auge oder Holzkugel nahmen die Besucher ein rotes Licht mit herum im Raum, konnten später kaum mithalten.
+    |
+    |{5-11}
+    |
+    |Die Arbeiten identifizieren sich als Objekte der Begeisterung, so schien mir, denn ihr Magnetismus gehorchte einem sinnlosen Treiben.
+    |
+    |{5-12}
+    |
+    |Als selbst Gruppen älterer Menschen versuchten gleichzeitig durch das Netzwerk transportiert zu werden, übernahm ich wieder die Rede.
+    |
+    |{5-13}
+    |
+    |Ein Besucher musste zu rennen anfangen, da er genauer wissen wollte, wie sich Wörter durch den Raum verteilen.
+    |
+    |{5-14}
+    |
+    |Das vernetzte Cluster aus Mikrocomputern war rot verpackt, erinnerte sich jemand. Es hängt nun dort an der Wand.
+    |
+    |{5-15}
+    |
+    |Nietzsche wollte dem Übermensch nicht beiwohnen und ging auf Krücken hinaus, suchte sich Platz, machte eine unvorhergesehene Bewegung.
+    |
+    |{5-16}
+    |
+    |Eine Null schiebt sich zwischen Pierces Trichotomien und beginnt sich im Raum zu bewegen. Wir zählen die Kanäle.
+    |
+    |{5-17}
+    |
+    |Nein, in der Tat änderte sich der Anfangszustand der Relais, nämlich dann, wenn die Leute alle Relais schalteten.
+    |
+    |{5-18}
+    |
+    |Ein eher kompakter Relaisklotz, welcher sich im Raum auf Ausschnitte reduziert, alles gleichermaßen als Präzision und Spannungsfeld organisiert.
+    |
+    |{6-7}
+    |
+    |Die Stimme auf dem Gitterblatt ist zu spärlich, um in die Welt einzugreifen, überlappt sich mit ihrer Realisation.
+    |
+    |{6-8}
+    |
+    |Beim Verlassen des Vorführraums zeichnet sich ein rigides, gitterförmiges Gefüge ab, ist bei genauerer Hinsicht eine rechnende Topologie.
+    |
+    |{6-9}
+    |
+    |Am anderen Ende der Tonaufnahme überlagert ein zusammenhängendes Netz von Stegen und Kugeln eine flache, organisch geschlungene Zellebene.
+    |
+    |{6-10}
+    |
+    |Bei zwölf Uhr verschwindet diese Struktur in einem Querschnitt, wo sich eine Wand konkretisiert und eine andere durchbricht.
+    |
+    |{6-11}
+    |
+    |Wenn Schaltkreise jedoch immer schon Linienbündel sind, Zellstrukturen und Gitterebenen, dann man mag denken, dass individuelle Verstrickungen einsetzen.
+    |
+    |{6-12}
+    |
+    |Im Laufe der Softwareentwicklung stehen wir über Gruppierungen unterschiedlicher Frequenzen gebeugt, die als randomisierte Perioden oder Platzhalter erscheinen.
+    |
+    |{6-13}
+    |
+    |Ich hätte die rechnenden Funktionen erneut als geschlungene Zeichnung drucken können, aber sie wären fortan nicht sichtbar gewesen.
+    |
+    |{6-14}
+    |
+    |Zwischen Außen und Innen entsteht ein algorithmischer Körper, produziert sich als raumabhängige Struktur, umgeben von Händen und Empfängern.
+    |
+    |{6-15}
+    |
+    |Am Begriff des Schwärmens gefällt jedes Element als niemals individuiert, hat also nichts Abgelagertes, das äußeren Grenzen verbindet.
+    |
+    |{6-16}
+    |
+    |Zum einen läßt sich eine Unordnung in der Relaismatrix formulieren, zum anderen braucht man fünf Ringe zum Laufen.
+    |
+    |{6-17}
+    |
+    |Besucherinnen begegnen normalerweise Graphiken oder Diagrammen nicht, so dass sich eine Asymmetrie aus aufregendem und dichtem Klicken ergibt.
+    |
+    |{6-18}
+    |
+    |Wir sind dabei zu ergründen, warum nicht Funktionen sondern Vorsichtigkeiten im Stillhalten der Betrachter die Miniatur auszuzeichnen scheinen.
+    |
+    |{7-13}
+    |
+    |Zwischen den Körben wandern Gefährte und Gefährten, die ich trotz Zugehörigkeit mir gegenüber sicher in einiger Enfernung verpasse.
+    |
+    |{7-14}
+    |
+    |Aus dem Fenster führen neue Elemente ins Atelier fort. In der Mehrzahl spricht man von Anleihen an Maschinen.
+    |
+    |{7-15}
+    |
+    |Dies zu stoppen, behauptet immer das Heroische für sich, ganz gleich welche Zweifel das Verhandensein der Punkte erzeugt.
+    |
+    |{7-16}
+    |
+    |Ich kann mich glücklich messen, eines von mehreren Fahrzeugen zum Beringen auszugeben. Einige Gewinde erweisen sich als waagerecht.
+    |
+    |{7-17}
+    |
+    |Dazu wird jeder Klang einem Lautsprecher zugeordnet, so dass ein weiteres Mal beim Ausschalten nur Texturen erzeugt werden.
+    |
+    |{7-18}
+    |
+    |Im Effekt jedenfalls türmen sich kleine Volumen von 45 mal 85 mal 56mm in den Schlitze der Bienenkörbe.
+    |
+    |{8-13}
+    |
+    |Diese Bäume sind in der Ausstellung nicht Erklärungshilfe, sondern eine klassische, narrative Struktur, der die Überarbeitung noch anhaftet.
+    |
+    |{8-14}
+    |
+    |Fragen des Screening bestehen aus zwei Teilen, wobei sich der zweite Teil im Neuen und im Schreiben äußert.
+    |
+    |{8-15}
+    |
+    |Die Läuse vereinen sich zur Zurfriedenheit von Michel Serres, andererseits wurden sie von unbekannten Schwärmen aufgesucht und verarbeitet.
+    |
+    |{8-16}
+    |
+    |Es ist deutlicher zu spüren, dass ihr die Arbeit des Einfärbens nicht gefallen hat und sie enttäuscht hat.
+    |
+    |{8-17}
+    |
+    |Vielleicht hätte es ein weiteres Booten der Computer gebraucht, das dem Film eine desto experimentellere Klangsituation auferlegt hätte.
+    |
+    |{8-18}
+    |
+    |Sicher, viele Dinge sind gerade durch Vorneigen mit Auge und Ohr entstanden, trotzdem waren sie ohne weiteres flächig.
+    |
+    |{9-13}
+    |
+    |Im Probedruck auf Papier produziert der Geräuschgenerator eine weitere, nicht nur hörbare Darstellung, die sogar eine Stimme besitzt.
+    |
+    |{9-14}
+    |
+    |Dabei führen komplexe Klänge aus Ultraschalllautsprechern an einer Stelle zu einem Kontakt mit Kugeln, die den Raum ausfüllen.
     |""")
 
 //  println(edgesDe.mkString("\n"))
