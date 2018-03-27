@@ -27,8 +27,8 @@ object CatalogTexts {
   }
 
   def par(lang: Lang): ISeq[String] =
-    if (lang == Lang.de) parDe
-    else ???
+    if (lang == Lang.de)  parDe
+    else                  parEn
 
   val parDe: ISeq[String] = List(
     """Die Gassen sind eng und mit starkem Gefälle hinunter zum Wasser. Ich gehe noch einmal zurück.
@@ -205,15 +205,172 @@ object CatalogTexts {
       |"""
   ).map(mkText)
 
+  val parEn: ISeq[String] = List(
+    """The alleys are narrow and with a steep slope down to the water. I go back once again.
+      |Everything is characterised by a strong verticality. I pull myself up against a wall, on ropes
+      |and grips. Is that the only way or just a shortcut? Disapproval of the bystanders? One corner
+      |of the room is made of glass, floor to ceiling, a huge window to the outside, orange light
+      |enters. Someone calls me, he and his partner have had trouble understanding the installation
+      |in the exhibition. There are vibrating things shaking at high frequency and low amplitude,
+      |mounted on a field or table the size of small apples.
+      |""",
+    """It is an experiment. Two human arms are put together, next to each other, close together. They
+      |are squeezed or dissected, cut, then united on a microscope slide or glass. A specimen is
+      |made, the \emph{section} of the double arm becomes one object. What happens to life? Life was
+      |previously separate in each of the arms. To what extent does life unite in the squeezed arms,
+      |where it can be traced back to two different lines? Tim Ingold recalls Deleuze's use of the
+      |Haecceitas or \emph{bundle} of lines to designate the living organism. The sadness of
+      |unrepeatability: united in an experience that never took place except in memory.
+      |""",
+    """A plan lies in front of me or in my memory. Glass shatters on the floor, but shortly after it
+      |can be embedded in a metal again. A small-scale map, I follow the path in my mind or with the
+      |finger. Longer than I originally thought, much longer. I see everything close, but from above.
+      |It's too far, in maybe an hour it'll be dark, then it will be difficult or even impossible to
+      |follow the path. A trap appears. Unrecognizable on the map with its bird's eye view appears a
+      |point in which the path drops steeply, it is getting steeper until it goes partly vertically
+      |downhill.
+      |""",
+    """An antique function generator, a thing with a flat screen, approximately in the size 40 by 30
+      |centimetres. The screen's background is blue, with a line drawing in white. Functions,
+      |geometric functions, lines and circles, plots. They swim around, perhaps moved by interaction,
+      |and yield an ensemble of forms. The thought comes to me that we only have finite energy. The
+      |shapes emit synthetic sounds that mix together to form a strange overall picture. No
+      |surprising sounds these days, but it's easy to imagine how the arrival of the generator made
+      |everyone fascinated by the purity of the sounds and their idiosyncratic and slightly chaotic
+      |appearance, decay, coalescence.
+      |""",
+    """A rather dark room in which someone would start to rotate a light source, a red light, and
+      |create regular circles that would move around the room (the performer began to move in space).
+      |I seemed to remember: yes, everything was red. No. In fact, the colour of the light changed.
+      |The works took the visitors around in the room, they had to start running and became
+      |performers and the performed in equal measure. Everything accelerated so that people could
+      |hardly keep up, but even groups of older people, some with crutches, rushed around as
+      |entourage. I did not want to attend the senseless activity and went out.
+      |""",
+    """We are bent over a drawing, a diagram. In it overlap a cell structure, an organically looped
+      |drawing, and a rigid, latticed structure like a grouping of circuits. We are formulating what
+      |we like about this structure. On the one hand, calculating functions can be deposited, picked
+      |up, inserted on the grid, so that each element of the grid plane appears as the receiver or
+      |placeholder of a calculating function. On the other hand, the looped cell plane produced a
+      |cross-section, a coherent network of ridges, more precisely, the topology is not flat, but one
+      |wall penetrates or overlays another. An asymmetry between drawn outside and inside emerges.
+      |""",
+    """I look out of the window. The halt was certainly missed, but I realise that I have the power
+      |to stop the vehicle. To do this, I shift myself outside to a distance where the vehicle
+      |becomes small, so that I can intervene in the world and put a token in the way. A number of
+      |stones collapses and brings the vehicle to a halt. The development is sparse. Opposite to me
+      |sits a dimly lit figure, who is plural, speaking only of `we' in the plural, posing as one of
+      |several. Doubt lies in the voice that claims to be happy as entirely equal with the others.
+      |""",
+    """A screening, consisting of two parts. Existing films were processed. The second part with more
+      |classic, narrative, linear structure, the first more experimental. Upon leaving the screening
+      |room, I feel that Naya didn't like the work. She tries to verbalise, the more she speaks, the
+      |clearer it becomes that she completely disliked it. Naturally, many things emerged in a short
+      |time, maybe needing another revision, yet I was satisfied. Now I'm disappointed and sad.
+      |Unsettled that this impression persists with the viewers. Someone says she did not like
+      |``laboratory films''. The meaning? It is obviously about the peeling away of a layer that
+      |still adheres to the film.
+      |""",
+    """Two metal balls, Coulomb spheres, with different diameters of one or a few centimetres. In the
+      |smaller of them another sphere is embedded. Something is set in motion through contact or
+      |through repeated joining and separation. Two bars touch the spheres and are connected to
+      |cables whose other end leads to a box, a sound or noise generator. You can only hear the sound
+      |by picking up a signal on the box. I ask the people in the room to be quiet, as I make a sound
+      |recording with the spheres. They can be played and thereby produce complex sounds, you can
+      |even make out a voice once.
+      |""",
+    """In early sketches, spatial nodes appear as an eye. Or just one node? The pupil is empty, the
+      |iris is formed by the circularly moving text. The eyeball is the screen with a concave lens,
+      |embedded in a wooden orb. There is a defocusing at twelve o'clock, where words disappear and
+      |appear as the glyphs morph into one another. The graphic quality of the letters emerges; a
+      |non-semantic transfer. Later, nodes become concrete as beehives, the eyeball disappears in
+      |their interior, visible only through a slit. The infinite of the text is now horizontal
+      |emergence and disappearance, circularity only hinted at by a slight curvature of the text.
+      |""",
+    """Centuries ago, moving in the swarm was identified with fanciful enthusiasm, and swarm was the
+      |object of exaltation. Perhaps the association springs from the melting of movement and
+      |subject. There are still directions, but their magnetism no longer obeys individual control.
+      |But if we are always already bundles of lines, we cannot help but swarm. Are we parallel or
+      |sequentially moving bundles? One may think that one can only step one step ahead of the other.
+      |But actually, as complex time multiplexers, we are entangled in simultaneities. Programming is
+      |swarming; we can only develop the text step by step, but we are always inside numerous
+      |parallel source codes.""",
+    """Theoretically, all nine microcomputers are identically configured and equipped, distinguished
+      |only by IP address, and yet all take different durations to boot, perhaps because in the
+      |course of software development they were updated at different times and at different
+      |frequencies, or packets were not synchronously delivered across the network. Initially, their
+      |temporal behaviour was more similar, and so there was a problem of \emph{turn-taking}: several
+      |nodes simultaneously trying to emit a word, looking for a partner node, and giving up due to
+      |collisions, trying again, and always in a loop. The periods were eventually randomised, which
+      |essentially means that the small differences in boot time are extremely amplified.
+      |""",
+    """Text sections are distributed across the beehives, trees are formed from the auditory
+      |similarity of the words. I experimented with the graphical view of these trees, red and green
+      |words indicating which basket they belong to. In the exhibition, these trees are audible but
+      |not visible. A test print on A3 paper henceforth served as a figure of explanation whenever
+      |someone wanted to know more precisely how the lines of words moving between the baskets are
+      |formed. I left the sheet to a visitor who fell for this rendering. I could have reprinted it,
+      |but it would not have been the same leaf, worn off from carrying around.
+      |""",
+    """Finally, everything is disassembled, rolled up, unscrewed, padded and packed in boxes. What's
+      |next? New and different works emerge that seize and evolve elements. The cluster of networked
+      |microcomputers reappears in \emph{wr\_t\_ng m\_ch\_n\_}, where each part has its own sound
+      |memory. The traps are in our studio. There, after I started to investigate the question of the
+      |algorithmic \emph{body}, a trap hangs on the wall, again furnished with small loudspeakers,
+      |this time surrounded with porcelain instead of beeswax as a baffle, and extended by tiny
+      |ultrasound sensors. The space-filling and space-dependent structure gives borrowings to a
+      |modular series that is still in the making.""",
+    """The concept of swarming always seems to contain an ambivalence, literally as opposing
+      |valences. Swarming seeks new territory, but then again, the search is never individuated, thus
+      |it partakes of nothing heroic (Nietzsche's overman is threatened by sand-grain sized
+      |considerations and the detritus of swarming ants, while Deleuze and Guattari unite lion's mane
+      |and lice). Did we really mean swarm? In \emph{Genèse}, Michel Serres links the swarm with the
+      |presence of an outer boundary and a local individuation, against which he places the multiple
+      |whose points remain unknown; the multiple invades the space or disappears from it, seeks
+      |place, gives it up or creates it by unpredictable movement.
+      |""",
+    """Computers are binarised; a line of flight leads through two points; two, four, eight, sixteen
+      |channels. We count on ten fingers. A group requires three elements; three points (usually)
+      |form a plane; the oedipal triangle; Pierce's trichotomies. Not enough to colourise a map, but
+      |appropriate to ring wires. A zero moves between one and eight. Five rings for 108 ways. The
+      |relay matrix cluttered, after some threads of the screw terminals prove to be worn out. Three,
+      |five, twelve volts. A rhythm of occupied and idle terminals, two inactive amplifier channels.
+      |Binary division requires three connections. Running requires three choices: left, right,
+      |straight ahead; or up, down, horizontally.
+      |""",
+    """The work consists of three interlocked sound layers. A wandering voice whose words are not
+      |associated with a fixed spatial position, a pool of buzzing sounds mostly originating from
+      |bees---each sound being associated with a fixed loudspeaker---and the relentless clicking of
+      |relays, spaced apart but in close proximity in the middle of the room. There is a sound
+      |situation that a visitor will normally not encounter; namely, when the installation is turned
+      |on. After booting the computers, all the relays will speak once by switching to their initial
+      |state, creating an exciting and dense texture of clicks for a few seconds. And again when
+      |shutting down.
+      |""",
+    """The proportions tend to miniaturisation and generate a certain posture of the visitor.
+      |Loudspeakers at 45mm diameter, computers having a surface of 85 times 56mm, though becoming a
+      |volume by piling. The compact relay block. Video screens, reduced to cutouts by the slots of
+      |the beehives. Economic reasons? Anyhow, they effectively require standstill of the viewer,
+      |leaning forward with eye and ear, cautiousness. Not only the dimension distinguishes the
+      |miniature, but also (as Roland Barthes noted) a precision and a frameless being silhouetted
+      |against the surrounding. A field of tension is created toward the all-over of the installation
+      |that is precisely organising the movement. One needs the other.
+      |""".stripMargin
+  ).map(mkText)
+
   val numPar: Int = {
-    val res = parDe.size
-    assert(res == 18)
-    res
+    val res1 = parDe.size
+    val res2 = parEn.size
+    assert(res1 == 18)
+    assert(res2 == res1)
+    res1
   }
 
   val bugWords: Set[String] = Set(
     "befinden", "flach", /* "flache", "flachem", */ "gefielen", "gegenläufige", "identifizier",
-    /* "identifizieren", "identifiziert", */ "konfiguriert", "Laborfilme"
+    /* "identifizieren", "identifiziert", */ "konfiguriert", "Laborfilme",
+    "amplifie", "baffle", "configured", "difficult", "field", "figure", "filling", "film", "finger", "finite",
+    "first", "five", "fixed", "flat", "flight", "floor", "identified", "satisfied"
   )
 
   val bugMap: Map[String, String] = bugWords.iterator.map { w =>
@@ -290,8 +447,8 @@ object CatalogTexts {
     * __Note:__ these are 1-based identifiers, not indices.
     */
   def edges(lang: Lang): Map[(Int, Int), String] =
-    if (lang == Lang.de) edgesDe
-    else ???
+    if (lang == Lang.de)  edgesDe
+    else                  edgesEn
 
   val edgesDe: Map[(Int, Int), String] = parseEdges("""
     |{1-7}
@@ -727,6 +884,13 @@ object CatalogTexts {
     |Wenngleich durch die Bildschirme nicht allein Durchmesser sondern Rauminstallationen entstehen, sind sie noch als Erzeuger von Videos entstanden.
     |""")
 
-//  println(edgesDe.mkString("\n"))
+  val edgesEn: Map[(Int, Int), String] = parseEdges("""
+    |{1-7}
+    |
+    |Once again I look back on a steep incline, where below, to the disapproval of bystanders, stones collapse.
+    |""".stripMargin
+  )
+
+  //  println(edgesDe.mkString("\n"))
 //  println(edgesDe.size)
 }

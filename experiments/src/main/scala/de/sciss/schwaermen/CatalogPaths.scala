@@ -33,8 +33,11 @@ import scala.swing.{BorderPanel, Component, Dimension, Frame, Graphics2D, GridPa
 
 object CatalogPaths {
   def main(args: Array[String]): Unit = {
-    implicit val lang: Lang = Lang.de
+    run()(Lang.de)
+    run()(Lang.en)
+  }
 
+  def run()(implicit lang: Lang): Unit = {
     runAllGNG()
     runAllBestPath()
     renderPaths()

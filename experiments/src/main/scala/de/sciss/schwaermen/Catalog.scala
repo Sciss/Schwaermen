@@ -26,33 +26,31 @@ import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 
 object Catalog {
   def main(args: Array[String]): Unit = {
-//    val t0 = Transform(1.2, 3.4, 5.6, 7.8, 9.10, 11.12)
-//    val t1 = Transform.fromAwt(t0.toAwt)
-//    assert(t0 == t1)
+    run()(Lang.de)
+    run()(Lang.en)
+  }
 
-    implicit val lang: Lang = Lang.de
-
+  def run()(implicit lang: Lang): Unit = {
     if (!fLinesOut(lang).isFile || !fOutCat.isFile || !parFile(1, lang).isFile) {
       preparePar()
     } else {
-      println("(Skipping preparePar)")
+      println(s"(Skipping preparePar $lang)")
     }
 
     if (!fOutArr.isFile) {
       renderPages()
     } else {
-      println("(Skipping renderPages)")
+      println(s"(Skipping renderPages $lang)")
     }
 
-    CatalogPaths.main(args)
+    CatalogPaths.run()
   }
 
-  val dir       : File = file("/") / "data" / "projects" / "Schwaermen" / "catalog" / "hhr"
-  val dirTmp    : File = file("/") / "data" / "temp" / "latex"
-  val fOutCat   : File = dir / "par_cat.pdf"
-  val fOutArr   : File = dir / "par_arr.pdf"
-
-  def fLinesOut(lang: Lang): File = dir / s"par-$lang-lines.txt"
+  val dir                             : File = file("/") / "data" / "projects" / "Schwaermen" / "catalog" / "hhr"
+  val dirTmp                          : File = file("/") / "data" / "temp" / "latex"
+  def fOutCat   (implicit lang: Lang) : File = dir / s"par-${lang}_cat.pdf"
+  def fOutArr   (implicit lang: Lang) : File = dir / s"par-${lang}_arr.pdf"
+  def fLinesOut (implicit lang: Lang) : File = dir / s"par-$lang-lines.txt"
 
 //  val PaperWidthMM  : Int = 200
 //  val PaperHeightMM : Int = 200
@@ -207,31 +205,44 @@ object Catalog {
   sealed trait Lang
 
   def getPageRectMM(pageIdx: Int, absLeft: Boolean = false)(implicit lang: Lang): Rectangle = {
-    require (lang == Lang.de) // XXX TODO
     val x = if (pageIdx == 0 || !absLeft) 0.0 else {
-      PaperWidthMM + (pageIdx - 1) * PaperIWidthMM
+      if (lang == Lang.de)
+        PaperWidthMM + (pageIdx - 1) * PaperIWidthMM
+      else
+                        pageIdx      * PaperIWidthMM
     }
     val y = 0.0
-    val w = if (pageIdx == 0) PaperWidthMM else PaperIWidthMM
+    val w = if (lang == Lang.de) {
+      if (pageIdx == 0)            PaperWidthMM else PaperIWidthMM
+    } else {
+      if (pageIdx == NumPages - 1) PaperWidthMM else PaperIWidthMM
+    }
     val h = PaperHeightMM
     Rectangle(x, y, w, h)
   }
 
   def getParRectMM(info: Vec[ParFileInfo], parIdx: Int, absLeft: Boolean = false)(implicit lang: Lang): Rectangle = {
-    require (lang == Lang.de) // XXX TODO
     val i       = info(parIdx)
     val pageIdx = getParPage(parIdx)
     val idx     = parIdx % 3
 
     val w     = WidthParMM
     val h     = HeightParMM(i.numLines)
-    val left  = if (pageIdx == 0) MarLeftOMM else MarLeftIMM
+    val left  = if (lang == Lang.de) {
+      if (pageIdx == 0) MarLeftOMM else MarLeftIMM
+    } else {
+                                        MarLeftIMM
+    }
     val x0 = idx match {
       case 0 | 2  => left
       case 1      => left + WidthParMM + ColSepIMM
     }
-    val x = if (pageIdx == 0 || !absLeft) x0 else {
-      x0 + PaperWidthMM + (pageIdx - 1) * PaperIWidthMM
+    val x = if (pageIdx == 0 || !absLeft) x0 else x0 + {
+      if (lang == Lang.de) {
+        PaperWidthMM + (pageIdx - 1) * PaperIWidthMM
+      } else {
+                        pageIdx      * PaperIWidthMM
+      }
     }
 
     val y = idx match {
@@ -249,7 +260,7 @@ object Catalog {
     Rectangle(x = x, y = y, width = w, height = h)
   }
 
-  def renderPages(splitPages: Boolean = false, fbox: Boolean = false, bleed: Boolean = true)(implicit lang: Lang): Unit = {
+  def renderPages(splitPages: Boolean = false, fBox: Boolean = false, bleed: Boolean = true)(implicit lang: Lang): Unit = {
     val bleedVal = if (bleed) BleedMM else 0
 
     val pre = {
@@ -281,8 +292,8 @@ object Catalog {
 //      @fbox{@includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(i.id)}}}
 //      @includegraphics[scale=1,trim=${trimLeft}mm ${trimBottom}mm ${trimRight}mm ${trimTop}mm]{${parFile(i.id)}}
 
-      val fboxIn  = if (fbox) "@fbox{" else ""
-      val fboxOut = if (fbox) "}"      else ""
+      val fboxIn  = if (fBox) "@fbox{" else ""
+      val fboxOut = if (fBox) "}"      else ""
 
       stripTemplate(
         s"""  @node[anchor=north west,inner sep=0] at ($$(current page.north west)+(${r.x + bleedVal}mm,${-(r.y + bleedVal)}mm)$$) {
