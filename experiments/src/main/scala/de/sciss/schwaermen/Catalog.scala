@@ -624,7 +624,7 @@ object Catalog {
 
     val latex = latexParTemplate(text)
     require (dirTmp.isDirectory, s"Not a directory: $dirTmp")
-    val fOutTex = dirTmp / s"par_temp_$textId.tex"
+    val fOutTex = dirTmp / s"par-${lang}_temp_$textId.tex"
     val fOutPDF = fOutTex.replaceExt("pdf")
     writeText(latex, fOutTex)
 

@@ -21,6 +21,7 @@ import java.io.{DataInputStream, DataOutputStream, FileInputStream, FileOutputSt
 import de.sciss.catmullrom.{CatmullRomSpline, Point2D}
 import de.sciss.dijkstra
 import de.sciss.file._
+import de.sciss.kollflitz
 import de.sciss.kollflitz.Vec
 import de.sciss.neuralgas.{ComputeGNG, ImagePD}
 import de.sciss.schwaermen.Catalog._
@@ -40,7 +41,11 @@ object CatalogPaths {
   def run()(implicit lang: Lang): Unit = {
     runAllGNG()
     runAllBestPath()
-    renderPaths()
+    if (!fRenderPathOut.isFile || fRenderPathOut.length() == 0L) {
+      renderPaths()
+    } else {
+      println(s"(Skipping renderPaths $lang)")
+    }
 //    viewGNG(folds(5))
 //    testViewFolds()
   }
@@ -404,6 +409,9 @@ object CatalogPaths {
     }.toIndexedSeq
   }
 
+  def fRenderPathOut(implicit lang: Lang): File =
+    dir / s"edges-$lang.svg"
+
   def renderPaths()(implicit lang: Lang): Unit = {
     implicit val ui: UniqueIDs = new UniqueIDs
     val edgeMap     = CatalogTexts.edges(lang)
@@ -424,7 +432,7 @@ object CatalogPaths {
       svg1.copy(text = textNodesAll, group = g1, doc = d1)
     }
 
-    val fOutSVG = dir / s"edges-$lang.svg"
+    val fOutSVG = fRenderPathOut
     writeSVG(svgMerged.doc, fOutSVG)
     val fOutPDF = fOutSVG.replaceExt("pdf")
     // cf. http://tavmjong.free.fr/INKSCAPE/MANUAL/html/CommandLine-General.html
@@ -508,10 +516,20 @@ object CatalogPaths {
           tSpan.setLocation(0.0 :: Nil, 0.0)
         }
         val loc = pathCursor.location
-        val pagesHit = fold.pages.iterator.collect {
+        import kollflitz.Ops._
+//        import numbers.Implicits._
+        // first, we collect in a multiple map, so we can
+        // decide for horizontally aligned pages, which one to use, in a second step
+        val pagesHit0: Map[Int, List[FoldPage]] = fold.pages.iterator.collect {
           case p if p.rectangle.border(BleedLineMM).contains(loc) =>
             p.rotation -> p
-        } .toMap.valuesIterator.toList.sortBy(_.idx)
+        } .toList.toMultiMap(_._1)(_._2)
+
+        val pagesHit = pagesHit0.valuesIterator.flatMap {
+          case single @ (_ :: Nil) => single
+          case multiple => multiple.filter(p => p.rectangle.border(FontSizeMM).contains(loc))
+//            multiple.minBy(p => math.min(p.rectangle.left absdif loc.x, p.rectangle.right absdif loc.x))
+        }.toList.sortBy(_.idx)
 
 //        println(s"pagesHit.size = ${pagesHit.size}")
 
