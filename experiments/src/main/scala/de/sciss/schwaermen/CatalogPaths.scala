@@ -527,7 +527,18 @@ object CatalogPaths {
 
         val pagesHit = pagesHit0.valuesIterator.flatMap {
           case single @ (_ :: Nil) => single
-          case multiple => multiple.filter(p => p.rectangle.border(FontSizeMM).contains(loc))
+          case multiple =>
+            // 'multiple' here means multiple pages in the same orientation.
+            // we first apply a more strict filter such that only with a margin
+            // of 'FontSizeMM' letters are duplicated
+            val m0 = multiple.filter(p => p.rectangle.border(FontSizeMM).contains(loc))
+            // next we need to eliminate duplicate letters which will be placed
+            // on top of each other
+            val m1 = m0.filterNot(p1 => m0.exists { p2 =>
+              import numbers.Implicits._
+              p2 != p1 && math.min(p1.rectangle.left absdif p2.rectangle.right, p1.rectangle.right absdif p2.rectangle.left) < 1
+            })
+            m1
 //            multiple.minBy(p => math.min(p.rectangle.left absdif loc.x, p.rectangle.right absdif loc.x))
         }.toList.sortBy(_.idx)
 
@@ -996,8 +1007,7 @@ object CatalogPaths {
     img
   }
 
-  def testViewFolds(): Unit = {
-    implicit val lang: Lang = Lang.de
+  def testViewFolds()(implicit lang: Lang): Unit = {
     val info    = Catalog.readOrderedParInfo(lang)
     val folds0  = mkFoldSeq(info)
     println(s"FOLDS.SIZE = ${folds0.size}")

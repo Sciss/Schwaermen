@@ -888,6 +888,74 @@ object CatalogTexts {
     |{1-7}
     |
     |Once again I look back on a steep incline, where below, to the disapproval of bystanders, stones collapse.
+    |
+    |{1-8}
+    |
+    |In the projection room, there's a strong verticality, extending across the linearity of the film, floor to ceiling.
+    |
+    |{1-9}
+    |
+    |Two metal balls, vibrating at high frequency vibrating, intermittently touch a huge window used to register a signal.
+    |
+    |{1-10}
+    |
+    |Again, I walk along the nodes of the room. Light enters through empty and at once watery pupils.
+    |
+    |{1-11}
+    |
+    |In the alleyways, a century-long movement swarms, glides up walls and ropes with fanciful enthusiasm, and finally disintegrates.
+    |
+    |{1-12}
+    |
+    |All nine corners of the room are orange, identically configured and equipped, but small differences are extremely amplified.
+    |
+    |{1-13}
+    |
+    |Someone is calling me, shaking lines of words across me, having difficulties and a leaf outside their mouth.
+    |
+    |{1-14}
+    |
+    |At last, all things are tightly rolled up, padded with minimal amplitudes and mounted inside boxes without grips.
+    |
+    |{1-15}
+    |
+    |Is there only one way or opposite shortcuts when swarming? New territory appears as a field or table.
+    |
+    |{1-16}
+    |
+    |Everything is binarised down to lines of flight. As binary division, I pull myself outside on ten fingers.
+    |
+    |{1-17}
+    |
+    |The work consists of three wandering voices made of glass, the words usually the size of small apples.
+    |
+    |{1-18}
+    |
+    |To understand proportions in the installation and exhibition requires a certain posture of the visitor and his partner.
+    |
+    |{2-7}
+    |
+    |Life was formerly separate in me and the vehicle that is stopped by a tile at the halt.
+    |
+    |{2-8}
+    |
+    |Two human arms were briefly processed by squeezing a layer, cutting it and then apparently peeling it off.
+    |
+    |{3-9}
+    |
+    |A trap of few centimetres in diameter emerges, set in motion by a smaller map lying before me.
+    |
+    |{4-10}
+    |
+    |Sketches show a function generator, something with an eyeball, a curious totality of glyphs morphing into each other.
+    |
+    |{5-11}
+    |
+    |The works identify themselves as objects of enthusiasm, so it seemed, because their magnetism obeyed a senseless activity.
+    |
+    |{6-12}
+    |
+    |Throughout the software development, we are bent over groupings of different frequencies, appearing as randomised periods or placeholders.
     |""".stripMargin
   )
 
