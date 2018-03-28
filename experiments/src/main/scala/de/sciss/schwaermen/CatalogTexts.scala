@@ -430,7 +430,7 @@ object CatalogTexts {
   def parseEdges(s: String): Map[(Int, Int), String] = {
     val s1 = s.stripMargin
     val s2 = s1.split("\n\\{").map(_.trim).filter(_.nonEmpty)
-    s2.iterator.map { s3 =>
+    val res = s2.iterator.map { s3 =>
       val i   = s3.indexOf('}')
       val s4  = s3.substring(0, i)
       val s5  = s3.substring(i + 1)
@@ -440,6 +440,8 @@ object CatalogTexts {
       val s6  = s5.replace("\n", "").trim
       (e1, e2) -> s6
     } .toMap
+//    assert(res.size == 108, res.size.toString)
+    res
   }
 
   /** Maps from (srcParId, tgtParId) to text.
@@ -941,13 +943,117 @@ object CatalogTexts {
     |
     |Two human arms were briefly processed by squeezing a layer, cutting it and then apparently peeling it off.
     |
+    |{2-9}
+    |
+    |You hear the sound in each of the differently sized arms only when repeatedly uniting and separating them.
+    |
+    |{2-10}
+    |
+    |Using a concave lens, two different lines are circularly moved and, in a node, retraced to Deleuze's organism.
+    |
+    |{2-11}
+    |
+    |Does our subject originate in parallel or sequentially moving, folded, squashed arms whose magnetism now disobeys individual control?
+    |
+    |{2-12}
+    |
+    |All experiments are joined, juxtaposed, closely approximated, but ultimately all require different time spans until they are dissected.
+    |
+    |{2-13}
+    |
+    |How does the auditory similarity of the words, left to a bundle by extensive carrying, unite to Haecceitas?
+    |
+    |{2-14}
+    |
+    |The sadness of unrepeatability is disassembled, screwed off, and restored as a specimen using porcelain instead of beeswax.
+    |
+    |{2-15}
+    |
+    |The double arm seems to bear an ambivalence, then remaining united on a slide as Guattari's lion mane.
+    |
+    |{2-16}
+    |
+    |To designate lines (of flight), two, four, eight, but never 108 points lead to a section of life.
+    |
+    |{2-17}
+    |
+    |Ceaseless, intricate memories are reminiscent of clicking glass, sounding for a few seconds contiguous to the room's centre.
+    |
+    |{2-18}
+    |
+    |A miniaturisation is a living experience of what happens during the organisation of the slits of the beehives.
+    |
+    |{3-7}
+    |
+    |The building development is enclosed in metal, which stands in the way. In my memory a glass shatters.
+    |
+    |{3-8}
+    |
+    |Existing maps have a small scale, making spectators of ``Laboratory Films'' sad and unsettled. What does it signify?
+    |
     |{3-9}
     |
     |A trap of few centimetres in diameter emerges, set in motion by a smaller map lying before me.
     |
+    |{3-10}
+    |
+    |The iris is formed by the text, appearing very closely in blurriness, from above in a bird's-eye view.
+    |
+    |{3-11}
+    |
+    |The steep path descends from an association of movement and subject, following me in spirit with the finger.
+    |
+    |{3-12}
+    |
+    |Theoretically, microcomputers are difficult to impossible to track on the map, imperceptible in their timing and partly vertical.
+    |
+    |{3-13}
+    |
+    |Longer and steeper than I originally thought, I experimented with the already worn out view of these passages.
+    |
+    |{3-14}
+    |
+    |Soon after things move on, other works emerge where every trap goes downhill in its own sonic memory.
+    |
+    |{3-15}
+    |
+    |A site where, literally speaking, local individuation is once again set against the multiple of sand-grain sized considerations.
+    |
+    |{3-16}
+    |
+    |It's too far, the computer world leads through a group of three elements, takes a much longer way.
+    |
+    |{3-17}
+    |
+    |In perhaps an hour, a pool of buzzing bees will speak once, not assigned to fixed room positions.
+    |
+    |{3-18}
+    |
+    |I discern the way, though having become a volume and dark due to piling; it reveals a precision.
+    |
+    |{4-7}
+    |
+    |I realise that the background of the flat, dimly lit screen, despite the power has only finite energy.
+    |
+    |{4-8}
+    |
+    |Someone says she disliked the blue-and-white geometric line drawings, leaving behind the lasting impression of a floating ensemble.
+    |
+    |{4-9}
+    |
+    |Due to interaction of two ancient Coulomb spheres, the unconventional purity of the sounds combined with chaotic circles.
+    |
     |{4-10}
     |
     |Sketches show a function generator, something with an eyeball, a curious totality of glyphs morphing into each other.
+    |
+    |{4-11}
+    |
+    |As complex time-division multiplexers, functions, lines and plots mix together, step by step move and yield synthetic forms.
+    |
+    |{4-12}
+    |
+    |At different times, thoughts come to me of synchronous words, at their arrival eventually looking for circular collision.
     |
     |{5-11}
     |
