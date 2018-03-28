@@ -369,8 +369,9 @@ object CatalogTexts {
   val bugWords: Set[String] = Set(
     "befinden", "flach", /* "flache", "flachem", */ "gefielen", "gegenläufige", "identifizier",
     /* "identifizieren", "identifiziert", */ "konfiguriert", "Laborfilme",
-    "amplifie", "baffle", "configured", "difficult", "field", "figure", "filling", "film", "finger", "finite",
-    "first", "five", "fixed", "flat", "flight", "floor", "identified", "satisfied"
+    "affiliation", "amplifie", "baffle", "Baffle", "briefly", "configured", "difficult", "field",
+    "figure", "fill", "film", "finally", "finger", "finite",
+    "first", "five", "fixed", "flat", "flight", "float", "floor", "identifi", "reified", "satisfied", "sufficient"
   )
 
   val bugMap: Map[String, String] = bugWords.iterator.map { w =>
@@ -811,7 +812,7 @@ object CatalogTexts {
     |
     |{9-18}
     |
-    |Durch zwei Dimensionen, wie Roland Barthe feststellen wird, werde ich die Bewegung ebenso gerade wie mich selbst machen.
+    |Durch zwei Dimensionen, wie Roland Barthes feststellen wird, werde ich die Bewegung ebenso gerade wie mich selbst machen.
     |
     |{10-13}
     |
@@ -835,7 +836,7 @@ object CatalogTexts {
     |
     |{10-18}
     |
-    |Wo der Schirm verschwindet, treten die Lautsprecher zum hervor, wodurch das eine dazu neigt das andere zu brauchen.
+    |Wo der Schirm verschwindet, treten die Lautsprecher zusammen hervor, wodurch das eine dazu neigt das andere zu brauchen.
     |
     |{11-13}
     |
@@ -1222,6 +1223,54 @@ object CatalogTexts {
     |{8-18}
     |
     |Sure, many things have just arisen through leaning forward with eye and ear, yet they were easily flat.
+    |
+    |{9-13}
+    |
+    |In the paper test print, the noise generator produces another, not only audible presentation, even possessing a voice.
+    |
+    |{9-14}
+    |
+    |And yet complex sounds from ultrasonic speakers at one point make contact with balls that fill the room.
+    |
+    |{9-15}
+    |
+    |A box leads past boxes, is searched for and threatened by the multiple, is embedded and engages with.
+    |
+    |{9-16}
+    |
+    |I request from the sphere to playfully empty itself left and right. Twelve people make up five terminals.
+    |
+    |{9-17}
+    |
+    |One can make out one's being with a sound or rod, however in it, of it, or thereby.
+    |
+    |{9-18}
+    |
+    |Through two dimensions, as Roland Barthes will determine, I will make the movement just as straight as myself.
+    |
+    |{10-13}
+    |
+    |The graphical quality of the letters also exists on the beehives, embedded in their circularity, only slightly curved.
+    |
+    |{10-14}
+    |
+    |Non-semantic sensors are visible to us only through a small slit in our eyeball, or as a hint.
+    |
+    |{10-15}
+    |
+    |The infinite of the text is, in its genesis, always and only transferred into valences by a sketch.
+    |
+    |{10-16}
+    |
+    |Not enough in the early three levels do horizontal words appear as conduits that usually refract in triangles.
+    |
+    |{10-17}
+    |
+    |In their interior, sounds disappear as bees, at times reappearing as baskets and emerging as passages of text.
+    |
+    |{10-18}
+    |
+    |Where the screen disappears, the speakers come forward conjointly, thus causing one to tend to need the other.
     |"""
   )
 }
