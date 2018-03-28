@@ -1174,6 +1174,54 @@ object CatalogTexts {
     |{6-18}
     |
     |We fathom why it is not functions but cautiousness in the visitors' standstill that apparently characterise the miniature.
+    |
+    |{7-13}
+    |
+    |Conveyances and companions wander between the hives which, despite affiliation to me, I'll certainly miss in the distance.
+    |
+    |{7-14}
+    |
+    |From the window new elements lead into the studio. By the majority, one speaks of borrowings at machines.
+    |
+    |{7-15}
+    |
+    |To stop this, the heroic always claims for itself, no matter what doubt the existence of points creates.
+    |
+    |{7-16}
+    |
+    |I measure myself happy to issue one of several vehicles for ringing. Some threads prove to be horizontal.
+    |
+    |{7-17}
+    |
+    |Each sound is assigned to a loudspeaker, so that once more, when switching off, only textures are generated.
+    |
+    |{7-18}
+    |
+    |In effect, small volumes of 45 by 85 by 56mm pile up in the slits of the beehives.
+    |
+    |{8-13}
+    |
+    |In the exhibition, these trees are not explanatory aids, but a classic, narrative structure, its revision still adhesive.
+    |
+    |{8-14}
+    |
+    |Questions of screening consist of two parts, the second part expressed in the new and in the writing.
+    |
+    |{8-15}
+    |
+    |The lice unite to the satisfaction of Michel Serres, however they were visited and processed by unknown swarms.
+    |
+    |{8-16}
+    |
+    |It is felt more obviously that she did not like the work of colouring, and that disappointed her.
+    |
+    |{8-17}
+    |
+    |Maybe it would need another booting of the computer, imposing a more experimental sound situation on the film.
+    |
+    |{8-18}
+    |
+    |Sure, many things have just arisen through leaning forward with eye and ear, yet they were easily flat.
     |"""
   )
 }
