@@ -727,7 +727,7 @@ object CatalogTexts {
     |
     |{6-15}
     |
-    |Am Begriff des Schwärmens gefällt jedes Element als niemals individuiert, hat also nichts Abgelagertes, das äußeren Grenzen verbindet.
+    |Am Begriff des Schwärmens gefällt jedes Element als niemals individuiert, hat also nichts Abgelagertes, das äußere Grenzen verbindet.
     |
     |{6-16}
     |
@@ -1099,9 +1099,81 @@ object CatalogTexts {
     |
     |The works identify themselves as objects of enthusiasm, so it seemed, because their magnetism obeyed a senseless activity.
     |
+    |{5-12}
+    |
+    |When even groups of older people attempted simultaneous transport through the network, I took over the speech again.
+    |
+    |{5-13}
+    |
+    |Visitors had to commence running because they wanted to know more about how words scatter throughout the room.
+    |
+    |{5-14}
+    |
+    |The networked cluster of microcomputers was packed in red, someone remembered. It now hangs there on the wall.
+    |
+    |{5-15}
+    |
+    |Nietzsche didn't want to attend the overman and left on crutches, took a seat, made an unforeseen movement.
+    |
+    |{5-16}
+    |
+    |A zero slides between Pierce's trichotomies and begins to roam in the space. We are counting the channels.
+    |
+    |{5-17}
+    |
+    |No, in fact, the initial state of the relays changed, that is, when people switched all the relays.
+    |
+    |{5-18}
+    |
+    |A rather compact relay block, reducing to sections in space, everything organised equally as precision and tension field.
+    |
+    |{6-7}
+    |
+    |The voice on the lattice leaf is too sparse to intervene in the world, overlapping with its realisation.
+    |
+    |{6-8}
+    |
+    |Leaving the screening room, a rigid, latticed structure becomes apparent, it is a calculating topology on closer inspection.
+    |
+    |{6-9}
+    |
+    |At the sound recording's end, coherent networks of ridges and spheres superimpose a flat, organically looped cell plane.
+    |
+    |{6-10}
+    |
+    |At twelve o'clock this structure disappears in a cross section, where one wall is reified and penetrates another.
+    |
+    |{6-11}
+    |
+    |If however circuits are always already bundles of lines, cell structures and lattice planes, individual entanglements perhaps commence.
+    |
     |{6-12}
     |
     |Throughout the software development, we are bent over groupings of different frequencies, appearing as randomised periods or placeholders.
+    |
+    |{6-13}
+    |
+    |I could have reprinted the computational functions as a looped drawing, but henceforth they wouldn't have been visible.
+    |
+    |{6-14}
+    |
+    |Between outside and inside, an algorithmic body emerges, producing itself as space-dependent structure, surrounded by hands and receivers.
+    |
+    |{6-15}
+    |
+    |In the notion of swarming, every element appeals as never individuated, thus has nothing sedimented, connecting external boundaries.
+    |
+    |{6-16}
+    |
+    |For one, disorder can be formulated in the relay matrix, for another, you need five rings to run.
+    |
+    |{6-17}
+    |
+    |Visitors do not normally encounter graphics or diagrams, resulting thus in an asymmetry of exciting and dense clicking.
+    |
+    |{6-18}
+    |
+    |We fathom why it is not functions but cautiousness in the visitors' standstill that apparently characterise the miniature.
     |"""
   )
 }
