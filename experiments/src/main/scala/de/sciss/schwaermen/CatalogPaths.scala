@@ -46,7 +46,6 @@ object CatalogPaths {
     } else {
       println(s"(Skipping renderPaths $lang)")
     }
-//    viewGNG(folds(5))
 //    testViewFolds()
   }
 
@@ -536,7 +535,7 @@ object CatalogPaths {
             // on top of each other
             val m1 = m0.filterNot(p1 => m0.exists { p2 =>
               import numbers.Implicits._
-              p2 != p1 && math.min(p1.rectangle.left absdif p2.rectangle.right, p1.rectangle.right absdif p2.rectangle.left) < 1
+              p2.idx > p1.idx && math.min(p1.rectangle.left absdif p2.rectangle.right, p1.rectangle.right absdif p2.rectangle.left) < 1
             })
             m1
 //            multiple.minBy(p => math.min(p.rectangle.left absdif loc.x, p.rectangle.right absdif loc.x))

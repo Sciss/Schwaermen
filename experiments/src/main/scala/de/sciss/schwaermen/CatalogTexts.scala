@@ -956,9 +956,6 @@ object CatalogTexts {
     |{6-12}
     |
     |Throughout the software development, we are bent over groupings of different frequencies, appearing as randomised periods or placeholders.
-    |""".stripMargin
+    |"""
   )
-
-  //  println(edgesDe.mkString("\n"))
-//  println(edgesDe.size)
 }
