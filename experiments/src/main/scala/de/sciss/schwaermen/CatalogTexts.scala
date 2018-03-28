@@ -1055,6 +1055,46 @@ object CatalogTexts {
     |
     |At different times, thoughts come to me of synchronous words, at their arrival eventually looking for circular collision.
     |
+    |{4-13}
+    |
+    |Whenever geometric trees are formed, it is easy to imagine them being moved in red and green colours.
+    |
+    |{4-14}
+    |
+    |Baffles fitted with small traps reappear, having begun to seize modular series, still in the process of becoming.
+    |
+    |{4-15}
+    |
+    |The detritus of ants vanishes into space, penetrates into screens, yielding surprising sounds sized 40 by 30 centimetres.
+    |
+    |{4-16}
+    |
+    |Sixteen geometric functions in three triangles, oedipal sounds in idle amplifier channels, insufficient to colour worn screw terminals.
+    |
+    |{4-17}
+    |
+    |Fixed sonic layers pass and merge incessantly, stirring with generators turned on in spatial distance from each other.
+    |
+    |{4-18}
+    |
+    |All stillness was fascinated by the miniaturisation of geometric sounds, their frameless standing out against surrounding economic functions.
+    |
+    |{5-7}
+    |
+    |I move outside an illuminant, become a dark figure in the plural. My `we' rushes around as entourage.
+    |
+    |{5-8}
+    |
+    |The performer searches for formulations of the colour of light that would rotate and generate regular narrative circles.
+    |
+    |{5-9}
+    |
+    |Spheres and cables move silently in space, with a slight acceleration, becoming the performers rather than the performed.
+    |
+    |{5-10}
+    |
+    |As eye or wooden orb, visitors took a red light around the room, could hardly keep up later.
+    |
     |{5-11}
     |
     |The works identify themselves as objects of enthusiasm, so it seemed, because their magnetism obeyed a senseless activity.
