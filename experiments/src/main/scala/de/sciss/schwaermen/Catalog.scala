@@ -25,12 +25,22 @@ import de.sciss.numbers
 import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 
 object Catalog {
+  case class Config(forceRenderFinal: Boolean = false)
+
   def main(args: Array[String]): Unit = {
-    run()(Lang.de)
-    run()(Lang.en)
+    val default = Config()
+    val p = new scopt.OptionParser[Config]("Catalog") {
+      opt[Unit]('f', "force-render-final")
+        .text("Force the rendering of the final composed PDF, even if file already exists.")
+        .action { (_, c) => c.copy(forceRenderFinal = true) }
+    }
+    p.parse(args, default).fold(sys.exit(1)) { config =>
+      run()(Lang.de, config)
+      run()(Lang.en, config)
+    }
   }
 
-  def run()(implicit lang: Lang): Unit = {
+  def run()(implicit lang: Lang, config: Config): Unit = {
     if (!fLinesOut(lang).isFile || !fOutCat.isFile || !parFile(1, lang).isFile) {
       preparePar()
     } else {

@@ -33,15 +33,15 @@ import scala.swing.event.{ButtonClicked, SelectionChanged, ValueChanged}
 import scala.swing.{BorderPanel, Component, Dimension, Frame, Graphics2D, GridPanel, Label, Swing, ToggleButton}
 
 object CatalogPaths {
-  def main(args: Array[String]): Unit = {
-    run()(Lang.de)
-    run()(Lang.en)
-  }
+//  def main(args: Array[String]): Unit = {
+//    run()(Lang.de)
+//    run()(Lang.en)
+//  }
 
-  def run()(implicit lang: Lang): Unit = {
+  def run()(implicit lang: Lang, config: Config): Unit = {
     runAllGNG()
     runAllBestPath()
-    if (!fRenderPathOut.isFile || fRenderPathOut.length() == 0L) {
+    if (!fRenderPathOut.isFile || fRenderPathOut.length() == 0L || config.forceRenderFinal) {
       renderPaths()
     } else {
       println(s"(Skipping renderPaths $lang)")

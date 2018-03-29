@@ -441,7 +441,7 @@ object CatalogTexts {
       val s6  = s5.replace("\n", "").trim
       (e1, e2) -> s6
     } .toMap
-//    assert(res.size == 108, res.size.toString)
+    assert(res.size == 108, res.size.toString)
     res
   }
 
@@ -1271,6 +1271,54 @@ object CatalogTexts {
     |{10-18}
     |
     |Where the screen disappears, the speakers come forward conjointly, thus causing one to tend to need the other.
+    |
+    |{11-13}
+    |
+    |Always numerous allegations of facts exist about the hive which housed the same leaf, we cannot help it.
+    |
+    |{11-14}
+    |
+    |If you examine only one single step, part of it may reappear as a parallel or sequential bundle.
+    |
+    |{11-15}
+    |
+    |While for Deleuze, swarming evolves in parallel program texts, we actually have no control over their target course.
+    |
+    |{11-16}
+    |
+    |One rhythm can set itself before the other, occupy eight connections, but we are always in the text.
+    |
+    |{11-17}
+    |
+    |Admittedly, a programming usually exists in the swarm alone, but we can only be that in the installation.
+    |
+    |{11-18}
+    |
+    |The simultaneities are swarming, we are no longer safe from ourselves and have just become an all-over computer.
+    |
+    |{12-13}
+    |
+    |Three graphical trees served as knotted partners, although I was keen on the origin only at start time.
+    |
+    |{12-14}
+    |
+    |Since this time I stood nearby several nodes, trying to expand them, the actualisation of similar packages started.
+    |
+    |{12-15}
+    |
+    |What will be meant by abandoning the IP address? Will the swarm perhaps try to invade with it?
+    |
+    |{12-16}
+    |
+    |Three points form three possibilities: straight, up, down, yet only one path on the map is thus differentiated.
+    |
+    |{12-17}
+    |
+    |By her being incessantly engaged in emission, there was an initial problem, one that has to be evergreened.
+    |
+    |{12-18}
+    |
+    |Although the screens do not only produce diameters but spatial installations, they still originated as producers of videos.
     |"""
   )
 }
