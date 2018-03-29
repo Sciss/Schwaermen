@@ -516,7 +516,6 @@ object CatalogPaths {
         }
         val loc = pathCursor.location
         import kollflitz.Ops._
-//        import numbers.Implicits._
         // first, we collect in a multiple map, so we can
         // decide for horizontally aligned pages, which one to use, in a second step
         val pagesHit0: Map[Int, List[FoldPage]] = fold.pages.iterator.collect {
@@ -530,15 +529,13 @@ object CatalogPaths {
             // 'multiple' here means multiple pages in the same orientation.
             // we first apply a more strict filter such that only with a margin
             // of 'FontSizeMM' letters are duplicated
-            val m0 = multiple.filter(p => p.rectangle.border(FontSizeMM).contains(loc))
+            val m0 = multiple.filter(p => p.rectangle.border(FontSizeMM/2).contains(loc))
             // next we need to eliminate duplicate letters which will be placed
             // on top of each other
             val m1 = m0.filterNot(p1 => m0.exists { p2 =>
-              import numbers.Implicits._
-              p2.idx > p1.idx && math.min(p1.rectangle.left absdif p2.rectangle.right, p1.rectangle.right absdif p2.rectangle.left) < 1
+              p2.idx == p1.idx + 1
             })
             m1
-//            multiple.minBy(p => math.min(p.rectangle.left absdif loc.x, p.rectangle.right absdif loc.x))
         }.toList.sortBy(_.idx)
 
 //        println(s"pagesHit.size = ${pagesHit.size}")
