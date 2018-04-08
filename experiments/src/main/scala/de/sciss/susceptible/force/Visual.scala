@@ -210,6 +210,16 @@ object Visual {
       actionEdgeStrokeColor.setDefaultColor(c)
       actionEdgeFillColor  .setDefaultColor(c)
     }
+    
+    def backgroundColor: Color = _dsp.getBackground
+    def backgroundColor_=(value: Color): Unit = {
+      _dsp.setBackground(value)
+    }
+
+    def foregroundColor: Color = _dsp.getForeground
+    def foregroundColor_=(value: Color): Unit = {
+      _dsp.setForeground(value)
+    }
 
     private def mkActionColor(): Unit = {
       // colors
@@ -544,7 +554,21 @@ object Visual {
           try {
             _dsp.bufWidth   = width
             _dsp.bufHeight  = height
-            _dsp.paintComponent(g)
+//            _dsp.paintComponent(g)
+            val d       = _dsp.getSize(null)
+            val sx      = width .toDouble / d.width
+            val sy      = height.toDouble / d.height
+            val atOrig = g.getTransform
+            try {
+              if (sx != 1.0 || sy != 1.0) {
+                val scale = math.min(sx, sy)
+                g.scale(scale, scale)
+              }
+              _dsp.damageReport()
+              _dsp.paintDisplay(g, d)
+            } finally {
+              g.setTransform(atOrig)
+            }
           } finally {
             _dsp.bufWidth   = oldWidth
             _dsp.bufHeight  = oldHeight
@@ -608,4 +632,6 @@ trait Visual {
   var imageSize  : Dimension
 
   var edgeColor: Color
+  var backgroundColor: Color
+  var foregroundColor: Color
 }

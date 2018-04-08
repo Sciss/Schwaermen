@@ -114,10 +114,11 @@ object ShowSimilarities {
 //    MSTKruskal[Vertex, SimEdge](in)
 
 //  private[this] val colors = Array[Int](0xFF0000, 0x00C000, 0x0000FF)
-  private[this] val colors = Array[Int](0xFF0000, 0x0000FF, 0x00C000)
+  private[this] val colors    = Array[Int](0xFF0000, 0x0000FF, 0x00C000)
+  private[this] val colorsInv = Array[Int](0x800000, 0x0000FF, 0x006000)
 
   final case class Config(textIndices: List[Int] = Nil, dropAmt: Double = 0.0,
-                          displayWidth: Int = 800, displayHeight: Int = 800)
+                          displayWidth: Int = 800, displayHeight: Int = 800, invert: Boolean = false)
 
   def main(args: Array[String]): Unit = {
     val default = Config()
@@ -127,10 +128,10 @@ object ShowSimilarities {
         .text("Text indices (one or two comma separated numbers between 1 and 3)")
         .action { (v, c) => c.copy(textIndices = v.toList) }
 
-      opt[Double]('d', "drop")
+      opt[Int]('d', "drop")
         .text("Drop amount in percent (0 until 100)")
         .validate(v => if (v >= 0 && v < 100) success else failure("Must be >= 0 and < 100"))
-        .action { (v, c) => c.copy(dropAmt = v * 100) }
+        .action { (v, c) => c.copy(dropAmt = v * 0.01) }
 
       opt[Int]('w', "width")
         .text(s"Display view width in pixels (default: ${default.displayWidth})")
@@ -139,6 +140,10 @@ object ShowSimilarities {
       opt[Int]('h', "height")
         .text(s"Display view height in pixels (default: ${default.displayHeight})")
         .action { (v, c) => c.copy(displayHeight = v) }
+
+      opt[Unit]("invert")
+        .text("Invert colors")
+        .action { (_, c) => c.copy(invert = true) }
     }
     p.parse(args, default).fold(sys.exit(1))(run)
   }
@@ -147,8 +152,9 @@ object ShowSimilarities {
     val edges     = loadAndSortGraph(config.textIndices, dropAmt = config.dropAmt)
     val vertices  = edges.flatMap(e => Seq(e.start, e.end)).toSet
     val useColor  = config.textIndices.size > 1
+    val c         = if (config.invert) colorsInv else colors
     val wordMap: Map[Vertex, Visual.Word] = vertices.map { v =>
-      v -> Visual.Word(v.wordsString, color = if (useColor) colors(v.textIdx - 1) else 0xFFFFFF)
+      v -> Visual.Word(v.wordsString, color = if (useColor) c(v.textIdx - 1) else 0xFFFFFF)
     } (breakOut)
 
     val wordEdges = edges.map { e =>
@@ -156,17 +162,22 @@ object ShowSimilarities {
     }
 
     onEDT {
-      mkFrame(wordEdges, config, useColor = useColor)
+      mkFrame(wordEdges, config, useColor = useColor, invert = config.invert)
     }
   }
 
-  def mkFrame(edges: Visual.WordEdges, config: Config, useColor: Boolean): Unit = {
+  def mkFrame(edges: Visual.WordEdges, config: Config, useColor: Boolean, invert: Boolean = false): Unit = {
     val v = Visual()
     v.displaySize = (config.displayWidth, config.displayHeight)
 
     v.text = edges
+    if (invert) {
+      v.edgeColor       = Color.black
+      v.backgroundColor = Color.white
+      v.foregroundColor = Color.black
+    }
     if (useColor) {
-      v.edgeColor = Color.gray
+      v.edgeColor       = Color.gray
     }
 
     lazy val ggAutoZoom: ToggleButton = new ToggleButton("Zoom") {
