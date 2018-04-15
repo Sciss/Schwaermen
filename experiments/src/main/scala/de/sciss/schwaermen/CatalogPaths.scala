@@ -114,7 +114,7 @@ object CatalogPaths {
 
   lazy val GNG_MaxNodes  = 6561 // 8192
 
-  private val GNG_COOKIE = 0x474E470   // "GNG\0"
+  final val GNG_COOKIE = 0x474E470   // "GNG\0"
 
   case class Edge(from: Int, to: Int) {
     def swap = Edge(to, from)
