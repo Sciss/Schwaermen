@@ -16,10 +16,9 @@ package de.sciss.schwaermen
 import de.sciss.file._
 import de.sciss.kollflitz.Vec
 import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
-import de.sciss.lucre.confluent.TxnRandom
 import de.sciss.lucre.expr.{DoubleObj, LongObj}
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.stm.{Sys, TxnRandom}
 import de.sciss.lucre.stm.TxnLike.peer
 import de.sciss.lucre.synth.{InMemory, Server, Txn}
 import de.sciss.schwaermen.BuildSimilarities.{SimEdge, Vertex}
@@ -83,7 +82,7 @@ object SoundPaths {
               val cueVar: AudioCue.Obj.Var[S], cues: Vec[AudioCue.Obj[S]],
               val t: Transport[S], val vertices1: Vector[Vertex], val vertices2: Vector[Vertex],
               val edges: List[SimEdge], val edgeMap: EdgeMap,
-              val rnd: TxnRandom[S#Tx]) {
+              val rnd: TxnRandom[S]) {
 
     val alternate = Ref(false)
 
@@ -242,7 +241,7 @@ object SoundPaths {
     import WorkspaceHandle.Implicits.dummy
 
     val cue   = AudioCue.Obj.newVar(cue1)
-    val rnd   = TxnRandom(tx.newID())
+    val rnd   = TxnRandom[S] // (tx.newID())
     val t     = Transport[S](aural)
     val state = new State(p = p, offset = offVar, duration = durVar, fadeIn = fadeInVar, fadeOut = fadeOutVar,
       cueVar = cue, cues = Vector(cue1, null, cue3),

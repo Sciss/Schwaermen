@@ -27,7 +27,7 @@ import scala.annotation.tailrec
 import scala.collection.breakOut
 import scala.swing.{Component, MainFrame, Swing}
 import scala.util.Random
-import scalax.chart.{Chart, XYChart}
+import de.sciss.chart.{Chart, XYChart}
 
 object ExplorePaths {
   def CALC_LENGTH = true
@@ -89,7 +89,7 @@ object ExplorePaths {
   def mkHistogramChart(histo: Vector[Int], xMin: Int, xMax: Int, title: String): XYChart = {
     import numbers.Implicits._
 
-    import scalax.chart.module.Charting._
+    import de.sciss.chart.module.Charting._
     val data: Vector[(Int, Int)] = histo.zipWithIndex.map { case (num, i) =>
       (i + 0.5).linlin(0, histo.length, xMin, xMax).toInt -> num
     } (breakOut)
