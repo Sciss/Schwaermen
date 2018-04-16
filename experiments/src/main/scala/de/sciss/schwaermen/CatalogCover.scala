@@ -28,8 +28,9 @@ import javax.imageio.ImageIO
 
 object CatalogCover {
   def main(args: Array[String]): Unit = {
-    val fIn   = file("/data/projects/Schwaermen/photos/170826_Naya/_MG_9905_rot_2zu1gray.jpg")
-    val fGNG  = file("/data/temp/catalog_cover.gng")
+//    val fIn   = file("/data/projects/Schwaermen/photos/170826_Naya/_MG_9905_rot_2zu1gray.jpg")
+    val fIn   = file("/data/projects/Schwaermen/photos/Maryam/_DSC6957rot_crop_gray.jpg")
+    val fGNG  = file("/data/temp/catalog_coverM.gng")
     if (fGNG.exists() && fGNG.length() > 0L) {
       println(s"GNG file $fGNG already exists. Not overwriting.")
     } else {
@@ -37,7 +38,7 @@ object CatalogCover {
       runGNG(img = img, fOutGNG = fGNG)
     }
 
-    val fImgOut = file("/data/temp/catalog_cover.png")
+    val fImgOut = fGNG.replaceExt("png")
     if (fImgOut.exists() && fImgOut.length() > 0L) {
       println(s"Image file $fImgOut already exists. Not overwriting.")
     } else {
@@ -107,20 +108,20 @@ object CatalogCover {
     val h = img.getHeight
     c.panelWidth  = w // / 8
     c.panelHeight = h // / 8
-    c.maxNodes = pd.getNumPixels / 108
+    c.maxNodes    = pd.getNumPixels / 108
     println(s"w ${c.panelWidth}, h ${c.panelHeight}, maxNodes ${c.maxNodes}")
-    c.stepSize = 50
-    c.algorithm = neuralgas.Algorithm.GNGU
-    c.lambdaGNG = 100
-    c.maxEdgeAge = 88
-    c.epsilonGNG = 0.05f
+    c.stepSize    = 27 // 50
+    c.algorithm   = neuralgas.Algorithm.GNGU
+    c.lambdaGNG   = 27  // 100
+    c.maxEdgeAge  = 108 // 88
+    c.epsilonGNG  = 0.05f
     c.epsilonGNG2 = 1.0e-4f
-    c.alphaGNG = 0.2f
+    c.alphaGNG    = 0.2f
     c.setBetaGNG(5.0e-6f)
     c.noNewNodesGNGB = false
-    c.GNG_U_B = true
-    c.utilityGNG = 8f
-    c.autoStopB = false
+    c.GNG_U_B     = true
+    c.utilityGNG  = 18f // 8f
+    c.autoStopB   = false
     c.reset()
     //    c.getRNG.setSeed(108L)
     c.getRNG.setSeed(rngSeed)
@@ -130,6 +131,7 @@ object CatalogCover {
     val res = new ComputeGNG.Result
     var lastProg = 0
     var iter = 0
+    var lastN = -1
     val t0 = System.currentTimeMillis()
     println("_" * 100)
     while (!res.stop && c.nNodes < c.maxNodes) {
@@ -140,12 +142,21 @@ object CatalogCover {
           print('#')
           lastProg += 1
         }
-        if (prog % 5 == 0) {
-          val fTemp = fOutGNG.parent / s"${fOutGNG.base}-$prog.${fOutGNG.ext}"
-          writeGNG(c, fTemp, w = w, h = h)
-        }
+//        if (prog % 5 == 0) {
+//          val fTemp = fOutGNG.parent / s"${fOutGNG.base}-$prog.${fOutGNG.ext}"
+//          writeGNG(c, fTemp, w = w, h = h)
+//        }
       }
       iter += 1
+      if (iter % 2187 == 0) {
+        val fTemp = fOutGNG.parent / s"${fOutGNG.base}-$iter.${fOutGNG.ext}"
+        writeGNG(c, fTemp, w = w, h = h)
+        if (c.nNodes == lastN) {
+          res.stop = true
+        } else {
+          lastN = c.nNodes
+        }
+      }
       //      if (iter == 1000) {
       //        println(compute.nodes.take(compute.nNodes).mkString("\n"))
       //      }
