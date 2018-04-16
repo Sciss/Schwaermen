@@ -14,8 +14,8 @@
 package de.sciss.schwaermen
 
 import java.awt.geom.Line2D
-import java.awt.{BasicStroke, Color, RenderingHints}
 import java.awt.image.BufferedImage
+import java.awt.{BasicStroke, Color, RenderingHints}
 import java.io.{DataInputStream, DataOutputStream, FileInputStream, FileOutputStream}
 
 import de.sciss.catmullrom.Point2D
@@ -27,38 +27,210 @@ import de.sciss.schwaermen.CatalogPaths.GNG_COOKIE
 import javax.imageio.ImageIO
 
 object CatalogCover {
-  def main(args: Array[String]): Unit = {
-//    val fIn   = file("/data/projects/Schwaermen/photos/170826_Naya/_MG_9905_rot_2zu1gray.jpg")
-    val fIn   = file("/data/projects/Schwaermen/photos/Maryam/_DSC6957rot_crop_gray.jpg")
-    val fGNG  = file("/data/temp/catalog_coverM.gng")
-    if (fGNG.exists() && fGNG.length() > 0L) {
-      println(s"GNG file $fGNG already exists. Not overwriting.")
-    } else {
-      val img   = ImageIO.read(fIn)
-      runGNG(img = img, fOutGNG = fGNG)
-    }
+  case class Config(imgInF        : File    = file("in.png"),
+                    imgOutF       : File    = file("out.png"),
+                    strokeWidth   : Double  = 2.0,
+                    rngSeed       : Int     = 0xBEE,
+                    maxNodesDecim : Int     = 108,
+                    gngStepSize   : Int     = 27,
+                    gngLambda     : Int     = 27,
+                    gngEdgeAge    : Int     = 108,
+                    gngEpsilon    : Double  = 0.05,
+                    gngEpsilon2   : Double  = 1.0e-4,
+                    gngAlpha      : Double  = 0.2,
+                    gngBeta       : Double  = 5.0e-6,
+                    gngUtility    : Double  = 18.0,
+                    interim       : Int     = 2187,
+                    interimImages : Boolean = false,
+                    widthOut      : Int     = 0,
+                    heightOut     : Int     = 0
+                   ) {
 
-    val fImgOut = fGNG.replaceExt("png")
-    if (fImgOut.exists() && fImgOut.length() > 0L) {
-      println(s"Image file $fImgOut already exists. Not overwriting.")
-    } else {
-      render(fGNG, fImgOut)
+    lazy val fGNG: File = imgOutF.replaceExt("gng")
+
+    def mkGNGIteration(i: Int): File = {
+      val name = s"${fGNG.base}-$i.${fGNG.ext}"
+      fGNG.replaceName(name)
     }
   }
 
-  def render(fGNG: File, fImgOut: File): Unit = {
+  val ex1 = Config(
+    imgInF        = file("/data/projects/Schwaermen/photos/170826_Naya/_MG_9905_rot_2zu1gray.jpg"),
+    imgOutF       = file("/data/temp/catalog_cover.png"),
+    maxNodesDecim = 108,
+    gngStepSize   = 50,
+    gngLambda     = 100,
+    gngEdgeAge    = 88,
+    gngEpsilon    = 0.05,
+    gngEpsilon2   = 1.0e-4
+  )
+
+  val ex2 = Config(
+    imgInF        = file("/data/projects/Schwaermen/photos/Maryam/_DSC6957rot_crop_gray.jpg"),
+    imgOutF       = file("/data/temp/catalog_coverM.png")
+  )
+
+  val ex3 = Config(
+    imgInF      = file("/data/projects/Schwaermen/photos/Maryam/_DSC6866_crop_gray.jpg"),
+    imgOutF     = file("/data/temp/catalog_cover6866.png"),
+    gngEpsilon  = 0.05,
+    gngEpsilon2 = 0.05,
+    gngAlpha    = 0.1,
+    gngBeta     = 1.0e-5,
+    interim     = 729,
+    interimImages = true
+  )
+
+  val selected = Config(
+    imgInF      = file("/data/projects/Schwaermen/catalog/_DSC6866_crop_rot_gray.png"),
+    imgOutF     = file("/data/projects/Schwaermen/catalog/_DSC6866_crop_rot_gray_GNG.png"),
+    gngEpsilon  = 0.05,
+    gngEpsilon2 = 0.05,
+    gngAlpha    = 0.1,
+    gngBeta     = 1.0e-5,
+    interim     = 0,
+    interimImages = false,
+    widthOut    = 7282,
+    heightOut   = 3650,
+    strokeWidth = 2.0   // N.B. this is already scaled by using widthOut and heightOut! 3.4
+  )
+
+  val examples: Vector[Config] = Vector(ex1, ex2, ex3)
+
+  def main(args: Array[String]): Unit = {
+    val default = Config()
+    val p = new scopt.OptionParser[Config]("Schwaermen-Catalog-Cover") {
+      opt[File]('i', "input")
+//        .required()
+        .text (s"Image input file ${default.imgInF})")
+        .action { (f, c) => c.copy(imgInF = f) }
+
+      opt[File]('o', "output")
+//        .required()
+        .text (s"Image output file, should end in '.png' or '.jpg' ${default.imgOutF})")
+        .action { (f, c) => c.copy(imgOutF = f) }
+
+      opt[Double] ("stroke")
+        .text (s"Stroke width in pixels (default ${default.strokeWidth})")
+        .validate(i => if (i > 0) Right(()) else Left("Must be > 0") )
+        .action { (v, c) => c.copy(strokeWidth = v) }
+
+      opt[Int] ("seed")
+        .text (s"Random number generator seed (default ${default.rngSeed})")
+        .action { (v, c) => c.copy(rngSeed = v) }
+
+      opt[Int] ("decim")
+        .text (s"Pixel decimation to determine maximum number of nodes (default ${default.maxNodesDecim})")
+        .validate(i => if (i > 0) Right(()) else Left("Must be > 0") )
+        .action { (v, c) => c.copy(maxNodesDecim = v) }
+
+      opt[Int] ("step")
+        .text (s"GNG step size (default ${default.gngStepSize})")
+        .validate(i => if (i > 0) Right(()) else Left("Must be > 0") )
+        .action { (v, c) => c.copy(gngStepSize = v) }
+
+      opt[Int] ("lambda")
+        .text (s"GNG lambda parameter (default ${default.gngLambda})")
+        .validate(i => if (i > 0) Right(()) else Left("Must be > 0") )
+        .action { (v, c) => c.copy(gngLambda = v) }
+
+      opt[Int] ("edge-age")
+        .text (s"GNG maximum edge age (default ${default.gngEdgeAge})")
+        .validate(i => if (i > 0) Right(()) else Left("Must be > 0") )
+        .action { (v, c) => c.copy(gngEdgeAge = v) }
+
+      opt[Double] ("eps")
+        .text (s"GNG epsilon parameter (default ${default.gngEpsilon})")
+        .validate(i => if (i > 0) Right(()) else Left("Must be > 0") )
+        .action { (v, c) => c.copy(gngEpsilon = v) }
+
+      opt[Double] ("eps2")
+        .text (s"GNG epsilon 2 parameter (default ${default.gngEpsilon2})")
+        .validate(i => if (i > 0) Right(()) else Left("Must be > 0") )
+        .action { (v, c) => c.copy(gngEpsilon2 = v) }
+
+      opt[Double] ("alpha")
+        .text (s"GNG alpha parameter (default ${default.gngAlpha})")
+        .validate(i => if (i > 0) Right(()) else Left("Must be > 0") )
+        .action { (v, c) => c.copy(gngAlpha = v) }
+
+      opt[Double] ("beta")
+        .text (s"GNG beta parameter (default ${default.gngBeta})")
+        .validate(i => if (i > 0) Right(()) else Left("Must be > 0") )
+        .action { (v, c) => c.copy(gngBeta = v) }
+
+      opt[Double] ("utility")
+        .text (s"GNG-U utility parameter (default ${default.gngUtility})")
+        .validate(i => if (i > 0) Right(()) else Left("Must be > 0") )
+        .action { (v, c) => c.copy(gngUtility = v) }
+
+      opt[Int] ('t', "interim")
+        .text (s"Interim file output, every n steps, or zero to turn off (default ${default.interim})")
+        .validate(i => if (i >= 0) Right(()) else Left("Must be >= 0") )
+        .action { (v, c) => c.copy(interim = v) }
+
+      opt[Unit] ("interim-images")
+        .text ("Generate images for interim files.")
+        .action { (_, c) => c.copy(interimImages = true) }
+
+      opt[Int] ("ex")
+        .text (s"Use example <n> parameters (1 to ${examples.size}")
+        .validate(i => if (i >= 1 && i <= examples.size) Right(()) else Left(s"Must be >= 1 and <= ${examples.size}") )
+        .action { (i, _) => examples(i - 1) }
+
+      opt[Unit] ("selected")
+        .text ("Use the parameters selected for the catalog cover.")
+        .action { (_, _) => selected }
+
+      opt[Int] ('w', "width")
+        .text (s"Rendering output width in pixels, or zero to match input.")
+        .validate(i => if (i >= 0) Right(()) else Left("Must be >= 0") )
+        .action { (v, c) => c.copy(widthOut = v) }
+
+      opt[Int] ('h', "height")
+        .text (s"Rendering output height in pixels, or zero to match input.")
+        .validate(i => if (i >= 0) Right(()) else Left("Must be >= 0") )
+        .action { (v, c) => c.copy(heightOut = v) }
+    }
+    p.parse(args, default).fold(sys.exit(1)) { config =>
+      require(config.imgInF.isFile, s"Input image ${config.imgInF} does not exist.")
+      run(config)
+    }
+  }
+
+  def run(config: Config): Unit = {
+    if (config.fGNG.length() > 0L) {
+      println(s"GNG file ${config.fGNG} already exists. Not overwriting.")
+    } else {
+      runGNG(config)
+    }
+
+    if (config.imgOutF.length() > 0L) {
+      println(s"Image file ${config.imgOutF} already exists. Not overwriting.")
+    } else {
+      renderImage(config)()
+    }
+  }
+
+  def renderImage(config: Config, quiet: Boolean = false)
+                 (fGNG: File = config.fGNG, fImgOut: File = config.imgOutF): Unit = {
     val graph = readGNG(fGNG)
-    val w     = graph.surfaceWidthPx
-    val h     = graph.surfaceHeightPx
-    val img   = new BufferedImage(w, h, BufferedImage.TYPE_BYTE_GRAY)
+    val wIn   = graph.surfaceWidthPx
+    val hIn   = graph.surfaceHeightPx
+    val wOut  = if (config.widthOut  == 0) wIn else config.widthOut
+    val hOut  = if (config.heightOut == 0) hIn else config.heightOut
+    val sx    = wOut.toDouble / wIn
+    val sy    = hOut.toDouble / hIn
+    val img   = new BufferedImage(wOut, hOut, BufferedImage.TYPE_BYTE_GRAY)
     val g     = img.createGraphics()
     g.setColor(Color.white)
-    g.fillRect(0, 0, w, h)
+    g.fillRect(0, 0, wOut, hOut)
+    if (sx != 1.0 || sy != 1.0) g.scale(sx, sy)
     g.setColor(Color.black)
     g.setRenderingHint(RenderingHints.KEY_ANTIALIASING  , RenderingHints.VALUE_ANTIALIAS_ON   )
     g.setRenderingHint(RenderingHints.KEY_RENDERING     , RenderingHints.VALUE_RENDER_QUALITY )
     g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE    )
-    g.setStroke(new BasicStroke(2f))
+    g.setStroke(new BasicStroke(config.strokeWidth.toFloat))
     val ln = new Line2D.Double()
     graph.edges.foreach { case CatalogPaths.Edge(from, to) =>
       val nFrom = graph.nodes(from)
@@ -69,6 +241,7 @@ object CatalogCover {
     g.dispose()
     val fmt   = if (fImgOut.extL == "png") "png" else "jpg"
     ImageIO.write(img, fmt, fImgOut)
+    if (!quiet) println(s"Wrote ${fImgOut.name}")
   }
 
   case class ResGNG(surfaceWidthPx: Int, surfaceHeightPx: Int, nodes: Vec[Point2D],
@@ -100,27 +273,29 @@ object CatalogCover {
     }
   }
 
-  def runGNG(img: BufferedImage, fOutGNG: File, rngSeed: Long = 0xBEE): Unit = {
-    val c = new ComputeGNG
-    val pd = new GrayImagePD(img, true)
-    c.pd = pd
-    val w = img.getWidth
-    val h = img.getHeight
+  def runGNG(config: Config): Unit = {
+    import config._
+    val img       = ImageIO.read(imgInF)
+    val c         = new ComputeGNG
+    val pd        = new GrayImagePD(img, true)
+    c.pd          = pd
+    val w         = img.getWidth
+    val h         = img.getHeight
     c.panelWidth  = w // / 8
     c.panelHeight = h // / 8
-    c.maxNodes    = pd.getNumPixels / 108
+    c.maxNodes    = pd.getNumPixels / maxNodesDecim
     println(s"w ${c.panelWidth}, h ${c.panelHeight}, maxNodes ${c.maxNodes}")
-    c.stepSize    = 27 // 50
+    c.stepSize    = gngStepSize
     c.algorithm   = neuralgas.Algorithm.GNGU
-    c.lambdaGNG   = 27  // 100
-    c.maxEdgeAge  = 108 // 88
-    c.epsilonGNG  = 0.05f
-    c.epsilonGNG2 = 1.0e-4f
-    c.alphaGNG    = 0.2f
-    c.setBetaGNG(5.0e-6f)
+    c.lambdaGNG   = gngLambda
+    c.maxEdgeAge  = gngEdgeAge
+    c.epsilonGNG  = gngEpsilon  .toFloat
+    c.epsilonGNG2 = gngEpsilon2 .toFloat
+    c.alphaGNG    = gngAlpha    .toFloat
+    c.setBetaGNG(gngBeta.toFloat)
     c.noNewNodesGNGB = false
     c.GNG_U_B     = true
-    c.utilityGNG  = 18f // 8f
+    c.utilityGNG  = gngUtility  .toFloat
     c.autoStopB   = false
     c.reset()
     //    c.getRNG.setSeed(108L)
@@ -128,43 +303,44 @@ object CatalogCover {
     c.addNode(null)
     c.addNode(null)
 
-    val res = new ComputeGNG.Result
-    var lastProg = 0
-    var iter = 0
-    var lastN = -1
-    val t0 = System.currentTimeMillis()
+    val interimF      = if (interim != 0) interim else 729
+    val res           = new ComputeGNG.Result
+    var lastProgress  = 0
+    var iteration     = 0
+    var lastN         = -1
+    var lastE         = -1
+    val t0            = System.currentTimeMillis()
     println("_" * 100)
     while (!res.stop && c.nNodes < c.maxNodes) {
       c.learn(res)
-      val prog: Int = (c.nNodes * 100) / c.maxNodes
-      if (lastProg < prog) {
-        while (lastProg < prog) {
+      val progress: Int = (c.nNodes * 100) / c.maxNodes
+      if (lastProgress < progress) {
+        while (lastProgress < progress) {
           print('#')
-          lastProg += 1
+          lastProgress += 1
         }
-//        if (prog % 5 == 0) {
-//          val fTemp = fOutGNG.parent / s"${fOutGNG.base}-$prog.${fOutGNG.ext}"
-//          writeGNG(c, fTemp, w = w, h = h)
-//        }
       }
-      iter += 1
-      if (iter % 2187 == 0) {
-        val fTemp = fOutGNG.parent / s"${fOutGNG.base}-$iter.${fOutGNG.ext}"
-        writeGNG(c, fTemp, w = w, h = h)
-        if (c.nNodes == lastN) {
+      iteration += 1
+      if (iteration % interimF == 0) {
+        if (interim > 0) {
+          val fTemp = mkGNGIteration(iteration)
+          writeGNG(c, fTemp, w = w, h = h)
+          if (interimImages) {
+            val fTempImg = fTemp.replaceExt(imgOutF.ext)
+            renderImage(config, quiet = true)(fGNG = fTemp, fImgOut = fTempImg)
+          }
+        }
+        if (c.nNodes <= lastN && c.nEdges <= lastE) {
           res.stop = true
         } else {
           lastN = c.nNodes
+          lastE = c.nEdges
         }
       }
-      //      if (iter == 1000) {
-      //        println(compute.nodes.take(compute.nNodes).mkString("\n"))
-      //      }
     }
 
-    println(s" Done. Took ${(System.currentTimeMillis() - t0) / 1000} seconds.") // ", and ${c.numSignals} signals."
-    //    println(compute.nodes.take(compute.nNodes).mkString("\n"))
-    writeGNG(c, fOutGNG, w = w, h = h)
+    println(s" Done GNG. ${c.numSignals} signals, took ${(System.currentTimeMillis() - t0) / 1000} sec.")
+    writeGNG(c, fGNG, w = w, h = h)
   }
 
   def writeGNG(c: ComputeGNG, fOut: File, w: Int, h: Int): Unit = {
