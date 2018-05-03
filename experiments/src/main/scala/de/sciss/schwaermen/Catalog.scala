@@ -25,7 +25,8 @@ import de.sciss.numbers
 import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 
 object Catalog {
-  case class Config(forceRenderFinal: Boolean = false)
+  case class Config(forceRenderFinal: Boolean = false, forcePreparePar: Boolean = false,
+                    lang: Set[Lang] = Set(Lang.de, Lang.en))
 
   def main(args: Array[String]): Unit = {
     val default = Config()
@@ -33,21 +34,33 @@ object Catalog {
       opt[Unit]('f', "force-render-final")
         .text("Force the rendering of the final composed PDF, even if file already exists.")
         .action { (_, c) => c.copy(forceRenderFinal = true) }
+
+      opt[Unit]("force-prepare-par")
+        .text("Force preparation of paragraphs, even if files already exist.")
+        .action { (_, c) => c.copy(forcePreparePar = true) }
+
+      opt[Unit]("german")
+        .text("Render German only.")
+        .action { (_, c) => c.copy(lang = Set(Lang.de)) }
+
+      opt[Unit]("english")
+        .text("Render English only.")
+        .action { (_, c) => c.copy(lang = Set(Lang.en)) }
     }
     p.parse(args, default).fold(sys.exit(1)) { config =>
-      run()(Lang.de, config)
-      run()(Lang.en, config)
+      if (config.lang.contains(Lang.de)) run()(Lang.de, config)
+      if (config.lang.contains(Lang.en)) run()(Lang.en, config)
     }
   }
 
   def run()(implicit lang: Lang, config: Config): Unit = {
-    if (!fLinesOut(lang).isFile || !fOutCat.isFile || !parFile(1, lang).isFile) {
+    if (config.forcePreparePar || !fLinesOut(lang).isFile || !fOutCat.isFile || !parFile(1, lang).isFile) {
       preparePar()
     } else {
       println(s"(Skipping preparePar $lang)")
     }
 
-    if (!fOutArr.isFile) {
+    if (config.forcePreparePar || !fOutArr.isFile) {
       renderPages()
     } else {
       println(s"(Skipping renderPages $lang)")
@@ -560,7 +573,7 @@ object Catalog {
     } else sys.error(s"Could not parse transform $n")
   }
 
-  def parseTSpan(n: xml.Node): TSpan = n match {
+  def parseTSpan(n: xml.Node)(implicit lang: Lang): TSpan = n match {
     case e0: xml.Elem if e0.label == "tspan" =>
       val id = (n \ "@id").text
       val y = (n \ "@y").text.trim.toDouble
@@ -575,7 +588,7 @@ object Catalog {
     case _ => sys.error(s"Not a tspan: $n")
   }
 
-  def parseText(n: xml.Node): Option[Text] = n match {
+  def parseText(n: xml.Node)(implicit lang: Lang): Option[Text] = n match {
     case e: xml.Elem if e.label == "text" =>
       val id        = (e \ "@id").text
       val style     = parseStyle     (e \ "@style")
@@ -621,11 +634,11 @@ object Catalog {
     }
   }
 
-  def parseSVG(f: File): ParsedSVG = {
+  def parseSVG(f: File)(implicit lang: Lang): ParsedSVG = {
     val svgDoc  : xml.Elem    = xml.XML.loadFile(f)
     val group   : xml.Elem    = (svgDoc \ "g").head.asInstanceOf[xml.Elem]
     val transform = parseTransform (group \ "@transform")
-    val text      = group.child.iterator.flatMap(parseText).toList
+    val text      = group.child.iterator.flatMap(parseText(_)).toList
     ParsedSVG(transform, text, doc = svgDoc, group = group)
   }
 
@@ -679,7 +692,7 @@ object Catalog {
 //    println(s"textSeq.size = ${textSeq.size}")  // 5 : regular, italics, regular, italics, regular
 
     val (groupOut, numLines) = {
-      val tt0: Seq[Text] = group.child.flatMap(parseText)
+      val tt0: Seq[Text] = group.child.flatMap(parseText(_))
       val set = tt0.iterator.flatMap { t =>
         val y0 = t.transform.translateY
         t.children.map(c => (c.y - y0).toInt)

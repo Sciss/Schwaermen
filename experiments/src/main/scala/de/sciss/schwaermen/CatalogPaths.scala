@@ -40,8 +40,8 @@ object CatalogPaths {
 
   def run()(implicit lang: Lang, config: Config): Unit = {
     runAllGNG()
-    runAllBestPath()
-    if (!fRenderPathOut.isFile || fRenderPathOut.length() == 0L || config.forceRenderFinal) {
+    runAllBestPath(forceSVG = config.forcePreparePar)
+    if (!fRenderPathOut.isFile || fRenderPathOut.length() == 0L || config.forceRenderFinal || config.forcePreparePar) {
       renderPaths()
     } else {
       println(s"(Skipping renderPaths $lang)")
@@ -67,11 +67,11 @@ object CatalogPaths {
     }
   }
 
-  def runAllBestPath()(implicit lang: Lang): Unit = {
+  def runAllBestPath(forceSVG: Boolean)(implicit lang: Lang): Unit = {
     val edgeMap = CatalogTexts.edges(lang)
 
     edgeMap.foreach { case ((srcParId, tgtParId), _) =>
-      findBestPath(srcParId = srcParId, tgtParId = tgtParId)
+      findBestPath(srcParId = srcParId, tgtParId = tgtParId, forceSVG = forceSVG)
     }
   }
 
@@ -766,7 +766,7 @@ object CatalogPaths {
     arr.iterator.map(_.toInt).toList
   }
 
-  def findBestPath(srcParId: Int, tgtParId: Int)(implicit lang: Lang): Unit = {
+  def findBestPath(srcParId: Int, tgtParId: Int, forceSVG: Boolean)(implicit lang: Lang): Unit = {
     val info      = Catalog.readOrderedParInfo(lang)
     val folds0    = mkFoldSeq(info)
     val (srcParIdx, tgtParIdx) = CatalogTexts.parIdToIndex(srcParId, tgtParId)
@@ -776,7 +776,7 @@ object CatalogPaths {
     val parIdKey  = srcParId -> tgtParId
     val text      = edgeMap(parIdKey)
     val edgeSVGF  = edgeTextSVGFile(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
-    if (!edgeSVGF.isFile || edgeSVGF.length() == 0L) {
+    if (forceSVG || !edgeSVGF.isFile || edgeSVGF.length() == 0L) {
       renderEdgeTextSVG(text, edgeSVGF)
     }
 

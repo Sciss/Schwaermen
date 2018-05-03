@@ -31,15 +31,17 @@ object CatalogTexts {
     else                  parEn
 
   val parDe: ISeq[String] = List(
+    // 1
     """Die Gassen sind eng und mit starkem Gefälle hinunter zum Wasser. Ich gehe noch einmal zurück.
       |Alles ist von einer starken Vertikalität geprägt. Ich ziehe mich an einer Wand hoch, an Seilen
       |und Griffmöglichkeiten. Ist das der einzige Weg oder nur eine Abkürzung? Missbilligung bei den
       |Umstehenden? Eine Ecke des Raumes ist aus Glas, vom Boden zur Decke, ein riesiges Fenster nach
       |draußen, orangefarbenes Licht fällt herein. Jemand ruft mich an, er und seine Partnerin hätten
-      |Schwierigkeiten gehabt, die Installation in der Ausstellung zu verstehen. Dort sind
-      |vibrierende, sich mit hoher Frequenz und geringer Amplitude schüttelnde Dinge montiert auf
-      |einem Feld oder Tisch, von der Größe kleiner Äpfel.
+      |Schwierigkeiten gehabt, die Installation in der Ausstellung zu verstehen. Dort sind vibrierende,
+      |sich mit hoher Frequenz und geringer Amplitude schüttelnde Dinge von der Größe kleiner Äpfel auf
+      |einem Feld oder Tisch montiert.
       |""",
+    // 2
     """Es handelt sich um ein Experiment. Zwei menschliche Arme werden zusammengelegt, nebeneinander,
       |dicht beieinander. Sie werden gequetscht oder seziert, geschnitten, dann vereint auf einem
       |Objektträger oder Glas. Ein Exemplar wird hergestellt, der \emph{Ausschnitt} des doppelten
@@ -50,6 +52,7 @@ object CatalogTexts {
       |Organismus. Die Traurigkeit der Unwiederholbarkeit: In einer Erfahrung vereint, die jedoch nie
       |stattfand, außer in der Erinnerung.
       |""",
+    // 3
     """Ein Plan liegt vor mir oder in meinem Gedächtnis. Ein Glas zerspringt auf dem Boden, doch
       |lässt es sich wenig später wieder in ein Metall einfassen. Die Karte hat einen kleinen
       |Maßstab, ich verfolge den Weg im Geiste oder mit dem Finger. Länger, als ich ursprünglich
@@ -58,72 +61,81 @@ object CatalogTexts {
       |Falle taucht auf. Unbemerkbar auf der Karte mit ihrer Vogelperspektive erscheint eine Stelle,
       |in der der Weg steil abfällt, es wird immer steiler bis es teilweise senkrecht bergab geht.
       |""",
+    // 4
     """Ein Funktionsgenerator aus der Frühzeit, ein Ding mit flachem Bildschirm, etwa in der Größe 40
       |mal 30 Zentimeter. Der Hintergrund des Schirms ist blau, darauf Strichzeichnung in weiß.
       |Funktionen, geometrische Funktionen, Linien und Kreise, Plots. Sie schwimmen umher, vielleicht
       |durch Interaktion bewegt, und ergeben ein Ensemble von Formen. Mir kommt der Gedanke, dass wir
       |nur endliche Energie haben. Die Formen geben synthetische Klänge von sich ab, die sich
       |zusammenmischen zu einem merkwürdigen Gesamtbild. Heutzutage keine überraschenden Klänge, aber
-      |man kann sich leicht vorstellen, wie bei der Ankunft des Generators alle fasziniert waren von
-      |der Reinheit der Klänge und von deren eigenwilligem und leicht chaotischem Erscheinen,
-      |Vorübergehen und Zusammengehen.
+      |man kann sich leicht vorstellen, wie bei der Ankunft des Generators alle von der Reinheit der
+      |Klänge und von deren eigenwilligem und leicht chaotischem Erscheinen, Vorübergehen und
+      |Zusammengehen fasziniert waren.
       |""",
+    // 5
     """Ein eher dunkler Raum, in welchem jemand beginnen würde eine Lichtquelle, ein rotes Licht, zu
       |rotieren und regelmäßige Kreise zu erzeugen, welche sich dann im Raum bewegten (der Performer
       |begann sich im Raum zu bewegen). Ich schien mich zu erinnern: ja, alles war rot. Nein. In der
-      |Tat änderte sich die Farbe des Lichtes. Die Arbeiten nahmen die Besucher mit herum im Raum,
-      |sie mussten zu rennen anfangen und wurden gleichermaßen zu Performern und zum Performten.
-      |Alles beschleunigte sich, so dass die Leute kaum mithalten konnten, doch selbst Gruppen
-      |älterer Menschen, einige mit Krücken, hetzten als Gefolge umher. Ich wollte dem sinnlosen
-      |Treiben nicht beiwohnen und ging hinaus.
+      |Tat änderte sich die Farbe des Lichtes. Die Arbeiten nahmen die Gäste mit herum im Raum, sie
+      |mussten zu rennen anfangen und wurden zu Performenden und zum Performten gleichermaßen. Alles
+      |beschleunigte sich, so dass die Leute kaum mithalten konnten, doch selbst Gruppen älterer
+      |Menschen, einige mit Krücken, hetzten als Gefolge umher. Ich wollte dem sinnlosen Treiben
+      |nicht beiwohnen und ging hinaus.
       |""",
-    """Wir stehen über eine Graphik gebeugt, ein Diagramm. In ihm überlappen sich eine Zellstruktur,
-      |eine organisch geschlungene Zeichnung, und ein rigides, gitterförmiges Gefüge wie eine
-      |Gruppierung von Schaltkreisen. Wir sind dabei zu formulieren, was uns an dieser Struktur
-      |gefällt. Zum einen lassen sich rechnende Funktionen ablagern, in die Hand nehmen und auf dem
-      |Gitterblatt einsetzen, so dass jedes Element der Gitterebene als Empfänger oder Platzhalter
-      |einer rechnenden Funktion erscheint. Zum anderen produzierte die geschlungene Zellebene einen
-      |Querschnitt, ein zusammenhängendes Netz von Stegen, wobei bei genauerer Hinsicht die Topologie
-      |nicht flach ist, sondern eine Wand eine andere durchbricht oder überlagert. Es entsteht eine
-      |Asymmetrie zwischen gezeichnetem Außen und Innen.
+    // 6
+    """Wir stehen über eine Graphik gebeugt, einem Diagramm. In ihm überlappen sich eine
+      |Zellstruktur, eine organisch geschlungene Zeichnung, und ein rigides, gitterförmiges Gefüge
+      |wie eine Gruppierung von Schaltkreisen. Wir sind dabei zu formulieren, was uns an dieser
+      |Struktur gefällt. Zum einen lassen sich rechnende Funktionen ablagern, in die Hand nehmen und
+      |auf dem Gitterblatt einsetzen, so dass jedes Element der Gitterebene als Empfänger oder
+      |Platzhalter einer rechnenden Funktion erscheint. Zum anderen produzierte die geschlungene
+      |Zellebene einen Querschnitt, ein zusammenhängendes Netz von Stegen, wobei bei genauerer
+      |Hinsicht die Topologie nicht flach ist, sondern eine Wand eine andere durchbricht oder
+      |überlagert. Es entsteht eine Asymmetrie zwischen gezeichnetem Außen und Innen.
       |""",
+    // 7
     """Ich schaue aus dem Fenster. Der Haltepunkt ist sicher verpasst, doch ich realisiere, dass ich
       |die Macht habe das Gefährt zu stoppen. Dazu versetze ich mich nach außerhalb in eine
       |Entfernung, in der das Gefährt klein wird, so dass ich in die Welt eingreifen und einen
       |Spielstein in den Weg stellen kann. Eine Reihe von Steinen fällt um und bringt das Fahrzeug
       |zum Stehen. Die Bebauung ist spärlich. Mir gegenüber sitzt eine fahl beleuchtete Gestalt, die
-      |im Plural ist, nur von `wir' in der Mehrzahl spricht, sich nur als eine von mehreren ausgibt.
-      |Zweifel in der Stimme, die sich glücklich behauptet mit den anderen ganz gleich zu sein.
+      |im Plural ist, nur von "`wir"' in der Mehrzahl spricht, sich nur als eine von mehreren
+      |ausgibt. Zweifel in der Stimme, die sich glücklich behauptet, mit den anderen ganz gleich zu
+      |sein.
       |""",
+    // 8
     """Ein Screening, bestehend aus zwei Teilen. Existierende Filme wurden verarbeitet. Der zweite
       |Teil mit klassischerer, narrativer, linearer Struktur, der erste experimenteller. Beim
       |Verlassen des Vorführraums spüre ich, dass die Arbeit Naya nicht gefallen hat. Sie sucht nach
       |Formulierungen, je mehr sie sich äußert, desto deutlicher ist, dass es ihr gar nicht gefallen
       |hat. Sicher, viele Dinge sind in kurzer Zeit entstanden, vielleicht hätte es weitere
       |Überarbeitungen gebraucht, trotzdem war ich zufrieden. Jetzt bin ich enttäuscht und traurig.
-      |Verunsichert, dass bei Zuschauern dieser Eindruck nachhaltig zurückbleibt. Jemand sagt, ihr
-      |gefielen keine "`Laborfilme"'. Was damit gemeint ist? Es geht offensichtlich um die Ablösung
-      |einer Schicht, die dem Film noch anhaftet.
+      |Verunsichert, dass bei Zuschauer*innen dieser Eindruck nachhaltig zurückbleibt. Jemand sagt,
+      |ihr gefielen keine "`Laborfilme"'. Was damit gemeint ist? Es geht offensichtlich um die
+      |Ablösung einer Schicht, die dem Film noch anhaftet.
       |""",
+    // 9
     """Zwei Metallkugeln, Coulomb Kugeln, besitzen unterschiedliche Größe von ein oder wenigen
       |Zentimeter Durchmesser. In die kleinere davon ist eine weitere Kugel eingelassen. Etwas wird
-      |durch den Kontakt in Gang gesetzt oder durch das wiederholte Zusammenbringen und Trennen. Zwei
+      |durch den Kontakt oder durch das wiederholte Zusammenbringen und Trennen in Gang gesetzt. Zwei
       |Stäbe berühren die Kugeln und sind mit Kabeln verbunden, deren anderes Ende zu einer Kiste
       |führt, einem Ton- oder Geräuschgenerator. Man hört den Ton nur durch das Abgreifen eines
       |Signals an der Kiste. Ich bitte die Leute im Raum still zu sein, da ich eine Tonaufnahme mit
       |den Kugeln mache. Die Kugeln lassen sich spielen und produzieren dabei komplexe Klänge, an
       |einer Stelle kann man darin sogar eine Stimme ausmachen.
       |""",
+    // 10
     """In frühen Skizzen erscheinen Knotenpunkte des Raumes als Auge. Oder ist es nur ein
       |Knotenpunkt? Die Pupille ist leer, die Iris wird vom Text gebildet, der sich kreisförmig
       |bewegt. Der Augapfel ist der Schirm mit einer konkaven Linse, in eine Holzkugel eingebettet.
       |Es gibt eine Unschärfezone bei zwölf Uhr, wo Wörter verschwinden und erscheinen, indem sich
       |die Glyphen ineinander verwandeln. Das Graphische der Buchstaben tritt hervor; eine
       |nicht-semantische Überführung. Später konkretisieren sich die Knotenpunkte als Bienenkörbe,
-      |der Augapfel verschwindet in ihrem Inneren, nur durch einen Schlitz sichtbar. Das unendliche
+      |der Augapfel verschwindet in ihrem Inneren, nur durch einen Schlitz sichtbar. Das Unendliche
       |des Textes ist nun horizontales Auftauchen und Verschwinden, die Kreisförmigkeit nur noch
-      |angedeutet durch eine leichte Krümmung des Textlaufes.
+      |durch eine leichte Krümmung des Textlaufes angedeutet.
       |""",
+    // 11
     """Das sich im Schwarm Bewegen wurde vor Jahrhunderten mit einer wirklichkeitsfremden
       |Begeisterung identifiziert, und Schwarm war das Objekt der Begeisterung. Vielleicht entspringt
       |die Assoziation dem Zerlaufen von Bewegung und Subjekt. Es gibt immer noch Zielrichtungen,
@@ -134,25 +146,28 @@ object CatalogTexts {
       |verstrickt. Programmieren ist schwärmen; wir können nur Schritt für Schritt den Text
       |entwickeln, befinden uns aber immer in zahlreichen parallelen Programmtexten.
       |""",
+    // 12
     """Theoretisch sind alle neun Mikrocomputer identisch konfiguriert und ausgestattet, einzig durch
-      |IP Adresse unterschieden, und doch brauchen alle unterschiedlich lange, bis sie gestartet
+      |ihre IP-Adresse unterschieden, und doch brauchen alle unterschiedlich lange, bis sie gestartet
       |sind, vielleicht weil sie im Laufe der Softwareentwicklung zu unterschiedlichen Zeitpunkten
       |und mit unterschiedlichen Frequenzen aktualisiert wurden oder die Pakete nicht zeitgleich
       |durch das Netzwerk transportiert wurden. Zunächst war ihr Zeitverhalten noch ähnlicher, und so
       |ergab sich ein Problem der \emph{Redeübernahme}: Mehrere Knoten versuchen gleichzeitig ein
       |Wort zu emittieren, suchen einen Partnerknoten, und durch die Kollision geben sie wieder auf,
-      |versuchen es erneut, und immer im Kreis. Die Perioden wurden schließlich randomisiert, das
-      |heißt letztendlich, dass die kleinen Differenzen in der Startzeit extrem verstärkt werden.
+      |versuchen es erneut und immer im Kreis. Die Perioden wurden schließlich randomisiert, das
+      |heißt letztendlich, dass selbst kleinste Differenzen in der Startzeit extrem verstärkt werden.
       |""",
+    // 13
     """Textabschnitte sind auf die Bienenkörbe verteilt, aus der auditiven Ähnlichkeit der Wörter
       |formen sich Bäume. Ich habe mit der graphischen Ansicht dieser Bäume experimentiert, wobei die
       |Wörter durch rot und grün angeben, welchem Korb sie zugehörig sind. Diese Bäume sind in der
-      |Ausstellung nicht sicht- sondern nur hörbar. Ein Probedruck auf A3 Papier diente mir fortan
+      |Ausstellung nicht sicht-, sondern nur hörbar. Ein Probedruck auf A3 Papier diente mir fortan
       |als Erklärungshilfe, wann immer jemand genauer wissen wollte, wie die Linien von Wörtern
       |entstehen, die zwischen den Körben wandern. Ich habe das Blatt einem Besucher überlassen, der
       |von dieser Darstellung angetan war. Ich hätte es erneut drucken können, aber es wäre nicht
       |dasselbe Blatt gewesen, das vom vielen Herumtragen bereits abgenutzt war.
       |""",
+    // 14
     """Am Schluss ist wieder alles zerlegt, aufgerollt, auseinandergeschraubt, gepolstert und in
       |Kisten verpackt. Wie geht es weiter? Neue und andere Arbeiten entstehen, die Elemente
       |aufgreifen und fortführen. Das vernetzte Mikrocomputercluster taucht erneut in
@@ -163,16 +178,18 @@ object CatalogTexts {
       |kleinen Ultraschallsensoren erweitert. Die raumfüllende und raumabhängige Struktur gibt
       |Anleihen zu einer modularen Serie, die noch im Werden begriffen ist.
       |""",
+    // 15
     """Im Begriff des Schwärmens scheint immer eine Ambivalenz zu stecken, im wörtlichen Sinne
-      |gegenläufige Wertigkeiten. Beim Ausschwärmen wird neues Territorium gesucht, und andererseits
-      |wird das Suchen niemals individuiert, hat also nichts Heroisches an sich (bei Nietzsche wird
-      |der Übermensch von Sandkorn-Rücksichten und Ameisen-Kribbelkram bedroht, während sich bei
-      |Deleuze und Guattari Löwenmähne und Läuse vereinen). Haben wir tatsächlich den Schwarm
-      |gemeint? Michel Serres verbindet den Schwarm in \emph{Genèse} mit dem Vorhandensein einer
-      |äußeren Grenze und einer lokalen Individuierung, gegen das er das Multiple setzt, dessen
-      |Punkte unbekannt bleiben; das Multiple dringt in den Raum oder entschwindet ihm, sucht sich
-      |Platz, gibt ihn auf oder erzeugt ihn durch unvorhersehbare Bewegung.
+      |gegenläufige Wertigkeiten. Beim Ausschwärmen wird neues Territorium gesucht, aber das Suchen
+      |wird niemals individuiert, es hat also nichts Heroisches an sich (bei Nietzsche wird der
+      |Übermensch von Sandkorn-Rücksichten und Ameisen-Kribbelkram bedroht, während sich bei Deleuze
+      |und Guattari Löwenmähne und Läuse vereinen). Haben wir tatsächlich den Schwarm gemeint? Michel
+      |Serres verbindet den Schwarm in \emph{Genèse} mit dem Vorhandensein einer äußeren Grenze und
+      |einer lokalen Individuierung, gegen das er das Multiple setzt, dessen Punkte unbekannt
+      |bleiben; das Multiple dringt in den Raum oder entschwindet ihm, sucht sich Platz, gibt ihn auf
+      |oder erzeugt ihn durch unvorhersehbare Bewegung.
       |""",
+    // 16
     """Die Computerwelt ist binarisiert; eine Fluchtlinie führt durch zwei Punkte; zwei, vier, acht,
       |sechzehn Kanäle. Wir zählen an zehn Fingern ab. Eine Gruppe benötigt drei Elemente; drei
       |Punkte bilden (meist) eine Ebene; das ödipale Dreieck; Pierces Trichotomien. Nicht genug zum
@@ -183,22 +200,24 @@ object CatalogTexts {
       |Verstärkerkanäle. Zur binären Teilung braucht man drei Anschlüsse. Zum Laufen drei
       |Möglichkeiten: links, rechts, geradeaus; oder hinauf, hinunter, waagerecht.
       |""",
+    // 17
     """Die Arbeit besteht aus drei verzahnten Klangebenen. Einer wandernden Stimme, deren Worte
       |keiner festen Raumposition zugeordnet sind, einem Pool an summenden und meist von Bienen
       |herrührenden Klängen, wobei jeder Klang einem festen Lautsprecher zugeordnet ist, und dem
       |unaufhörlichen Klicken der Relais, die zwar in räumlicher Distanz zueinander, jedoch in enger
-      |Nachbarschaft in der Raummitte liegen. Es gibt eine Klangsituation, der eine Besucherin
-      |normalerweise nicht begegnen wird; dann nämlich, wenn die Installation eingeschaltet wird.
+      |Nachbarschaft in der Raummitte liegen. Es gibt eine Klangsituation, der Besucher*innen
+      |normalerweise nicht begegnen werden; nämlich jene, wenn die Installation eingeschaltet wird.
       |Nach dem Booten der Computer melden sich alle Relais einmal zu Wort, indem sie in ihren
       |Anfangszustand schalten, und erzeugen für wenige Sekunden eine aufregende und dichte Textur
-      |aus Klicken. Ein weiteres Mal beim Ausschalten.
+      |aus Klicken. Und ein weiteres Mal beim Ausschalten.
       |""",
-    """Die Größenverhältnisse neigen zur Miniaturisierung und erzeugen eine bestimmten Pose des
-      |Besuchers. Die Lautsprecher mit 45mm Durchmesser, die Computer mit ihrer Fläche von 85 mal
-      |56mm, wenngleich durch Türmung zum Volumen geworden. Der kompakte Relaisklotz. Die durch die
-      |Schlitze der Bienenkörbe auf Ausschnitte reduzierten Videobildschirme. Nur ökonomische Gründe?
-      |Im Effekt jedenfalls verlangt es ein Stillhalten des Betrachters, ein sich Vorneigen mit Auge
-      |und Ohr, eine Vorsichtigkeit. Auch ist es nicht nur die Dimension, die die Miniatur
+    // 18
+    """Die Größenverhältnisse neigen zur Miniaturisierung und erzeugen eine bestimmte Pose der
+      |Besucher*innen. Die Lautsprecher mit 45~mm Durchmesser, die Computer mit ihrer Fläche von
+      |85×56~mm, wenngleich durch Türmung zum Volumen geworden. Der kompakte Relaisklotz. Die durch
+      |die Schlitze der Bienenkörbe auf Ausschnitte reduzierten Bildschirme. Nur ökonomische Gründe?
+      |Im Effekt jedenfalls verlangt es ein Stillhalten der Betrachtenden, ein sich Vorneigen mit
+      |Auge und Ohr, eine Vorsichtigkeit. Auch ist es nicht nur die Dimension, die die Miniatur
       |auszeichnet, sondern ebenso (wie Roland Barthes feststellte) eine Präzision und ein
       |rahmenloses Sich-Abheben vom Umgebenden. Ein Spannungsfeld entsteht zum All-Over der
       |Rauminstallation, die gerade die Bewegung organisiert. Das eine braucht das andere.
@@ -366,20 +385,28 @@ object CatalogTexts {
     res1
   }
 
-  val bugWords: Set[String] = Set(
-    "befinden", "flach", /* "flache", "flachem", */ "gefielen", "gegenläufige", "identifizier",
-    /* "identifizieren", "identifiziert", */ "konfiguriert", "Laborfilme",
+  val bugWordsEn: Set[String] = Set(
     "affiliation", "amplifie", "baffle", "Baffle", "briefly", "configured", "difficult", "field",
     "figure", "fill", "film", "finally", "finger", "finite",
     "first", "five", "fixed", "flat", "flight", "float", "floor", "identifi", "reified", "satisfied", "sufficient"
   )
+  val bugWordsDe: Set[String] = Set(
+    "befinden", "flach", "gefielen", "gegenläufige", "identifizier",
+    "konfiguriert", "Laborfilme",
+    "identifi"
+  )
 
-  val bugMap: Map[String, String] = bugWords.iterator.map { w =>
+  val bugMapEn: Map[String, String] = bugWordsEn.iterator.map { w =>
+    w.replace("fi", "@").replace("fl", "f").replace("@", "f") -> w.replace("fi", "ﬁ").replace("fl", "ﬂ")
+  }.toMap
+
+  val bugMapDe: Map[String, String] = bugWordsDe.iterator.map { w =>
     w.replace("fi", "@").replace("fl", "f").replace("@", "f") -> w.replace("fi", "ﬁ").replace("fl", "ﬂ")
   }.toMap
 
   // "thanks" to our beloved inkscape
-  def debugWords(s: String): String = {
+  def debugWords(s: String)(implicit lang: Lang): String = {
+    val bugMap = if (lang == Lang.de) bugMapDe else bugMapEn
     bugMap.foldLeft(s) { case (in, (k, v)) =>
       var out = in
       while ({
@@ -556,7 +583,7 @@ object CatalogTexts {
     |
     |{3-8}
     |
-    |Existierende Karten haben einen kleinen Maßstab, der Zuschauer von "`Laborfilmen"' traurig macht und verunsichert. Was damit gemeint ist?
+    |Existierende Karten haben einen kleinen Maßstab, der Zuschauer*innen von "`Laborfilmen"' traurig macht und verunsichert. Was damit gemeint ist?
     |
     |{3-9}
     |
@@ -580,7 +607,7 @@ object CatalogTexts {
     |
     |{3-14}
     |
-    |Wenig später geht es wieder weiter, andere Arbeiten entstehen, wo jede Reuse in ihrem eigenen Klanggedächtnis bergab geht.
+    |Wenig später geht es wieder weiter, andere Arbeiten entstehen, und jede Reuse geht in ihrem eigenen Klanggedächtnis bergab.
     |
     |{3-15}
     |
@@ -600,7 +627,7 @@ object CatalogTexts {
     |
     |{4-7}
     |
-    |Ich realisiere, dass der Hintergrund des flachen, fahl beleuchteten Schirms zwar die Macht jedoch nur endliche Energie hat.
+    |Ich realisiere, dass der Hintergrund des flachen, fahl beleuchteten Schirms zwar die Macht, jedoch nur endliche Energie hat.
     |
     |{4-8}
     |
@@ -632,7 +659,7 @@ object CatalogTexts {
     |
     |{4-15}
     |
-    |Ameisen-Kribbelkram entschwindet in den Raum, dringt in Bildschirme ein, ergibt überraschende Klänge der Größe 40 mal 30 Zentimeter.
+    |Ameisen-Kribbelkram entschwindet in den Raum, dringt in Bildschirme ein und ergibt überraschende Klänge der Größe 40×30 cm.
     |
     |{4-16}
     |
@@ -644,15 +671,15 @@ object CatalogTexts {
     |
     |{4-18}
     |
-    |Alles Stillhalten war fasziniert von der Miniaturisierung geometrischer Klänge und von deren rahmenlosen Sich-Abheben von umgebenden ökonomischen Funktionen.
+    |Alles Stillhalten war von der Miniaturisierung geometrischer Klänge und von deren rahmenlosen Sich-Abheben von umgebenden ökonomischen Funktionen fasziniert.
     |
     |{5-7}
     |
-    |Ich versetze mich außerhalb einer Lichtquelle, werde eine dunkle Gestalt im Plural. Mein `wir' hetzt als Gefolge umher.
+    |Ich versetze mich außerhalb einer Lichtquelle, werde eine dunkle Gestalt im Plural. Mein "`wir"' hetzt als Gefolge umher.
     |
     |{5-8}
     |
-    |Der Performer sucht nach Formulierungen zur Farbe des Lichtes, das zu rotieren und regelmäßige narrative Kreise erzeugen würde.
+    |Der Performer sucht nach Formulierungen zur Farbe des Lichtes, das rotieren und damit regelmäßige narrative Kreise erzeugen würde.
     |
     |{5-9}
     |
@@ -660,7 +687,7 @@ object CatalogTexts {
     |
     |{5-10}
     |
-    |Als Auge oder Holzkugel nahmen die Besucher ein rotes Licht mit herum im Raum, konnten später kaum mithalten.
+    |Als Auge oder Holzkugel nahmen die Besucher*innen ein rotes Licht mit herum im Raum, konnten später kaum mithalten.
     |
     |{5-11}
     |
@@ -724,7 +751,7 @@ object CatalogTexts {
     |
     |{6-14}
     |
-    |Zwischen Außen und Innen entsteht ein algorithmischer Körper, produziert sich als raumabhängige Struktur, umgeben von Händen und Empfängern.
+    |Zwischen außen und innen entsteht ein algorithmischer Körper, produziert sich als raumabhängige Struktur, umgeben von Händen und Empfängern.
     |
     |{6-15}
     |
@@ -736,11 +763,11 @@ object CatalogTexts {
     |
     |{6-17}
     |
-    |Besucherinnen begegnen normalerweise Graphiken oder Diagrammen nicht, so dass sich eine Asymmetrie aus aufregendem und dichtem Klicken ergibt.
+    |Besucher*innen begegnen normalerweise Graphiken oder Diagrammen nicht, so dass sich eine Asymmetrie aus aufregendem und dichtem Klicken ergibt.
     |
     |{6-18}
     |
-    |Wir sind dabei zu ergründen, warum nicht Funktionen sondern Vorsichtigkeiten im Stillhalten der Betrachter die Miniatur auszuzeichnen scheinen.
+    |Wir sind dabei zu ergründen, warum nicht Funktionen, sondern Vorsichtigkeiten im Stillhalten der Betrachtenden die Miniatur auszuzeichnen scheinen.
     |
     |{7-13}
     |
@@ -764,7 +791,7 @@ object CatalogTexts {
     |
     |{7-18}
     |
-    |Im Effekt jedenfalls türmen sich kleine Volumen von 45 mal 85 mal 56mm in den Schlitze der Bienenkörbe.
+    |Im Effekt jedenfalls türmen sich kleine Volumen von 45×85×56~mm in den Schlitzen der Bienenkörbe.
     |
     |{8-13}
     |
@@ -772,7 +799,7 @@ object CatalogTexts {
     |
     |{8-14}
     |
-    |Fragen des Screening bestehen aus zwei Teilen, wobei sich der zweite Teil im Neuen und im Schreiben äußert.
+    |Fragen des Screenings bestehen aus zwei Teilen, wobei sich der zweite Teil im Neuen und im Schreiben äußert.
     |
     |{8-15}
     |
@@ -824,7 +851,7 @@ object CatalogTexts {
     |
     |{10-15}
     |
-    |Das unendliche des Textes wird in seiner Genese nun immer und nur durch eine Skizze in Wertigkeiten überführt.
+    |Das Unendliche des Textes wird in seiner Genese nun immer und nur durch eine Skizze in Wertigkeiten überführt.
     |
     |{10-16}
     |
@@ -836,7 +863,7 @@ object CatalogTexts {
     |
     |{10-18}
     |
-    |Wo der Schirm verschwindet, treten die Lautsprecher zusammen hervor, wodurch das eine dazu neigt das andere zu brauchen.
+    |Wo der Schirm verschwindet, treten die Lautsprecher zusammen hervor, wodurch das eine dazu neigt, das andere zu brauchen.
     |
     |{11-13}
     |
@@ -860,7 +887,7 @@ object CatalogTexts {
     |
     |{11-18}
     |
-    |Es schwärmen die Simultaneitäten, wir sind vor uns nicht mehr sicher und nur zu einem All-Over Computer geworden.
+    |Es schwärmen die Simultaneitäten, wir sind vor uns nicht mehr sicher und nur mehr zu einem All-over-Computer geworden.
     |
     |{12-13}
     |
@@ -872,7 +899,7 @@ object CatalogTexts {
     |
     |{12-15}
     |
-    |Was wird gemeint sein durch die Aufgabe der IP Adresse? Wird der Schwarm durch sie vielleicht versuchen einzudringen?
+    |Was wird gemeint sein durch die Aufgabe der IP-Adresse? Wird der Schwarm nun durch sie vielleicht versuchen einzudringen?
     |
     |{12-16}
     |
