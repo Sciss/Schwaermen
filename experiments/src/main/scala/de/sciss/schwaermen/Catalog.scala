@@ -105,6 +105,7 @@ object Catalog {
   val WidthParMM        : Double  = (PaperWidthMM - (MarginLeftMM + MarginRightMM + ColumnSepMM))/2.0
 
   val BleedMM           : Int     = 3
+  val CutMarkMM         : Int     = 2
 
   // 'inner'
   val PaperIWidthMM     : Int     = PaperWidthMM - InnerWidthReduxMM
@@ -281,6 +282,41 @@ object Catalog {
     }
 
     Rectangle(x = x, y = y, width = w, height = h)
+  }
+
+  def mkCutAndFoldMarksSVG(): String = {
+    val pw = TotalPaperWidthMM  + BleedMM * 2
+    val ph = PaperHeightMM      + BleedMM * 2
+    val strkWidthMM = "0.2"
+
+    var idCount = 1000
+
+    def mkLine(d: String): String = {
+      val id = s"path$idCount"
+      idCount += 1
+      s"""    <path
+         |       style="fill:none;stroke:#000000;stroke-width:${strkWidthMM}mm;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         |       d="$d"
+         |       id="$id"
+         |       />
+         |""".stripMargin
+    }
+
+    def mkHLine(x: Int, y: Int): String =
+      mkLine(s"M $x,$y H $CutMarkMM")
+
+    def mkVLine(x: Int, y: Int): String =
+      mkLine(s"m $x,$y v $CutMarkMM")
+
+    val lines: Seq[String] = ???
+
+    s"""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+       |<svg width="${pw}mm" height="${ph}mm" viewBox="0 0 $pw $ph" version="1.1" id="svg8"
+       |  <g id="layer1">
+       |${lines.mkString("\n")}
+       |  </g>
+       |</svg>
+       |""".stripMargin
   }
 
   def renderPages(splitPages: Boolean = false, fBox: Boolean = false, bleed: Boolean = true)(implicit lang: Lang): Unit = {
