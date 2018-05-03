@@ -225,6 +225,7 @@ object CatalogTexts {
   ).map(mkText)
 
   val parEn: ISeq[String] = List(
+    // 1
     """The alleys are narrow and with a steep slope down to the water. I go back once again.
       |Everything is characterised by a strong verticality. I pull myself up against a wall, on ropes
       |and grips. Is that the only way or just a shortcut? Disapproval of the bystanders? One corner
@@ -233,6 +234,7 @@ object CatalogTexts {
       |in the exhibition. There are vibrating things shaking at high frequency and low amplitude,
       |mounted on a field or table the size of small apples.
       |""",
+    // 2
     """It is an experiment. Two human arms are put together, next to each other, close together. They
       |are squeezed or dissected, cut, then united on a microscope slide or glass. A specimen is
       |made, the \emph{section} of the double arm becomes one object. What happens to life? Life was
@@ -241,6 +243,7 @@ object CatalogTexts {
       |Haecceitas or \emph{bundle} of lines to designate the living organism. The sadness of
       |unrepeatability: united in an experience that never took place except in memory.
       |""",
+    // 3
     """A plan lies in front of me or in my memory. Glass shatters on the floor, but shortly after it
       |can be embedded in a metal again. A small-scale map, I follow the path in my mind or with the
       |finger. Longer than I originally thought, much longer. I see everything close, but from above.
@@ -249,8 +252,9 @@ object CatalogTexts {
       |point in which the path drops steeply, it is getting steeper until it goes partly vertically
       |downhill.
       |""",
-    """An antique function generator, a thing with a flat screen, approximately in the size 40 by 30
-      |centimetres. The screen's background is blue, with a line drawing in white. Functions,
+    // 4
+    """An antique function generator, a thing with a flat screen, approximately 40 by 30 centimetres
+      |in its size. The screen's background is blue, with a line drawing in white. Functions,
       |geometric functions, lines and circles, plots. They swim around, perhaps moved by interaction,
       |and yield an ensemble of forms. The thought comes to me that we only have finite energy. The
       |shapes emit synthetic sounds that mix together to form a strange overall picture. No
@@ -258,6 +262,7 @@ object CatalogTexts {
       |everyone fascinated by the purity of the sounds and their idiosyncratic and slightly chaotic
       |appearance, decay, coalescence.
       |""",
+    // 5
     """A rather dark room in which someone would start to rotate a light source, a red light, and
       |create regular circles that would move around the room (the performer began to move in space).
       |I seemed to remember: yes, everything was red. No. In fact, the colour of the light changed.
@@ -266,6 +271,7 @@ object CatalogTexts {
       |hardly keep up, but even groups of older people, some with crutches, rushed around as
       |entourage. I did not want to attend the senseless activity and went out.
       |""",
+    // 6
     """We are bent over a drawing, a diagram. In it overlap a cell structure, an organically looped
       |drawing, and a rigid, latticed structure like a grouping of circuits. We are formulating what
       |we like about this structure. On the one hand, calculating functions can be deposited, picked
@@ -274,13 +280,15 @@ object CatalogTexts {
       |cross-section, a coherent network of ridges, more precisely, the topology is not flat, but one
       |wall penetrates or overlays another. An asymmetry between drawn outside and inside emerges.
       |""",
+    // 7
     """I look out of the window. The halt was certainly missed, but I realise that I have the power
       |to stop the vehicle. To do this, I shift myself outside to a distance where the vehicle
       |becomes small, so that I can intervene in the world and put a token in the way. A number of
-      |stones collapses and brings the vehicle to a halt. The development is sparse. Opposite to me
-      |sits a dimly lit figure, who is plural, speaking only of `we' in the plural, posing as one of
+      |stones collapses and brings the vehicle to a halt. The development is sparse. Opposite me sits
+      |a dimly lit figure, who is plural, and speaking only of `we' in the plural, posing as one of
       |several. Doubt lies in the voice that claims to be happy as entirely equal with the others.
       |""",
+    // 8
     """A screening, consisting of two parts. Existing films were processed. The second part with more
       |classic, narrative, linear structure, the first more experimental. Upon leaving the screening
       |room, I feel that Naya didn't like the work. She tries to verbalise, the more she speaks, the
@@ -290,6 +298,7 @@ object CatalogTexts {
       |``laboratory films''. The meaning? It is obviously about the peeling away of a layer that
       |still adheres to the film.
       |""",
+    // 9
     """Two metal balls, Coulomb spheres, with different diameters of one or a few centimetres. In the
       |smaller of them another sphere is embedded. Something is set in motion through contact or
       |through repeated joining and separation. Two bars touch the spheres and are connected to
@@ -298,6 +307,7 @@ object CatalogTexts {
       |recording with the spheres. They can be played and thereby produce complex sounds, you can
       |even make out a voice once.
       |""",
+    // 10
     """In early sketches, spatial nodes appear as an eye. Or just one node? The pupil is empty, the
       |iris is formed by the circularly moving text. The eyeball is the screen with a concave lens,
       |embedded in a wooden orb. There is a defocusing at twelve o'clock, where words disappear and
@@ -306,6 +316,7 @@ object CatalogTexts {
       |their interior, visible only through a slit. The infinite of the text is now horizontal
       |emergence and disappearance, circularity only hinted at by a slight curvature of the text.
       |""",
+    // 11
     """Centuries ago, moving in the swarm was identified with fanciful enthusiasm, and swarm was the
       |object of exaltation. Perhaps the association springs from the melting of movement and
       |subject. There are still directions, but their magnetism no longer obeys individual control.
@@ -314,6 +325,7 @@ object CatalogTexts {
       |But actually, as complex time multiplexers, we are entangled in simultaneities. Programming is
       |swarming; we can only develop the text step by step, but we are always inside numerous
       |parallel source codes.""",
+    // 12
     """Theoretically, all nine microcomputers are identically configured and equipped, distinguished
       |only by IP address, and yet all take different durations to boot, perhaps because in the
       |course of software development they were updated at different times and at different
@@ -323,14 +335,16 @@ object CatalogTexts {
       |collisions, trying again, and always in a loop. The periods were eventually randomised, which
       |essentially means that the small differences in boot time are extremely amplified.
       |""",
+    // 13
     """Text sections are distributed across the beehives, trees are formed from the auditory
       |similarity of the words. I experimented with the graphical view of these trees, red and green
       |words indicating which basket they belong to. In the exhibition, these trees are audible but
       |not visible. A test print on A3 paper henceforth served as a figure of explanation whenever
       |someone wanted to know more precisely how the lines of words moving between the baskets are
-      |formed. I left the sheet to a visitor who fell for this rendering. I could have reprinted it,
-      |but it would not have been the same leaf, worn off from carrying around.
+      |formed. I gave the sheet to a visitor who fell for this rendering. I could have reprinted it,
+      |but it would not have been the same leaf, worn out from carrying around.
       |""",
+    // 14
     """Finally, everything is disassembled, rolled up, unscrewed, padded and packed in boxes. What's
       |next? New and different works emerge that seize and evolve elements. The cluster of networked
       |microcomputers reappears in \emph{wr\_t\_ng m\_ch\_n\_}, where each part has its own sound
@@ -339,6 +353,7 @@ object CatalogTexts {
       |this time surrounded with porcelain instead of beeswax as a baffle, and extended by tiny
       |ultrasound sensors. The space-filling and space-dependent structure gives borrowings to a
       |modular series that is still in the making.""",
+    // 15
     """The concept of swarming always seems to contain an ambivalence, literally as opposing
       |valences. Swarming seeks new territory, but then again, the search is never individuated, thus
       |it partakes of nothing heroic (Nietzsche's overman is threatened by sand-grain sized
@@ -348,6 +363,7 @@ object CatalogTexts {
       |whose points remain unknown; the multiple invades the space or disappears from it, seeks
       |place, gives it up or creates it by unpredictable movement.
       |""",
+    // 16
     """Computers are binarised; a line of flight leads through two points; two, four, eight, sixteen
       |channels. We count on ten fingers. A group requires three elements; three points (usually)
       |form a plane; the oedipal triangle; Pierce's trichotomies. Not enough to colourise a map, but
@@ -357,6 +373,7 @@ object CatalogTexts {
       |Binary division requires three connections. Running requires three choices: left, right,
       |straight ahead; or up, down, horizontally.
       |""",
+    // 17
     """The work consists of three interlocked sound layers. A wandering voice whose words are not
       |associated with a fixed spatial position, a pool of buzzing sounds mostly originating from
       |bees---each sound being associated with a fixed loudspeaker---and the relentless clicking of
@@ -366,6 +383,7 @@ object CatalogTexts {
       |state, creating an exciting and dense texture of clicks for a few seconds. And again when
       |shutting down.
       |""",
+    // 18
     """The proportions tend to miniaturisation and generate a certain posture of the visitor.
       |Loudspeakers at 45mm diameter, computers having a surface of 85 times 56mm, though becoming a
       |volume by piling. The compact relay block. Video screens, reduced to cutouts by the slots of
@@ -997,7 +1015,7 @@ object CatalogTexts {
     |
     |{2-15}
     |
-    |The double arm seems to bear an ambivalence, then remaining united on a slide as Guattari's lion mane.
+    |The double arm seems to bear an ambivalence, then staying united on a slide as Guattari's lion's mane.
     |
     |{2-16}
     |
@@ -1021,11 +1039,11 @@ object CatalogTexts {
     |
     |{3-9}
     |
-    |A trap of few centimetres in diameter emerges, set in motion by a smaller map lying before me.
+    |A trap of a few centimetres in diameter, set in motion by a smaller map lying before me.
     |
     |{3-10}
     |
-    |The iris is formed by the text, appearing very closely in blurriness, from above in a bird's-eye view.
+    |The iris is formed by the text, appearing close-up and so blurred, from above in a bird's-eye view.
     |
     |{3-11}
     |
@@ -1061,7 +1079,7 @@ object CatalogTexts {
     |
     |{4-7}
     |
-    |I realise that the background of the flat, dimly lit screen, despite the power has only finite energy.
+    |I realise that the background of the flat, dimly lit screen, despite the power, has only finite energy.
     |
     |{4-8}
     |
@@ -1093,7 +1111,7 @@ object CatalogTexts {
     |
     |{4-15}
     |
-    |The detritus of ants vanishes into space, penetrates into screens, yielding surprising sounds sized 40 by 30 centimetres.
+    |The detritus of ants vanishes into space, penetrates into screens, yielding surprising sounds 40×30 centimetres in size.
     |
     |{4-16}
     |
@@ -1181,7 +1199,7 @@ object CatalogTexts {
     |
     |{6-13}
     |
-    |I could have reprinted the computational functions as a looped drawing, but henceforth they wouldn't have been visible.
+    |I could have reprinted the computational functions as a looped drawing, but afterwards they wouldn't have been visible.
     |
     |{6-14}
     |
@@ -1345,7 +1363,7 @@ object CatalogTexts {
     |
     |{12-18}
     |
-    |Although the screens do not only produce diameters but spatial installations, they still originated as producers of videos.
+    |Although the screens not only produce diameters but also spatial installations, they still originated as producers of videos.
     |"""
   )
 }
