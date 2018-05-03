@@ -41,7 +41,7 @@ object CatalogPaths {
   def run()(implicit lang: Lang, config: Config): Unit = {
     runAllGNG()
     runAllBestPath(forceSVG = config.forcePreparePar)
-    if (!fRenderPathOut.isFile || fRenderPathOut.length() == 0L || config.forceRenderFinal || config.forcePreparePar) {
+    if (!fRenderPathSVGOut.isFile || fRenderPathSVGOut.length() == 0L || config.forceRenderFinal || config.forcePreparePar) {
       renderPaths()
     } else {
       println(s"(Skipping renderPaths $lang)")
@@ -408,8 +408,11 @@ object CatalogPaths {
     }.toIndexedSeq
   }
 
-  def fRenderPathOut(implicit lang: Lang): File =
+  def fRenderPathSVGOut(implicit lang: Lang): File =
     dir / s"edges-$lang.svg"
+
+  def fRenderPathPDFOut(implicit lang: Lang): File =
+    fRenderPathSVGOut.replaceExt("pdf")
 
   def renderPaths()(implicit lang: Lang): Unit = {
     implicit val ui: UniqueIDs = new UniqueIDs
@@ -431,16 +434,12 @@ object CatalogPaths {
       svg1.copy(text = textNodesAll, group = g1, doc = d1)
     }
 
-    val fOutSVG = fRenderPathOut
+    val fOutSVG = fRenderPathSVGOut
     writeSVG(svgMerged.doc, fOutSVG)
-    val fOutPDF = fOutSVG.replaceExt("pdf")
+    val fOutPDF = fRenderPathPDFOut
     // cf. http://tavmjong.free.fr/INKSCAPE/MANUAL/html/CommandLine-General.html
     val argsSVG = Seq("--export-pdf", fOutPDF.path, "--export-margin", BleedMM.toString, fOutSVG.path)
     exec(inkscape, dirTmp, argsSVG)
-
-    val fOutStamp = dirTmp / s"${fOutSVG.base}-test-stamp.pdf"
-    val argsStamp = Seq(fOutArr.path, "stamp", fOutPDF.path, "output", fOutStamp.path)
-    exec("pdftk", dirTmp, argsStamp)
   }
 
   def renderPath(srcParIdx: Int, tgtParIdx: Int, yOffset: Double = 0.0)

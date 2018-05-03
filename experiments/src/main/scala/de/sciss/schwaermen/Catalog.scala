@@ -26,6 +26,7 @@ import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 
 object Catalog {
   case class Config(forceRenderFinal: Boolean = false, forcePreparePar: Boolean = false,
+                    forceArrange: Boolean = false,
                     lang: Set[Lang] = Set(Lang.de, Lang.en))
 
   def main(args: Array[String]): Unit = {
@@ -38,6 +39,10 @@ object Catalog {
       opt[Unit]("force-prepare-par")
         .text("Force preparation of paragraphs, even if files already exist.")
         .action { (_, c) => c.copy(forcePreparePar = true) }
+
+      opt[Unit]('a', "force-arrange")
+        .text("Force arrangement, even if files already exist.")
+        .action { (_, c) => c.copy(forceArrange = true) }
 
       opt[Unit]("german")
         .text("Render German only.")
@@ -60,13 +65,19 @@ object Catalog {
       println(s"(Skipping preparePar $lang)")
     }
 
-    if (config.forcePreparePar || !fOutArr.isFile) {
+    if (config.forcePreparePar || config.forceArrange || !fOutArr.isFile) {
       renderPages()
     } else {
       println(s"(Skipping renderPages $lang)")
     }
 
     CatalogPaths.run()
+
+    if (config.forceArrange || !resultPDFOut.isFile) {
+      renderResult()
+    } else {
+      println(s"(Skipping renderResult $lang)")
+    }
   }
 
   val dir                             : File = file("/") / "data" / "projects" / "Schwaermen" / "catalog" / "hhr"
@@ -284,10 +295,10 @@ object Catalog {
     Rectangle(x = x, y = y, width = w, height = h)
   }
 
-  def mkCutAndFoldMarksSVG(): String = {
+  def mkCutAndFoldMarksSVG()(implicit lang: Lang): String = {
     val pw = TotalPaperWidthMM  + BleedMM * 2
     val ph = PaperHeightMM      + BleedMM * 2
-    val strkWidthMM = "0.2"
+    val strkWidthMM = 0.05
 
     var idCount = 1000
 
@@ -302,21 +313,48 @@ object Catalog {
          |""".stripMargin
     }
 
+    val yb = PaperHeightMM      + 2 * BleedMM - CutMarkMM
+    val xr = TotalPaperWidthMM  + 2 * BleedMM - CutMarkMM
+
     def mkHLine(x: Int, y: Int): String =
-      mkLine(s"M $x,$y H $CutMarkMM")
+      mkLine(s"M $x,$y h $CutMarkMM")
 
-    def mkVLine(x: Int, y: Int): String =
-      mkLine(s"m $x,$y v $CutMarkMM")
+    def mkVLine(x: Double, y: Int): String =
+      mkLine(s"M $x,$y v $CutMarkMM")
 
-    val lines: Seq[String] = ???
+    def mkHLines(y: Int): List[String] =
+      mkHLine(0, y) :: mkHLine(xr, y) :: Nil
+
+    def mkVLines(x: Double): List[String] =
+      mkVLine(x, 0) :: mkVLine(x, yb) :: Nil
+
+    val cutMarks = mkHLines(BleedMM) ::: mkHLines(BleedMM + PaperHeightMM) :::
+      mkVLines(BleedMM) ::: mkVLines(BleedMM + TotalPaperWidthMM)
+
+    val foldMarks = (0 until (NumPages - 1)).flatMap { pageIdx =>
+      val r = getPageRectMM(pageIdx, absLeft = true)
+      mkVLines(r.right)
+    }
+
+    val lines: List[String] = cutMarks ++ foldMarks
 
     s"""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-       |<svg width="${pw}mm" height="${ph}mm" viewBox="0 0 $pw $ph" version="1.1" id="svg8"
+       |<svg width="${pw}mm" height="${ph}mm" viewBox="0 0 $pw $ph" version="1.1" id="svg8">
        |  <g id="layer1">
        |${lines.mkString("\n")}
        |  </g>
        |</svg>
        |""".stripMargin
+  }
+
+  def resultPDFOut(implicit lang: Lang): File =
+    dir / s"Zero-Moves-Between-One-and-Eight_$lang.pdf"
+
+  def renderResult()(implicit lang: Lang): Unit = {
+    val fOutStamp = resultPDFOut
+    val fOutPDF   = CatalogPaths.fRenderPathPDFOut
+    val argsStamp = Seq(fOutArr.path, "stamp", fOutPDF.path, "output", fOutStamp.path)
+    exec("pdftk", dirTmp, argsStamp)
   }
 
   def renderPages(splitPages: Boolean = false, fBox: Boolean = false, bleed: Boolean = true)(implicit lang: Lang): Unit = {
@@ -386,8 +424,23 @@ object Catalog {
     val parIndices  = info.indices.grouped(3)
     val pages       = parIndices.map { case Seq(f1, f2, f3) => mkPage(f1, f2, f3) }
     val parSep      = if (splitPages) "\\newpage\n" else "\n"
-    val pre1        = if (splitPages) pre   else pre ++ tikzBegin
-    val post1       = if (splitPages) post  else tikzEnd ++ post
+    val pre1        = if (splitPages) pre else {
+      val textMarks = mkCutAndFoldMarksSVG()
+      val fMarksSVG = dirTmp / "cut-fold-marks.svg"
+      val fMarksPDF = fMarksSVG.replaceExt("pdf")
+      writeText(textMarks, fMarksSVG)
+      val argsMarksSVG = Seq("--export-pdf", fMarksPDF.path, fMarksSVG.path)
+      exec(inkscape, dirTmp, argsMarksSVG)
+
+      val texMark = stripTemplate(
+        s"""  @node[anchor=north west,inner sep=0] at ($$(current page.north west)$$) {
+           |    @includegraphics{${fMarksPDF.path}}
+           |  };
+           |"""
+      )
+      pre ++ tikzBegin ++ texMark
+    }
+    val post1       = if (splitPages) post else tikzEnd ++ post
     val text        = pages.mkString(pre1, parSep, post1)
 
     val fArrTex   = dirTmp / s"${fOutArr.base}.tex"
