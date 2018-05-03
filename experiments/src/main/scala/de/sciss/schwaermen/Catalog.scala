@@ -36,7 +36,7 @@ object Catalog {
         .text("Force the rendering of the final composed PDF, even if file already exists.")
         .action { (_, c) => c.copy(forceRenderFinal = true) }
 
-      opt[Unit]("force-prepare-par")
+      opt[Unit]('p', "force-prepare-par")
         .text("Force preparation of paragraphs, even if files already exist.")
         .action { (_, c) => c.copy(forcePreparePar = true) }
 
@@ -73,7 +73,7 @@ object Catalog {
 
     CatalogPaths.run()
 
-    if (config.forceArrange || !resultPDFOut.isFile) {
+    if (config.forceArrange || config.forceRenderFinal || !resultPDFOut.isFile) {
       renderResult()
     } else {
       println(s"(Skipping renderResult $lang)")
@@ -116,7 +116,8 @@ object Catalog {
   val WidthParMM        : Double  = (PaperWidthMM - (MarginLeftMM + MarginRightMM + ColumnSepMM))/2.0
 
   val BleedMM           : Int     = 3
-  val CutMarkMM         : Int     = 2
+  val CutMarkMM         : Int     = 3
+  val BleedAndCutMM     : Int     = BleedMM + CutMarkMM
 
   // 'inner'
   val PaperIWidthMM     : Int     = PaperWidthMM - InnerWidthReduxMM
@@ -296,15 +297,20 @@ object Catalog {
   }
 
   def mkCutAndFoldMarksSVG()(implicit lang: Lang): String = {
-    val pw = TotalPaperWidthMM  + BleedMM * 2
-    val ph = PaperHeightMM      + BleedMM * 2
+    val pw = TotalPaperWidthMM  + BleedAndCutMM * 2
+    val ph = PaperHeightMM      + BleedAndCutMM * 2
     val strkWidthMM = 0.05
 
     var idCount = 1000
 
-    def mkLine(d: String): String = {
-      val id = s"path$idCount"
+    def mkId(pre: String): String = {
+      val id = s"$pre$idCount"
       idCount += 1
+      id
+    }
+
+    def mkLine(d: String): String = {
+      val id = mkId("path")
       s"""    <path
          |       style="fill:none;stroke:#000000;stroke-width:${strkWidthMM}mm;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
          |       d="$d"
@@ -313,8 +319,20 @@ object Catalog {
          |""".stripMargin
     }
 
-    val yb = PaperHeightMM      + 2 * BleedMM - CutMarkMM
-    val xr = TotalPaperWidthMM  + 2 * BleedMM - CutMarkMM
+    val yb = ph - CutMarkMM
+    val xr = pw - CutMarkMM
+
+    def mkRect(x: Int, y: Int, w: Int, h: Int): String = {
+      val id = mkId("rect")
+      s"""    <rect
+         |       style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         |       id="$id"
+         |       width="$w"
+         |       height="$h"
+         |       x="$x"
+         |       y="$y" />
+         |""".stripMargin
+    }
 
     def mkHLine(x: Int, y: Int): String =
       mkLine(s"M $x,$y h $CutMarkMM")
@@ -328,19 +346,28 @@ object Catalog {
     def mkVLines(x: Double): List[String] =
       mkVLine(x, 0) :: mkVLine(x, yb) :: Nil
 
-    val cutMarks = mkHLines(BleedMM) ::: mkHLines(BleedMM + PaperHeightMM) :::
-      mkVLines(BleedMM) ::: mkVLines(BleedMM + TotalPaperWidthMM)
+    val cutMarks = mkHLines(BleedAndCutMM) ::: mkHLines(BleedAndCutMM + PaperHeightMM) :::
+      mkVLines(BleedAndCutMM) ::: mkVLines(BleedAndCutMM + TotalPaperWidthMM)
 
     val foldMarks = (0 until (NumPages - 1)).flatMap { pageIdx =>
       val r = getPageRectMM(pageIdx, absLeft = true)
-      mkVLines(r.right)
+      mkVLines(r.right + BleedAndCutMM)
     }
+
+    val rects: List[String] =
+      mkRect(0              , 0             , pw        , CutMarkMM ) ::
+      mkRect(0              , ph - CutMarkMM, pw        , CutMarkMM ) ::
+      mkRect(0              , 0             , CutMarkMM , ph        ) ::
+      mkRect(pw - CutMarkMM , 0             , CutMarkMM , ph        ) :: Nil
 
     val lines: List[String] = cutMarks ++ foldMarks
 
     s"""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
        |<svg width="${pw}mm" height="${ph}mm" viewBox="0 0 $pw $ph" version="1.1" id="svg8">
        |  <g id="layer1">
+       |${rects.mkString("\n")}
+       |  </g>
+       |  <g id="layer2">
        |${lines.mkString("\n")}
        |  </g>
        |</svg>
@@ -353,12 +380,13 @@ object Catalog {
   def renderResult()(implicit lang: Lang): Unit = {
     val fOutStamp = resultPDFOut
     val fOutPDF   = CatalogPaths.fRenderPathPDFOut
-    val argsStamp = Seq(fOutArr.path, "stamp", fOutPDF.path, "output", fOutStamp.path)
+//    val argsStamp = Seq(fOutArr.path, "stamp", fOutPDF.path, "output", fOutStamp.path)
+    val argsStamp = Seq(fOutPDF.path, "stamp", fOutArr.path, "output", fOutStamp.path)
     exec("pdftk", dirTmp, argsStamp)
   }
 
   def renderPages(splitPages: Boolean = false, fBox: Boolean = false, bleed: Boolean = true)(implicit lang: Lang): Unit = {
-    val bleedVal = if (bleed) BleedMM else 0
+    val bleedVal = if (bleed) BleedAndCutMM else 0
 
     val pre = {
       val pw = if (splitPages) PaperWidthMM else TotalPaperWidthMM // /* if (pageIdx == 0) */ PaperWidthMM /* else PaperIWidthMM */

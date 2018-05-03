@@ -41,7 +41,7 @@ object CatalogPaths {
   def run()(implicit lang: Lang, config: Config): Unit = {
     runAllGNG()
     runAllBestPath(forceSVG = config.forcePreparePar)
-    if (!fRenderPathSVGOut.isFile || fRenderPathSVGOut.length() == 0L || config.forceRenderFinal || config.forcePreparePar) {
+    if (!fRenderPathSVGOut.isFile || fRenderPathSVGOut.length() == 0L || config.forcePreparePar) {
       renderPaths()
     } else {
       println(s"(Skipping renderPaths $lang)")
@@ -437,8 +437,7 @@ object CatalogPaths {
     val fOutSVG = fRenderPathSVGOut
     writeSVG(svgMerged.doc, fOutSVG)
     val fOutPDF = fRenderPathPDFOut
-    // cf. http://tavmjong.free.fr/INKSCAPE/MANUAL/html/CommandLine-General.html
-    val argsSVG = Seq("--export-pdf", fOutPDF.path, "--export-margin", BleedMM.toString, fOutSVG.path)
+    val argsSVG = Seq("--export-pdf", fOutPDF.path, "--export-margin", BleedAndCutMM.toString, fOutSVG.path)
     exec(inkscape, dirTmp, argsSVG)
   }
 
@@ -451,11 +450,6 @@ object CatalogPaths {
     require (folds.nonEmpty, s"folds0.size = ${folds0.size}")
 
     val rnd       = new util.Random((srcParIdx.toLong << 32) | tgtParIdx)
-
-
-//    val edgeMap   = CatalogTexts.edges(lang)
-//    val parId     = CatalogTexts.parIdxToId(srcParIdx, tgtParIdx)
-//    val text      = edgeMap(parId)
 
     val edgeSVGF    = edgeTextSVGFile(srcParIdx = srcParIdx, tgtParIdx = tgtParIdx)
     val svg         = Catalog.parseSVG(edgeSVGF)
@@ -523,7 +517,7 @@ object CatalogPaths {
         } .toList.toMultiMap(_._1)(_._2)
 
         val pagesHit = pagesHit0.valuesIterator.flatMap {
-          case single @ (_ :: Nil) => single
+          case single @ _ :: Nil => single
           case multiple =>
             // 'multiple' here means multiple pages in the same orientation.
             // we first apply a more strict filter such that only with a margin
