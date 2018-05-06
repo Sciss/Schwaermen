@@ -29,9 +29,11 @@ import javax.imageio.ImageIO
 object CatalogCover {
   case class Config(imgInF        : File    = file("in.png"),
                     imgOutF       : File    = file("out.png"),
+                    invert        : Boolean = false,
                     strokeWidth   : Double  = 2.0,
                     rngSeed       : Int     = 0xBEE,
                     maxNodesDecim : Int     = 108,
+                    maxNodes      : Int     = 0,
                     gngStepSize   : Int     = 27,
                     gngLambda     : Int     = 27,
                     gngEdgeAge    : Int     = 108,
@@ -57,6 +59,7 @@ object CatalogCover {
   val ex1 = Config(
     imgInF        = file("/data/projects/Schwaermen/photos/170826_Naya/_MG_9905_rot_2zu1gray.jpg"),
     imgOutF       = file("/data/temp/catalog_cover.png"),
+    invert        = true,
     maxNodesDecim = 108,
     gngStepSize   = 50,
     gngLambda     = 100,
@@ -67,12 +70,14 @@ object CatalogCover {
 
   val ex2 = Config(
     imgInF        = file("/data/projects/Schwaermen/photos/Maryam/_DSC6957rot_crop_gray.jpg"),
-    imgOutF       = file("/data/temp/catalog_coverM.png")
+    imgOutF       = file("/data/temp/catalog_coverM.png"),
+    invert        = true
   )
 
   val ex3 = Config(
     imgInF      = file("/data/projects/Schwaermen/photos/Maryam/_DSC6866_crop_gray.jpg"),
     imgOutF     = file("/data/temp/catalog_cover6866.png"),
+    invert        = true,
     gngEpsilon  = 0.05,
     gngEpsilon2 = 0.05,
     gngAlpha    = 0.1,
@@ -84,6 +89,7 @@ object CatalogCover {
   val selected = Config(
     imgInF      = file("/data/projects/Schwaermen/catalog/_DSC6866_crop_rot_gray.png"),
     imgOutF     = file("/data/projects/Schwaermen/catalog/_DSC6866_crop_rot_gray_GNG.png"),
+    invert        = true,
     gngEpsilon  = 0.05,
     gngEpsilon2 = 0.05,
     gngAlpha    = 0.1,
@@ -110,6 +116,10 @@ object CatalogCover {
         .text (s"Image output file, should end in '.png' or '.jpg' ${default.imgOutF})")
         .action { (f, c) => c.copy(imgOutF = f) }
 
+      opt[Unit] ("invert")
+        .text ("Invert gray scale probabilities.")
+        .action { (_, c) => c.copy(invert = true) }
+
       opt[Double] ("stroke")
         .text (s"Stroke width in pixels (default ${default.strokeWidth})")
         .validate(i => if (i > 0) Right(()) else Left("Must be > 0") )
@@ -118,6 +128,11 @@ object CatalogCover {
       opt[Int] ("seed")
         .text (s"Random number generator seed (default ${default.rngSeed})")
         .action { (v, c) => c.copy(rngSeed = v) }
+
+      opt[Int] ('n', "max-nodes")
+        .text ("Maximum number of nodes (zero for threshold based)")
+        .validate(i => if (i >= 0) Right(()) else Left("Must be > 0") )
+        .action { (v, c) => c.copy(maxNodes = v) }
 
       opt[Int] ("decim")
         .text (s"Pixel decimation to determine maximum number of nodes (default ${default.maxNodesDecim})")
@@ -277,13 +292,13 @@ object CatalogCover {
     import config._
     val img       = ImageIO.read(imgInF)
     val c         = new ComputeGNG
-    val pd        = new GrayImagePD(img, true)
+    val pd        = new GrayImagePD(img, invert = invert)
     c.pd          = pd
     val w         = img.getWidth
     val h         = img.getHeight
     c.panelWidth  = w // / 8
     c.panelHeight = h // / 8
-    c.maxNodes    = pd.getNumPixels / maxNodesDecim
+    c.maxNodes    = if (maxNodes > 0) maxNodes else pd.getNumPixels / maxNodesDecim
     println(s"w ${c.panelWidth}, h ${c.panelHeight}, maxNodes ${c.maxNodes}")
     c.stepSize    = gngStepSize
     c.algorithm   = neuralgas.Algorithm.GNGU
